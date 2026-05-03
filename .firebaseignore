@@ -1,0 +1,48 @@
+# Source files not needed in the deployed function
+app/
+components/
+lib/
+store/
+types/
+hooks/
+context/
+styles/
+
+# Build cache
+.next/cache/
+
+# Source maps (large, not needed at runtime)
+**/*.map
+
+# Test / dev files
+**/*.test.*
+**/*.spec.*
+**/__tests__/
+**/.storybook/
+
+# Dev environment
+.env.local
+.env.development
+.env.*.local
+
+# Tooling configs not needed at runtime
+.eslintrc*
+.prettierrc*
+tsconfig*.json
+tailwind.config.*
+postcss.config.*
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Firebase intermediate artifacts (avoid double-packaging)
+.firebase/
+
+# functions/ is a separate codebase, not part of hosting
+functions/

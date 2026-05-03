@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.vercel
+
+# Next.js build output
+.next/
+out/
+
+# Firebase
+.firebase/
+functions/node_modules/
+functions/lib/
+
+# Environment variables (secrets)
+.env.local
+.env*.local
+
+# Claude Code
+.claude/
+
+# PWA generated files
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
+public/fallback-*.js

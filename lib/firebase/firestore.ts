@@ -1,0 +1,307 @@
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  serverTimestamp,
+  increment,
+  writeBatch,
+  type QueryConstraint,
+  type DocumentData,
+} from 'firebase/firestore';
+import { db } from './config';
+import type { Book } from '@/types/book';
+import type { Order, LibraryItem, WishlistItem, ReadingProgress } from '@/types/order';
+import type { Review, Notification, Report } from '@/types/review';
+import type { PlatformSettings } from '@/types/subscription';
+
+// ── Books ──────────────────────────────────────────────────────────────────
+
+export async function getLiveBooks(constraints: QueryConstraint[] = []): Promise<Book[]> {
+  const q = query(
+    collection(db, 'books'),
+    where('status', '==', 'live'),
+    ...constraints
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Book));
+}
+
+export async function getBook(bookId: string): Promise<Book | null> {
+  const snap = await getDoc(doc(db, 'books', bookId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as Book;
+}
+
+export async function getBooksByGenre(genre: string, max = 10): Promise<Book[]> {
+  return getLiveBooks([where('genre', '==', genre), limit(max)]);
+}
+
+export async function getFeaturedBooks(max = 10): Promise<Book[]> {
+  return getLiveBooks([where('isFeatured', '==', true), limit(max)]);
+}
+
+export async function getTrendingBooks(max = 10): Promise<Book[]> {
+  return getLiveBooks([orderBy('totalSales', 'desc'), limit(max)]);
+}
+
+export async function getNewReleases(max = 10): Promise<Book[]> {
+  return getLiveBooks([orderBy('publishedAt', 'desc'), limit(max)]);
+}
+
+export async function getSellerBooks(sellerId: string): Promise<Book[]> {
+  const q = query(collection(db, 'books'), where('sellerId', '==', sellerId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Book));
+}
+
+// ── Chapters ───────────────────────────────────────────────────────────────
+
+export async function getChapters(bookId: string) {
+  const q = query(
+    collection(db, 'books', bookId, 'chapters'),
+    orderBy('chapterNumber', 'asc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getChapter(bookId: string, chapterId: string) {
+  const snap = await getDoc(doc(db, 'books', bookId, 'chapters', chapterId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+// ── Library ────────────────────────────────────────────────────────────────
+
+export async function getUserLibrary(userId: string): Promise<LibraryItem[]> {
+  const q = query(collection(db, 'library'), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as LibraryItem));
+}
+
+export async function isBookInLibrary(userId: string, bookId: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, 'library', `${userId}_${bookId}`));
+  return snap.exists();
+}
+
+export async function addToLibrary(
+  userId: string,
+  bookId: string,
+  purchaseType: LibraryItem['purchaseType'],
+  orderId: string | null
+): Promise<void> {
+  const item: Omit<LibraryItem, 'addedAt'> & { addedAt: ReturnType<typeof serverTimestamp> } = {
+    id: `${userId}_${bookId}`,
+    userId,
+    bookId,
+    purchaseType,
+    orderId,
+    addedAt: serverTimestamp() as unknown as import('firebase/firestore').Timestamp,
+  };
+  await updateDoc(doc(db, 'library', `${userId}_${bookId}`), item).catch(() =>
+    addDoc(collection(db, 'library'), item)
+  );
+}
+
+// ── Wishlist ───────────────────────────────────────────────────────────────
+
+export async function getUserWishlist(userId: string): Promise<WishlistItem[]> {
+  const q = query(collection(db, 'wishlist'), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as WishlistItem));
+}
+
+export async function toggleWishlist(userId: string, bookId: string): Promise<void> {
+  const ref = doc(db, 'wishlist', `${userId}_${bookId}`);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    await deleteDoc(ref);
+  } else {
+    await updateDoc(ref, {
+      id: `${userId}_${bookId}`,
+      userId,
+      bookId,
+      addedAt: serverTimestamp(),
+    }).catch(() =>
+      addDoc(collection(db, 'wishlist'), {
+        id: `${userId}_${bookId}`,
+        userId,
+        bookId,
+        addedAt: serverTimestamp(),
+      })
+    );
+  }
+}
+
+// ── Reviews ────────────────────────────────────────────────────────────────
+
+export async function getBookReviews(bookId: string): Promise<Review[]> {
+  const q = query(
+    collection(db, 'reviews'),
+    where('bookId', '==', bookId),
+    where('status', '==', 'active'),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Review));
+}
+
+export async function createReview(
+  reviewData: Omit<Review, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'reviews'), {
+    ...reviewData,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db, 'books', reviewData.bookId), {
+    reviewCount: increment(1),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+// ── Reading Progress ───────────────────────────────────────────────────────
+
+export async function getReadingProgress(
+  userId: string,
+  bookId: string
+): Promise<ReadingProgress | null> {
+  const snap = await getDoc(doc(db, 'readingProgress', `${userId}_${bookId}`));
+  if (!snap.exists()) return null;
+  return snap.data() as ReadingProgress;
+}
+
+export async function saveReadingProgress(
+  userId: string,
+  bookId: string,
+  data: Partial<ReadingProgress>
+): Promise<void> {
+  const ref = doc(db, 'readingProgress', `${userId}_${bookId}`);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    await updateDoc(ref, { ...data, lastReadAt: serverTimestamp() });
+  } else {
+    await addDoc(collection(db, 'readingProgress'), {
+      id: `${userId}_${bookId}`,
+      userId,
+      bookId,
+      currentChapter: 1,
+      scrollPosition: 0,
+      percentComplete: 0,
+      isFinished: false,
+      finishedAt: null,
+      ...data,
+      lastReadAt: serverTimestamp(),
+    });
+  }
+}
+
+// ── Orders ─────────────────────────────────────────────────────────────────
+
+export async function getUserOrders(userId: string): Promise<Order[]> {
+  const q = query(
+    collection(db, 'orders'),
+    where('buyerId', '==', userId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────
+
+export function subscribeToNotifications(
+  userId: string,
+  callback: (notifications: Notification[]) => void
+) {
+  const q = query(
+    collection(db, 'notifications'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limit(50)
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Notification)));
+  });
+}
+
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  await updateDoc(doc(db, 'notifications', notificationId), { isRead: true });
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  const q = query(
+    collection(db, 'notifications'),
+    where('userId', '==', userId),
+    where('isRead', '==', false)
+  );
+  const snap = await getDocs(q);
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.update(d.ref, { isRead: true }));
+  await batch.commit();
+}
+
+// ── Platform Settings ──────────────────────────────────────────────────────
+
+export async function getPlatformSettings(): Promise<PlatformSettings> {
+  const snap = await getDoc(doc(db, 'platformSettings', 'global'));
+  if (!snap.exists()) {
+    return {
+      id: 'global',
+      directSaleFee: 15,
+      subscriptionPlatformCut: 30,
+      borrowRatePerRead: 200,
+      newBookExclusivityDays: 90,
+      autoApproveBooks: true,
+      newUserSignupsOpen: true,
+      newSellerSignupsOpen: true,
+      subscriptionSalesActive: true,
+      maintenanceMode: false,
+      subscriptionPrices: { basic: 499, standard: 999, premium: 1499 },
+    };
+  }
+  return snap.data() as PlatformSettings;
+}
+
+export async function updatePlatformSettings(
+  data: Partial<PlatformSettings>
+): Promise<void> {
+  await updateDoc(doc(db, 'platformSettings', 'global'), data as DocumentData);
+}
+
+// ── Reports ────────────────────────────────────────────────────────────────
+
+export async function createReport(
+  data: Omit<Report, 'id' | 'createdAt' | 'resolvedAt' | 'resolvedBy' | 'adminNote'>
+): Promise<void> {
+  await addDoc(collection(db, 'reports'), {
+    ...data,
+    status: 'open',
+    adminNote: null,
+    resolvedBy: null,
+    resolvedAt: null,
+    createdAt: serverTimestamp(),
+  });
+}
+
+// ── Sample Chapters ────────────────────────────────────────────────────────
+
+export async function getPreviewChapters(bookId: string) {
+  const q = query(
+    collection(db, 'books', bookId, 'chapters'),
+    where('isPreview', '==', true),
+    orderBy('chapterNumber', 'asc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}

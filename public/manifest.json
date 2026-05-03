@@ -1,0 +1,38 @@
+{
+  "name": "AfroBooks",
+  "short_name": "AfroBooks",
+  "description": "The African ebook marketplace — discover and read ebooks by African authors",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e0e0e",
+  "theme_color": "#e8442a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["books", "education", "entertainment"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Library",
+      "url": "/library",
+      "description": "View your library"
+    },
+    {
+      "name": "Browse",
+      "url": "/browse",
+      "description": "Browse all ebooks"
+    }
+  ]
+}
