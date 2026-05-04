@@ -64,7 +64,7 @@ export default function AdminAnnouncementsPage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7 max-w-3xl">
+      <main className="flex-1 px-4 md:px-6 py-7 max-w-3xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-display-lg text-white">Announcements</h1>
           <button type="button" onClick={() => setShowForm(!showForm)}

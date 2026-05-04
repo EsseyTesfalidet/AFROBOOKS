@@ -50,19 +50,19 @@ export default function AdminBooksPage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7">
+      <main className="flex-1 px-4 md:px-6 py-7">
         <h1 className="font-display text-display-lg text-white mb-5">Ebook Library</h1>
 
-        <div className="flex gap-3 mb-5">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books..." className="flex-1 px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+        <div className="flex flex-wrap gap-2 mb-5">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books..." className="flex-1 min-w-[180px] px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
             {['all', 'live', 'in_review', 'draft', 'flagged', 'removed'].map((s) => <option key={s} value={s}>{s === 'all' ? 'All' : s}</option>)}
           </select>
         </div>
 
         {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
-          <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <table className="w-full text-sm">
+          <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <table className="w-full text-sm min-w-[660px]">
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                   {['Book', 'Author', 'Price', 'Sales', 'Rating', 'Status', 'Actions'].map((h) => (

@@ -58,11 +58,11 @@ export default function AdminUsersPage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7">
+      <main className="flex-1 px-4 md:px-6 py-7">
         <h1 className="font-display text-display-lg text-white mb-5">Users</h1>
 
-        <div className="flex gap-3 mb-5">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email..." className="flex-1 px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+        <div className="flex flex-wrap gap-2 mb-5">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email..." className="flex-1 min-w-[180px] px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
             <option value="all">All Roles</option>
             <option value="buyer">Buyer</option>
@@ -81,8 +81,8 @@ export default function AdminUsersPage() {
         {loading ? (
           <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div>
         ) : (
-          <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <table className="w-full text-sm">
+          <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <table className="w-full text-sm min-w-[560px]">
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                   {['User', 'Role', 'Joined', 'Status', 'Actions'].map((h) => (

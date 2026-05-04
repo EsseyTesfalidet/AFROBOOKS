@@ -71,7 +71,7 @@ export default function AdminVerificationsPage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7">
+      <main className="flex-1 px-4 md:px-6 py-7">
         <h1 className="font-display text-display-lg text-white mb-1">ID Verifications</h1>
         <p className="text-sm text-[#555] mb-5">Review seller identity documents</p>
 

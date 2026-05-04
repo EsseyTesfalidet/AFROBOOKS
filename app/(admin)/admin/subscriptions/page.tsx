@@ -41,10 +41,10 @@ export default function AdminSubscriptionsPage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7">
+      <main className="flex-1 px-4 md:px-6 py-7">
         <h1 className="font-display text-display-lg text-white mb-5">Subscriptions</h1>
 
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <p className="text-xs text-[#555] mb-1">MRR</p>
             <p className="font-display text-2xl text-[#f5b800]">{centsToDisplay(stats.mrr)}</p>
@@ -88,8 +88,8 @@ export default function AdminSubscriptionsPage() {
         </div>
 
         {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
-          <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <table className="w-full text-sm">
+          <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                   {['Subscriber', 'Plan', 'Status', 'Stripe Sub ID', 'Started', 'Renews'].map((h) => (

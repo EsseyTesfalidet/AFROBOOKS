@@ -11,7 +11,7 @@ import { useAuthStore } from '@/store/authStore';
 import { db, storage } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { updateUserProfile, changePassword } from '@/lib/firebase/auth';
+import { updateUserProfile, changePassword, logOut } from '@/lib/firebase/auth';
 import type { Seller } from '@/types/user';
 import type { Book } from '@/types/book';
 import ProgressBar from '@/components/shared/ProgressBar';
@@ -260,9 +260,30 @@ export default function SellerProfilePage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <SellerHeader />
-      <main className="max-w-5xl mx-auto px-4 py-8 flex gap-7">
-        {/* Sidebar */}
-        <aside className="w-52 flex-shrink-0">
+
+      {/* Mobile section picker */}
+      <div className="sm:hidden overflow-x-auto px-4 pt-4 pb-1" style={{ borderBottom: '1px solid #1a1a1a' }}>
+        <div className="flex gap-2 w-max">
+          {SIDEBAR_GROUPS.flatMap((g) => g.items).map((item) => (
+            <Link
+              key={item.id}
+              href={`/seller/profile/${item.id}`}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap"
+              style={{
+                background: section === item.id ? '#f5b800' : '#1a1a1a',
+                color: section === item.id ? '#000' : '#888',
+                border: `1px solid ${section === item.id ? '#f5b800' : '#333'}`,
+              }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8 sm:flex sm:gap-7">
+        {/* Sidebar — desktop only */}
+        <aside className="hidden sm:block w-52 flex-shrink-0">
           <div className="p-4 rounded-xl border mb-4 text-center flex flex-col items-center" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <AvatarUpload size={48} />
             <p className="text-sm font-medium text-white mt-2">{userProfile?.firstName} {userProfile?.lastName}</p>
@@ -286,6 +307,27 @@ export default function SellerProfilePage() {
 
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-5">
+
+          {/* Mobile-only action buttons */}
+          <div className="sm:hidden flex gap-3">
+            {userProfile?.role === 'both' && (
+              <button type="button"
+                onClick={async () => {
+                  await updateUserProfile(userProfile.uid, { activeRole: 'buyer' });
+                  router.push('/browse');
+                }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-medium border"
+                style={{ borderColor: '#f5b800', color: '#f5b800' }}>
+                Switch to Buyer
+              </button>
+            )}
+            <button type="button"
+              onClick={async () => { await logOut(); router.replace('/login'); }}
+              className="flex-1 py-2.5 rounded-xl text-xs font-medium border"
+              style={{ borderColor: '#333', color: '#888' }}>
+              Sign out
+            </button>
+          </div>
 
           {section === 'identity' && (
             <div>

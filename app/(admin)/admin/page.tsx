@@ -99,7 +99,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7 space-y-7">
+      <main className="flex-1 px-4 md:px-6 py-7 space-y-7">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-display-lg text-white">Admin Dashboard</h1>
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {statCards.map(({ label, value, color }) => (
             <div key={label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <p className="text-xs text-[#555] mb-1">{label}</p>
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <p className="text-sm font-medium text-white mb-4">Revenue (7 Days)</p>
             <ResponsiveContainer width="100%" height={160}>

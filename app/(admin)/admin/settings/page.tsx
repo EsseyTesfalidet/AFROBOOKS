@@ -62,7 +62,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7 max-w-2xl">
+      <main className="flex-1 px-4 md:px-6 py-7 max-w-2xl">
         <h1 className="font-display text-display-lg text-white mb-6">Platform Settings</h1>
 
         <div className="space-y-5">

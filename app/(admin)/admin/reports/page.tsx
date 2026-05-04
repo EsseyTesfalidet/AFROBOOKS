@@ -36,11 +36,11 @@ export default function AdminReportsPage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7">
+      <main className="flex-1 px-4 md:px-6 py-7">
         <h1 className="font-display text-display-lg text-white mb-5">Reports</h1>
         {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
-          <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <table className="w-full text-sm">
+          <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                   {['Reporter', 'Type', 'Target', 'Reason', 'Date', 'Status', 'Actions'].map((h) => (

@@ -36,7 +36,7 @@ export default function AdminSidebar() {
   }
 
   return (
-    <aside className="w-52 flex-shrink-0 min-h-screen flex flex-col py-5 px-3" style={{ background: '#0d0d0d', borderRight: '1px solid #1a1a1a' }}>
+    <aside className="hidden md:flex w-52 flex-shrink-0 min-h-screen flex-col py-5 px-3" style={{ background: '#0d0d0d', borderRight: '1px solid #1a1a1a' }}>
       <div className="flex items-center gap-2 px-2 mb-4">
         <Logo size="sm" />
         <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: '#1f0e0c', color: '#e8442a' }}>ADMIN</span>

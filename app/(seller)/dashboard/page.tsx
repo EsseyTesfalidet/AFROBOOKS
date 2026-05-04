@@ -55,14 +55,15 @@ export default function SellerDashboardPage() {
     <div className="min-h-screen bg-[#0e0e0e]">
       <SellerHeader />
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-7">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="font-display text-display-lg text-white">Dashboard</h1>
             <p className="text-sm text-[#666]">Welcome back, {userProfile?.firstName}</p>
           </div>
-          <Link href="/publish" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
+          <Link href="/publish" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
             <PlusCircle size={15} />
-            Publish New Ebook
+            <span className="hidden sm:inline">Publish New Ebook</span>
+            <span className="sm:hidden">Publish</span>
           </Link>
         </div>
 
@@ -87,8 +88,8 @@ export default function SellerDashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <table className="w-full text-sm">
+            <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <table className="w-full text-sm min-w-[500px]">
                 <thead>
                   <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                     {['Book', 'Price', 'Sales', 'Rating', 'Status', ''].map((h) => (

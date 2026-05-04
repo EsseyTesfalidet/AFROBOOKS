@@ -72,7 +72,7 @@ export default function AdminRevenuePage() {
   return (
     <div className="flex min-h-screen bg-[#0e0e0e]">
       <AdminSidebar />
-      <main className="flex-1 px-6 py-7">
+      <main className="flex-1 px-4 md:px-6 py-7">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-display-lg text-white">Revenue</h1>
           <div className="flex gap-1 p-1 rounded-lg" style={{ background: '#1a1a1a' }}>
@@ -88,7 +88,7 @@ export default function AdminRevenuePage() {
 
         {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
           <>
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {stats.map((s) => (
                 <div key={s.label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                   <p className="text-xs text-[#555] mb-1">{s.label}</p>
@@ -129,11 +129,11 @@ export default function AdminRevenuePage() {
               </ResponsiveContainer>
             </div>
 
-            <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <div className="px-5 py-3 border-b" style={{ borderColor: '#1a1a1a' }}>
                 <h2 className="font-display text-display-sm text-white">Recent Orders</h2>
               </div>
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[580px]">
                 <thead>
                   <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                     {['Buyer', 'Book', 'Total', 'Platform Fee', 'Seller Earnings', 'Date'].map((h) => (
