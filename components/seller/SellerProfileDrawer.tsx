@@ -252,6 +252,8 @@ export default function SellerProfileDrawer() {
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef(0);
   const isDragging = useRef(false);
+  const canDragClose = useRef(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
@@ -264,9 +266,10 @@ export default function SellerProfileDrawer() {
   function onTouchStart(e: React.TouchEvent) {
     dragStart.current = e.touches[0].clientY;
     isDragging.current = true;
+    canDragClose.current = (contentRef.current?.scrollTop ?? 0) === 0;
   }
   function onTouchMove(e: React.TouchEvent) {
-    if (!isDragging.current) return;
+    if (!isDragging.current || !canDragClose.current) return;
     const dy = e.touches[0].clientY - dragStart.current;
     if (dy > 0) setDragY(dy);
   }
@@ -281,7 +284,7 @@ export default function SellerProfileDrawer() {
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 60,
+    zIndex: 100,
     maxHeight: '92vh',
     display: 'flex',
     flexDirection: 'column',
@@ -296,7 +299,7 @@ export default function SellerProfileDrawer() {
     top: 0,
     right: 0,
     bottom: 0,
-    zIndex: 60,
+    zIndex: 100,
     width: '100%',
     maxWidth: 500,
     display: 'flex',
@@ -311,7 +314,7 @@ export default function SellerProfileDrawer() {
   const backdropStyle: React.CSSProperties = {
     position: 'fixed',
     inset: 0,
-    zIndex: 59,
+    zIndex: 99,
     background: 'rgba(0,0,0,0.7)',
     backdropFilter: 'blur(3px)',
     opacity: isOpen ? 1 : 0,
@@ -370,7 +373,7 @@ export default function SellerProfileDrawer() {
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+        <div ref={contentRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
           {/* Switch to buyer */}
           {userProfile.role === 'both' && (

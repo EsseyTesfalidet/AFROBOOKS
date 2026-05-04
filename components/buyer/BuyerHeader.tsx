@@ -24,6 +24,7 @@ export default function BuyerHeader() {
   const cartCount = useCartStore((s) => s.items.length);
   const userProfile = useAuthStore((s) => s.userProfile);
   const openDrawer = useBuyerDrawerStore((s) => s.open);
+  const drawerOpen = useBuyerDrawerStore((s) => s.isOpen);
 
   const initials = userProfile
     ? `${userProfile.firstName[0] ?? ''}${userProfile.lastName[0] ?? ''}`.toUpperCase()
@@ -95,9 +96,9 @@ export default function BuyerHeader() {
         </div>
       </header>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav — hidden when profile drawer is open */}
       <nav
-        className="sm:hidden fixed bottom-0 left-0 right-0 z-50 flex"
+        className={`sm:hidden fixed bottom-0 left-0 right-0 z-50 flex${drawerOpen ? ' hidden' : ''}`}
         style={{ background: '#0e0e0e', borderTop: '1px solid #222', height: 60, paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {NAV_LINKS.map(({ label, href, icon: Icon }) => {
