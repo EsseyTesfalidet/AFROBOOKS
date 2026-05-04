@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BookOpen, Library, ShoppingCart, User } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import InstallPWA from '@/components/shared/InstallPWA';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 
@@ -61,6 +62,7 @@ export default function BuyerHeader() {
       </nav>
 
       <div className="flex items-center gap-3">
+        <InstallPWA />
         <NotificationBell />
         <button
           type="button"
