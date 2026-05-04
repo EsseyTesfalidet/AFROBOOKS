@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, BadgeCheck, Flag, X, BookOpen, Calendar } from 'lucide-react';
+import { ShieldCheck, BadgeCheck, Flag, X, BookOpen, Calendar, Share2, Copy, Check } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import StarRating from '@/components/shared/StarRating';
 import StatusPill from '@/components/shared/StatusPill';
@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ReviewCard from '@/components/buyer/ReviewCard';
 import ReviewForm from '@/components/buyer/ReviewForm';
 import PromoCodeInput from '@/components/buyer/PromoCodeInput';
+import FollowButton from '@/components/shared/FollowButton';
 import { getBook, getBookReviews, isBookInLibrary, createReport } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
@@ -40,6 +41,7 @@ export default function BookDetailPage() {
   const [discount, setDiscount] = useState(0);
   const [selectedOption, setSelectedOption] = useState<'buy' | 'subscribe'>('buy');
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Report modal
   const [reportOpen, setReportOpen] = useState(false);
@@ -128,9 +130,10 @@ export default function BookDetailPage() {
 
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-display-md text-white leading-none mb-1">{book.title}</h1>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Link href={`/author/${book.sellerId}`} className="text-sm text-[#aaa] hover:text-white transition-colors">{book.authorName}</Link>
               {book.sellerVerified && <BadgeCheck size={14} style={{ color: '#f5b800' }} />}
+              <FollowButton sellerId={book.sellerId} />
             </div>
             <div className="flex items-center gap-2 mb-3">
               <StarRating value={book.averageRating} size={13} />
@@ -234,6 +237,30 @@ export default function BookDetailPage() {
             {canSubRead && !owned ? 'Read Now (Included in your plan)' : 'Read Now'}
           </button>
         )}
+
+        {/* Share */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs flex items-center gap-1" style={{ color: '#555' }}><Share2 size={11} /> Share:</span>
+          <button type="button"
+            onClick={() => { navigator.clipboard.writeText(window.location.href); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-colors"
+            style={{ borderColor: '#2a2a2a', color: linkCopied ? '#4ade80' : '#666', background: '#111' }}>
+            {linkCopied ? <Check size={11} /> : <Copy size={11} />}
+            {linkCopied ? 'Copied!' : 'Copy link'}
+          </button>
+          <a href={`https://wa.me/?text=${encodeURIComponent(`"${book.title}" by ${book.authorName} on AfroBooks — ${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+            target="_blank" rel="noopener noreferrer"
+            className="px-2.5 py-1 rounded-lg text-xs border transition-colors hover:text-white"
+            style={{ borderColor: '#2a2a2a', color: '#666', background: '#111' }}>
+            WhatsApp
+          </a>
+          <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`"${book.title}" by ${book.authorName}`)}&url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+            target="_blank" rel="noopener noreferrer"
+            className="px-2.5 py-1 rounded-lg text-xs border transition-colors hover:text-white"
+            style={{ borderColor: '#2a2a2a', color: '#666', background: '#111' }}>
+            X / Twitter
+          </a>
+        </div>
 
         {/* Report this book */}
         {userProfile && (

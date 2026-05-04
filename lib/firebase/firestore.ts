@@ -63,6 +63,31 @@ export async function getSellerBooks(sellerId: string): Promise<Book[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Book));
 }
 
+// ── Follows ────────────────────────────────────────────────────────────────
+
+export async function followAuthor(userId: string, sellerId: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'follows', `${userId}_${sellerId}`), {
+    followerId: userId,
+    sellerId,
+    createdAt: serverTimestamp(),
+  });
+  batch.update(doc(db, 'sellers', sellerId), { followersCount: increment(1) });
+  await batch.commit();
+}
+
+export async function unfollowAuthor(userId: string, sellerId: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'follows', `${userId}_${sellerId}`));
+  batch.update(doc(db, 'sellers', sellerId), { followersCount: increment(-1) });
+  await batch.commit();
+}
+
+export async function isFollowingAuthor(userId: string, sellerId: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, 'follows', `${userId}_${sellerId}`));
+  return snap.exists();
+}
+
 // ── Chapters ───────────────────────────────────────────────────────────────
 
 export async function getChapters(bookId: string) {

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { BadgeCheck, Globe, Twitter, Instagram, Linkedin, BookOpen } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import FollowButton from '@/components/shared/FollowButton';
 import { db } from '@/lib/firebase/config';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
@@ -75,11 +76,13 @@ export default function AuthorPage() {
                 <BadgeCheck size={20} style={{ color: '#f5b800' }} />
               )}
             </div>
-            <div className="flex items-center gap-4 mt-1 text-xs text-[#555]">
+            <div className="flex items-center gap-4 mt-1 mb-3 text-xs text-[#555]">
               <span>{books.length} book{books.length !== 1 ? 's' : ''}</span>
               <span>{seller?.totalSales ?? 0} sales</span>
+              {(seller?.followersCount ?? 0) > 0 && <span>{seller!.followersCount} followers</span>}
               {seller?.averageRating ? <span>★ {seller.averageRating.toFixed(1)}</span> : null}
             </div>
+            <FollowButton sellerId={id} initialFollowerCount={seller?.followersCount ?? 0} size="md" />
             {author.bio && (
               <p className="text-sm text-[#888] mt-3 max-w-xl leading-relaxed">{author.bio}</p>
             )}
