@@ -18,24 +18,50 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
   const { notifications, markRead, markAllRead } = useNotificationStore();
   const userProfile = useAuthStore((s) => s.userProfile);
 
-  // Swipe-to-dismiss on mobile
+  // Swipe-to-dismiss on mobile (vertical, on panel)
   const startY = useRef(0);
+  const startX = useRef(0);
   const [dragY, setDragY] = useState(0);
   const dragging = useRef(false);
 
-  function onTouchStart(e: React.TouchEvent) {
+  function onPanelTouchStart(e: React.TouchEvent) {
     startY.current = e.touches[0].clientY;
+    startX.current = e.touches[0].clientX;
     dragging.current = true;
   }
-  function onTouchMove(e: React.TouchEvent) {
+  function onPanelTouchMove(e: React.TouchEvent) {
     if (!dragging.current) return;
     const dy = e.touches[0].clientY - startY.current;
-    if (dy > 0) setDragY(dy);
+    const dx = e.touches[0].clientX - startX.current;
+    if (Math.abs(dy) > Math.abs(dx) && dy > 0) setDragY(dy);
   }
-  function onTouchEnd() {
+  function onPanelTouchEnd() {
     dragging.current = false;
     if (dragY > 80) { onClose(); }
     setDragY(0);
+  }
+
+  // Swipe-to-switch-tabs (horizontal, on list area)
+  const tabStartX = useRef(0);
+  const tabStartY = useRef(0);
+  const [tabSwipeX, setTabSwipeX] = useState(0);
+
+  function onListTouchStart(e: React.TouchEvent) {
+    tabStartX.current = e.touches[0].clientX;
+    tabStartY.current = e.touches[0].clientY;
+  }
+  function onListTouchMove(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - tabStartX.current;
+    const dy = e.touches[0].clientY - tabStartY.current;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setTabSwipeX(dx);
+      e.stopPropagation();
+    }
+  }
+  function onListTouchEnd() {
+    if (tabSwipeX < -60 && tab === 'all') setTab('unread');
+    else if (tabSwipeX > 60 && tab === 'unread') setTab('all');
+    setTabSwipeX(0);
   }
 
   const filtered = tab === 'unread' ? notifications.filter((n) => !n.isRead) : notifications;
@@ -71,9 +97,9 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
             transform: `translateY(${dragY}px)`,
             transition: dragging.current ? 'none' : 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
           }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
+          onTouchStart={onPanelTouchStart}
+          onTouchMove={onPanelTouchMove}
+          onTouchEnd={onPanelTouchEnd}
         >
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -106,8 +132,17 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
             ))}
           </div>
 
-          {/* List */}
-          <div className="overflow-y-auto flex-1">
+          {/* List — horizontal swipe switches tabs */}
+          <div
+            className="overflow-y-auto flex-1"
+            onTouchStart={onListTouchStart}
+            onTouchMove={onListTouchMove}
+            onTouchEnd={onListTouchEnd}
+            style={{
+              transform: `translateX(${tabSwipeX * 0.15}px)`,
+              transition: tabSwipeX === 0 ? 'transform 0.2s ease' : 'none',
+            }}
+          >
             {recent.length === 0
               ? <p className="text-center text-sm text-[#444] py-10">No notifications</p>
               : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} />)}
