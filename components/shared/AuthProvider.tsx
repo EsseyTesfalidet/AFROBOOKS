@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { getUserProfile, handleGoogleRedirectResult } from '@/lib/firebase/auth';
+import { getUserProfile } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/store/authStore';
 
 function setSessionCookie(token: string) {
@@ -22,12 +22,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     let unsub: (() => void) | undefined;
 
     async function init() {
-      try {
-        await handleGoogleRedirectResult();
-      } catch {
-        // ignore — not a redirect or redirect failed
-      }
-
       unsub = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           try {

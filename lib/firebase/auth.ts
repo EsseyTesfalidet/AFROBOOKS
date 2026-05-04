@@ -3,8 +3,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   sendEmailVerification,
   updatePassword,
   EmailAuthProvider,
@@ -90,13 +89,8 @@ export async function logIn(email: string, password: string): Promise<User> {
   return credential.user;
 }
 
-export async function initiateGoogleSignIn(): Promise<void> {
-  await signInWithRedirect(auth, googleProvider);
-}
-
-export async function handleGoogleRedirectResult(): Promise<User | null> {
-  const result = await getRedirectResult(auth);
-  if (!result) return null;
+export async function signInWithGoogle(): Promise<User> {
+  const result = await signInWithPopup(auth, googleProvider);
   const user = result.user;
   const userRef = doc(db, 'users', user.uid);
   const snapshot = await getDoc(userRef);

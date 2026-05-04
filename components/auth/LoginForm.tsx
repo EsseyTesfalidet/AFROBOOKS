@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { logIn, initiateGoogleSignIn, getUserProfile } from '@/lib/firebase/auth';
+import { logIn, signInWithGoogle, getUserProfile } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/store/authStore';
 import Logo from '@/components/shared/Logo';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -75,8 +75,13 @@ export default function LoginForm() {
     setGoogleLoading(true);
     setError('');
     try {
-      await initiateGoogleSignIn();
-      // page redirects to Google — code below won't run
+      const user = await signInWithGoogle();
+      const token = await user.getIdToken();
+      setSessionCookie(token);
+      const profile = await getUserProfile(user.uid);
+      if (profile?.role === 'admin') router.replace('/admin');
+      else if (profile?.activeRole === 'seller') router.replace('/dashboard');
+      else router.replace('/browse');
     } catch {
       setGoogleLoading(false);
       setError('Google sign-in failed. Try again.');
