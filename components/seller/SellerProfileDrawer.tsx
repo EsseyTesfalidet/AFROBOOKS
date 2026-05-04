@@ -49,6 +49,7 @@ export default function SellerProfileDrawer() {
   const [form, setForm] = useState({ penName: '', website: '', bio: '', twitter: '', instagram: '', linkedin: '', goodreads: '' });
   const [saving, setSaving] = useState(false);
   const [savedProfile, setSavedProfile] = useState(false);
+  const [editingIdentity, setEditingIdentity] = useState(false);
 
   const [idRequest, setIdRequest] = useState<{ status: string } | null>(null);
   const [idUploading, setIdUploading] = useState(false);
@@ -77,6 +78,14 @@ export default function SellerProfileDrawer() {
     emailReceipts: true, weeklyDigest: false, promotionalEmails: false,
   });
   const [notifSaving, setNotifSaving] = useState(false);
+
+  // When identity section opens, default to view mode unless profile is empty
+  useEffect(() => {
+    if (section === 'identity') {
+      const isNew = !form.bio.trim() && !form.penName.trim() && !userProfile?.bio?.trim();
+      setEditingIdentity(isNew);
+    }
+  }, [section]);
 
   // Load seller doc when drawer opens
   useEffect(() => {
@@ -145,7 +154,8 @@ export default function SellerProfileDrawer() {
     setUserProfile({ ...userProfile, bio: form.bio });
     setSaving(false);
     setSavedProfile(true);
-    setSection('preview');
+    setEditingIdentity(false);
+    setTimeout(() => setSavedProfile(false), 3000);
   }
 
   async function submitIdVerification() {
@@ -346,15 +356,14 @@ export default function SellerProfileDrawer() {
         <div className="overflow-x-auto px-5 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
           <div className="flex gap-2 w-max">
             {ALL_ITEMS.map((item) => (
-              <button key={item.id} type="button"
-                onClick={() => { setSection(item.id); if (item.id === 'identity') setSavedProfile(false); }}
+              <button key={item.id} type="button" onClick={() => setSection(item.id)}
                 className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap"
                 style={{
                   background: section === item.id ? '#f5b800' : '#1a1a1a',
                   color: section === item.id ? '#000' : '#888',
                   border: `1px solid ${section === item.id ? '#f5b800' : '#333'}`,
                 }}>
-                {item.id === 'identity' && savedProfile ? 'Edit Profile' : item.label}
+                {item.label}
               </button>
             ))}
           </div>
@@ -373,10 +382,77 @@ export default function SellerProfileDrawer() {
             </button>
           )}
 
-          {/* Author Profile */}
-          {section === 'identity' && (
+          {/* Author Profile — view mode */}
+          {section === 'identity' && !editingIdentity && (
             <div className="space-y-4">
-              <h2 className="font-display text-display-sm text-white">Author Profile</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-display-sm text-white">Author Profile</h2>
+                <button type="button" onClick={() => setEditingIdentity(true)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border"
+                  style={{ borderColor: '#f5b800', color: '#f5b800' }}>
+                  Edit
+                </button>
+              </div>
+              {savedProfile && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ background: '#0f2e1a', border: '1px solid #1a4a2a' }}>
+                  <CheckCircle size={14} style={{ color: '#4ade80' }} />
+                  <span className="text-sm" style={{ color: '#4ade80' }}>Profile saved</span>
+                </div>
+              )}
+              <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center font-display text-lg font-bold flex-shrink-0"
+                    style={{ background: '#1a1a1a', color: '#f5b800', border: '2px solid #2a2a2a' }}>
+                    {userProfile.avatarUrl
+                      ? <img src={userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      : userProfile.firstName?.charAt(0) ?? '?'}
+                  </div>
+                  <div>
+                    <p className="text-base font-medium text-white leading-tight">
+                      {form.penName || `${userProfile.firstName} ${userProfile.lastName}`.trim() || <span className="text-[#444] italic text-sm">No name set</span>}
+                    </p>
+                    {seller?.isVerified && (
+                      <span className="text-xs px-1.5 py-0.5 rounded mt-0.5 inline-block" style={{ background: '#2e1a0f', color: '#f5b800' }}>Verified Author</span>
+                    )}
+                  </div>
+                </div>
+                {form.bio
+                  ? <p className="text-sm leading-relaxed" style={{ color: '#888' }}>{form.bio}</p>
+                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio yet</p>}
+                <div className="space-y-2 pt-1" style={{ borderTop: '1px solid #1a1a1a', paddingTop: '12px' }}>
+                  {form.website && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: '#555' }}>Website</span>
+                      <span className="text-xs truncate ml-4" style={{ color: '#aaa' }}>{form.website}</span>
+                    </div>
+                  )}
+                  {(['twitter', 'instagram', 'linkedin', 'goodreads'] as const).filter((k) => form[k]).map((k) => (
+                    <div key={k} className="flex items-center justify-between">
+                      <span className="text-xs capitalize" style={{ color: '#555' }}>{k === 'twitter' ? 'X / Twitter' : k}</span>
+                      <span className="text-xs truncate ml-4" style={{ color: '#aaa' }}>{form[k]}</span>
+                    </div>
+                  ))}
+                  {!form.website && !form.twitter && !form.instagram && !form.linkedin && !form.goodreads && (
+                    <p className="text-xs italic" style={{ color: '#333' }}>No links added</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Author Profile — edit mode */}
+          {section === 'identity' && editingIdentity && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-display-sm text-white">Edit Author Profile</h2>
+                {(form.bio.trim() || form.penName.trim() || userProfile.bio?.trim()) && (
+                  <button type="button" onClick={() => setEditingIdentity(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border"
+                    style={{ borderColor: '#333', color: '#888' }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
               <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 <div>
                   <label className="block text-xs text-[#aaa] mb-1">Pen Name (optional)</label>
@@ -427,15 +503,7 @@ export default function SellerProfileDrawer() {
           {/* Preview */}
           {section === 'preview' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-display text-display-sm text-white">Public Page Preview</h2>
-                <button type="button"
-                  onClick={() => { setSavedProfile(false); setSection('identity'); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border"
-                  style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-                  Edit Profile
-                </button>
-              </div>
+              <h2 className="font-display text-display-sm text-white">Public Page Preview</h2>
               {savedProfile && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ background: '#0f2e1a', border: '1px solid #1a4a2a' }}>
                   <CheckCircle size={14} style={{ color: '#4ade80' }} />
