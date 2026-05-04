@@ -222,6 +222,8 @@ export default function BuyerProfileDrawer() {
   const touchStartScrollTop = useRef(0);
   const dragClosing = useRef(false);
   const dragCurrent = useRef(0);
+  const sectionRef = useRef(section);
+  sectionRef.current = section;
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
@@ -230,6 +232,33 @@ export default function BuyerProfileDrawer() {
     mq.addEventListener('change', h);
     return () => mq.removeEventListener('change', h);
   }, []);
+
+  // Horizontal swipe on content area → switch sections
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = contentRef.current;
+    if (!el) return;
+    let startX = 0;
+    let startY = 0;
+    function onStart(e: TouchEvent) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }
+    function onEnd(e: TouchEvent) {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      const idx = ALL_ITEMS.findIndex((item) => item.id === sectionRef.current);
+      if (dx < 0 && idx < ALL_ITEMS.length - 1) setSection(ALL_ITEMS[idx + 1].id);
+      else if (dx > 0 && idx > 0) setSection(ALL_ITEMS[idx - 1].id);
+    }
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchend', onEnd);
+    };
+  }, [isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lock body scroll + hide page scrollbar while drawer is open
   useEffect(() => {
