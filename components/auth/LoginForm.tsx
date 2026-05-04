@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { logIn, logInWithGoogle } from '@/lib/firebase/auth';
-import { getUserProfile } from '@/lib/firebase/auth';
+import { logIn, initiateGoogleSignIn, getUserProfile } from '@/lib/firebase/auth';
+import { useAuthStore } from '@/store/authStore';
 import Logo from '@/components/shared/Logo';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
@@ -23,6 +23,15 @@ export default function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const { userProfile, loading } = useAuthStore();
+
+  useEffect(() => {
+    if (!loading && userProfile) {
+      if (userProfile.role === 'admin') router.replace('/admin');
+      else if (userProfile.activeRole === 'seller') router.replace('/dashboard');
+      else router.replace('/browse');
+    }
+  }, [loading, userProfile]);
 
   const {
     register,
@@ -66,26 +75,11 @@ export default function LoginForm() {
     setGoogleLoading(true);
     setError('');
     try {
-      const fbUser = await logInWithGoogle();
-      const token = await fbUser.getIdToken();
-      setSessionCookie(token);
-      const profile = await getUserProfile(fbUser.uid);
-      if (profile?.activeRole === 'seller') {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/browse');
-      }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '';
-      if (msg.includes('popup-closed-by-user') || msg.includes('cancelled-popup-request')) {
-        setError('');
-      } else if (msg.includes('popup-blocked')) {
-        setError('Popup was blocked. Please allow popups for this site.');
-      } else {
-        setError('Google sign-in failed. Try again.');
-      }
-    } finally {
+      await initiateGoogleSignIn();
+      // page redirects to Google — code below won't run
+    } catch {
       setGoogleLoading(false);
+      setError('Google sign-in failed. Try again.');
     }
   }
 

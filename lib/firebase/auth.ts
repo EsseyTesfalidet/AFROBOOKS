@@ -3,7 +3,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendEmailVerification,
   updatePassword,
   EmailAuthProvider,
@@ -89,23 +90,29 @@ export async function logIn(email: string, password: string): Promise<User> {
   return credential.user;
 }
 
-export async function logInWithGoogle(): Promise<User> {
-  const credential = await signInWithPopup(auth, googleProvider);
-  const userRef = doc(db, 'users', credential.user.uid);
+export async function initiateGoogleSignIn(): Promise<void> {
+  await signInWithRedirect(auth, googleProvider);
+}
+
+export async function handleGoogleRedirectResult(): Promise<User | null> {
+  const result = await getRedirectResult(auth);
+  if (!result) return null;
+  const user = result.user;
+  const userRef = doc(db, 'users', user.uid);
   const snapshot = await getDoc(userRef);
 
   if (!snapshot.exists()) {
-    const nameParts = (credential.user.displayName || '').split(' ');
+    const nameParts = (user.displayName || '').split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
     await setDoc(userRef, {
-      uid: credential.user.uid,
-      email: credential.user.email,
+      uid: user.uid,
+      email: user.email,
       firstName,
       lastName,
-      username: (credential.user.email || '').split('@')[0].toLowerCase(),
-      avatarUrl: credential.user.photoURL,
+      username: (user.email || '').split('@')[0].toLowerCase(),
+      avatarUrl: user.photoURL,
       bio: '',
       phone: '',
       country: '',
@@ -144,7 +151,7 @@ export async function logInWithGoogle(): Promise<User> {
     });
   }
 
-  return credential.user;
+  return user;
 }
 
 export async function logOut(): Promise<void> {

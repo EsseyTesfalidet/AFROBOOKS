@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { getUserProfile } from '@/lib/firebase/auth';
+import { getUserProfile, handleGoogleRedirectResult } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/store/authStore';
 
 function setSessionCookie(token: string) {
@@ -19,26 +19,39 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const { setFirebaseUser, setUserProfile, setLoading, reset } = useAuthStore();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const token = await firebaseUser.getIdToken();
-          setSessionCookie(token);
-          setFirebaseUser(firebaseUser);
-          const profile = await getUserProfile(firebaseUser.uid);
-          setUserProfile(profile);
-        } catch {
-          setFirebaseUser(firebaseUser);
-          setUserProfile(null);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        clearSessionCookie();
-        reset();
+    let unsub: (() => void) | undefined;
+
+    async function init() {
+      try {
+        await handleGoogleRedirectResult();
+      } catch {
+        // ignore — not a redirect or redirect failed
       }
-    });
-    return unsub;
+
+      unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          try {
+            const token = await firebaseUser.getIdToken();
+            setSessionCookie(token);
+            setFirebaseUser(firebaseUser);
+            const profile = await getUserProfile(firebaseUser.uid);
+            setUserProfile(profile);
+          } catch {
+            setFirebaseUser(firebaseUser);
+            setUserProfile(null);
+          } finally {
+            setLoading(false);
+          }
+        } else {
+          clearSessionCookie();
+          reset();
+        }
+      });
+    }
+
+    init();
+
+    return () => { unsub?.(); };
   }, []);
 
   return <>{children}</>;
