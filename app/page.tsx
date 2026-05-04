@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Heart } from 'lucide-react';
+import { BookOpen, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Facebook, Heart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import { useAuthStore } from '@/store/authStore';
 import { getLiveBooks } from '@/lib/firebase/firestore';
@@ -364,9 +364,9 @@ export default function LandingPage() {
               <p className="text-xs mb-3" style={{ color: '#444' }}>Follow us</p>
               <div className="flex items-center gap-3">
                 {[
-                  { icon: Twitter, href: 'https://twitter.com/afrobs', label: 'X / Twitter' },
+                  { icon: Facebook, href: 'https://facebook.com/AfroBooks', label: 'Facebook' },
+                  { icon: Linkedin, href: 'https://linkedin.com/AFROBOOKS/AFROBS', label: 'LinkedIn' },
                   { icon: Instagram, href: 'https://instagram.com/afrobs', label: 'Instagram' },
-                  { icon: Linkedin, href: 'https://linkedin.com/company/afrobs', label: 'LinkedIn' },
                 ].map(({ icon: Icon, href, label }) => (
                   <a
                     key={label}
