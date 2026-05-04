@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ShoppingBag, MessageSquare, BookOpen, Tag, Bell,
@@ -8,33 +9,16 @@ import {
 import type { Notification } from '@/types/review';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
-  purchase: ShoppingBag,
-  review_reply: MessageSquare,
-  new_chapter: BookOpen,
-  promo: Tag,
-  reading_reminder: Bell,
-  sale: DollarSign,
-  payout: DollarSign,
-  new_review: Star,
-  low_rating: Star,
-  milestone: TrendingUp,
-  follower: Users,
-  system: Info,
+  purchase: ShoppingBag, review_reply: MessageSquare, new_chapter: BookOpen,
+  promo: Tag, reading_reminder: Bell, sale: DollarSign, payout: DollarSign,
+  new_review: Star, low_rating: Star, milestone: TrendingUp, follower: Users, system: Info,
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  purchase: '#4ade80',
-  sale: '#4ade80',
-  payout: '#4ade80',
-  review_reply: '#0ea5e9',
-  new_chapter: '#0ea5e9',
-  promo: '#f5b800',
-  reading_reminder: '#f5b800',
-  new_review: '#f5b800',
-  low_rating: '#e8442a',
-  milestone: '#7c3aed',
-  follower: '#7c3aed',
-  system: '#aaa',
+  purchase: '#4ade80', sale: '#4ade80', payout: '#4ade80',
+  review_reply: '#0ea5e9', new_chapter: '#0ea5e9',
+  promo: '#f5b800', reading_reminder: '#f5b800', new_review: '#f5b800',
+  low_rating: '#e8442a', milestone: '#7c3aed', follower: '#7c3aed', system: '#aaa',
 };
 
 function timeAgo(date: Date): string {
@@ -56,25 +40,57 @@ export default function NotificationItem({ notification, onRead }: Props) {
   const color = TYPE_COLORS[notification.type] ?? '#aaa';
   const date = notification.createdAt?.toDate?.() ?? new Date();
 
+  // Swipe-to-dismiss
+  const startX = useRef(0);
+  const [dragX, setDragX] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const dragging = useRef(false);
+
+  function onTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX;
+    dragging.current = true;
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (!dragging.current) return;
+    const dx = e.touches[0].clientX - startX.current;
+    setDragX(dx);
+  }
+  function onTouchEnd() {
+    dragging.current = false;
+    if (Math.abs(dragX) > 80) {
+      setDismissed(true);
+      if (!notification.isRead) onRead(notification.id);
+    } else {
+      setDragX(0);
+    }
+  }
+
   function handleClick() {
+    if (Math.abs(dragX) > 5) return; // ignore click after swipe
     if (!notification.isRead) onRead(notification.id);
     if (notification.actionUrl) router.push(notification.actionUrl);
   }
+
+  if (dismissed) return null;
 
   return (
     <button
       type="button"
       onClick={handleClick}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
       className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[#161616]"
       style={{
         background: notification.isRead ? 'transparent' : '#14110a',
         borderLeft: notification.isRead ? 'none' : '3px solid #e8442a',
+        transform: `translateX(${dragX}px)`,
+        opacity: Math.abs(dragX) > 40 ? Math.max(0, 1 - (Math.abs(dragX) - 40) / 80) : 1,
+        transition: dragging.current ? 'none' : 'transform 0.25s ease, opacity 0.25s ease',
       }}
     >
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-        style={{ background: `${color}22` }}
-      >
+      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{ background: `${color}22` }}>
         <Icon size={13} style={{ color }} />
       </div>
       <div className="flex-1 min-w-0">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useAuthStore } from '@/store/authStore';
@@ -11,6 +11,7 @@ export default function NotificationBell() {
   const { panelOpen, setPanelOpen, setNotifications, unreadCount } = useNotificationStore();
   const userProfile = useAuthStore((s) => s.userProfile);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const count = unreadCount();
 
   useEffect(() => {
@@ -20,14 +21,24 @@ export default function NotificationBell() {
   }, [userProfile?.uid]);
 
   useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Desktop: close on outside click
+  useEffect(() => {
+    if (isMobile || !panelOpen) return;
     function handleClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setPanelOpen(false);
       }
     }
-    if (panelOpen) document.addEventListener('mousedown', handleClick);
+    document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [panelOpen]);
+  }, [panelOpen, isMobile]);
 
   return (
     <div ref={containerRef} className="relative">
@@ -48,7 +59,12 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {panelOpen && <NotificationPanel />}
+      {panelOpen && (
+        <NotificationPanel
+          isMobile={isMobile}
+          onClose={() => setPanelOpen(false)}
+        />
+      )}
     </div>
   );
 }
