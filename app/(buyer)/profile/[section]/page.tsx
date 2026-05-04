@@ -210,10 +210,30 @@ export default function BuyerProfilePage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
-      <main className="max-w-5xl mx-auto px-4 py-8 flex gap-7">
+      {/* Mobile section picker — horizontal scrollable pills, hidden on desktop */}
+      <div className="sm:hidden overflow-x-auto px-4 pt-4 pb-1" style={{ borderBottom: '1px solid #1a1a1a' }}>
+        <div className="flex gap-2 w-max">
+          {SIDEBAR_GROUPS.flatMap((g) => g.items).map((item) => (
+            <Link
+              key={item.id}
+              href={`/profile/${item.id}`}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap"
+              style={{
+                background: section === item.id ? '#e8442a' : '#1a1a1a',
+                color: section === item.id ? '#fff' : '#888',
+                border: `1px solid ${section === item.id ? '#e8442a' : '#333'}`,
+              }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
 
-        {/* Sidebar */}
-        <aside className="w-52 flex-shrink-0">
+      <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8 sm:flex sm:gap-7">
+
+        {/* Sidebar — desktop only */}
+        <aside className="hidden sm:block w-52 flex-shrink-0">
           <div className="flex flex-col items-center py-5 mb-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <AvatarUpload size={56} />
             <p className="text-sm font-medium text-white mt-2">{userProfile.firstName} {userProfile.lastName}</p>
@@ -264,7 +284,7 @@ export default function BuyerProfilePage() {
             <div className="space-y-5">
               <h1 className="font-display text-display-sm text-white">My Profile</h1>
               <div className="p-6 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { label: 'First name', key: 'firstName' },
                     { label: 'Last name', key: 'lastName' },
@@ -592,8 +612,8 @@ export default function BuyerProfilePage() {
               {sectionLoading ? <div className="flex justify-center py-16"><LoadingSpinner size={28} /></div>
                 : orders.length === 0 ? <p className="text-center py-12 text-[#444] text-sm">No purchases yet.</p>
                 : (
-                  <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-                    <table className="w-full text-sm">
+                  <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+                    <table className="w-full text-sm min-w-[420px]">
                       <thead><tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                         {['Date', 'Book', 'Amount', 'Status'].map((h) => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>

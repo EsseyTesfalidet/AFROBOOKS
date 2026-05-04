@@ -149,8 +149,8 @@ export default function SubscriptionPage() {
         </div>
 
         {/* Comparison table */}
-        <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-          <table className="w-full text-sm">
+        <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <table className="w-full text-sm min-w-[400px]">
             <thead>
               <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                 <th className="px-5 py-3 text-left text-xs text-[#555] uppercase tracking-wider">Feature</th>
