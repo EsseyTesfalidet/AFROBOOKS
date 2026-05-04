@@ -250,10 +250,13 @@ export default function SellerProfileDrawer() {
 
   const [isMobile, setIsMobile] = useState(false);
   const [dragY, setDragY] = useState(0);
-  const dragStart = useRef(0);
-  const isDragging = useRef(false);
-  const canDragClose = useRef(false);
+  const [dragging, setDragging] = useState(false);
+  const drawerPanelRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef(0);
+  const touchStartScrollTop = useRef(0);
+  const dragClosing = useRef(false);
+  const dragCurrent = useRef(0);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
@@ -263,21 +266,55 @@ export default function SellerProfileDrawer() {
     return () => mq.removeEventListener('change', h);
   }, []);
 
-  function onTouchStart(e: React.TouchEvent) {
-    dragStart.current = e.touches[0].clientY;
-    isDragging.current = true;
-    canDragClose.current = (contentRef.current?.scrollTop ?? 0) === 0;
-  }
-  function onTouchMove(e: React.TouchEvent) {
-    if (!isDragging.current || !canDragClose.current) return;
-    const dy = e.touches[0].clientY - dragStart.current;
-    if (dy > 0) setDragY(dy);
-  }
-  function onTouchEnd() {
-    isDragging.current = false;
-    if (dragY > 100) close();
-    setDragY(0);
-  }
+  // Lock body overscroll (pull-to-refresh) while drawer is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overscrollBehavior;
+    document.body.style.overscrollBehavior = 'none';
+    return () => { document.body.style.overscrollBehavior = prev; };
+  }, [isOpen]);
+
+  // Native non-passive touch listeners — lets us preventDefault to block pull-to-refresh
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = drawerPanelRef.current;
+    if (!el) return;
+
+    function onStart(e: TouchEvent) {
+      touchStartY.current = e.touches[0].clientY;
+      touchStartScrollTop.current = contentRef.current?.scrollTop ?? 0;
+      dragClosing.current = false;
+      dragCurrent.current = 0;
+    }
+
+    function onMove(e: TouchEvent) {
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (dy > 0 && touchStartScrollTop.current === 0) {
+        e.preventDefault(); // blocks pull-to-refresh and content scroll simultaneously
+        if (!dragClosing.current) setDragging(true);
+        dragClosing.current = true;
+        dragCurrent.current = dy;
+        setDragY(dy);
+      }
+    }
+
+    function onEnd() {
+      if (dragClosing.current && dragCurrent.current > 100) close();
+      dragClosing.current = false;
+      dragCurrent.current = 0;
+      setDragging(false);
+      setDragY(0);
+    }
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+    };
+  }, [isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const drawerStyle: React.CSSProperties = isMobile ? {
     position: 'fixed',
@@ -292,7 +329,7 @@ export default function SellerProfileDrawer() {
     borderTop: '1px solid #1a1a1a',
     borderRadius: '20px 20px 0 0',
     transform: isOpen ? `translateY(${dragY}px)` : 'translateY(100%)',
-    transition: isDragging.current ? 'none' : 'transform 0.35s cubic-bezier(0.32,0.72,0,1)',
+    transition: dragging ? 'none' : 'transform 0.35s cubic-bezier(0.32,0.72,0,1)',
     willChange: 'transform',
   } : {
     position: 'fixed',
@@ -327,11 +364,7 @@ export default function SellerProfileDrawer() {
   return (
     <>
       <div style={backdropStyle} onClick={close} />
-      <div style={drawerStyle}
-        onTouchStart={isMobile ? onTouchStart : undefined}
-        onTouchMove={isMobile ? onTouchMove : undefined}
-        onTouchEnd={isMobile ? onTouchEnd : undefined}
-      >
+      <div ref={drawerPanelRef} style={drawerStyle}>
 
         {/* Drag handle — mobile only */}
         {isMobile && (
