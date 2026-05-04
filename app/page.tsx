@@ -354,7 +354,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <p className="text-xs mb-0.5" style={{ color: '#555' }}>Headquarters</p>
-                  <p className="text-sm" style={{ color: '#aaa' }}>Africa · Serving the World</p>
+                  <p className="text-sm" style={{ color: '#aaa' }}>United States of America</p>
                 </div>
               </div>
             </div>
