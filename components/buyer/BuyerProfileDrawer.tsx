@@ -51,6 +51,7 @@ export default function BuyerProfileDrawer() {
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', username: '', phone: '', country: '', bio: '',
@@ -69,6 +70,14 @@ export default function BuyerProfileDrawer() {
     allowRecommendations: true,
     shareReadingActivity: false,
   });
+
+  // When account section opens, default to view mode unless profile is empty
+  useEffect(() => {
+    if (section === 'account') {
+      const isNew = !userProfile?.firstName?.trim() && !userProfile?.lastName?.trim() && !userProfile?.username?.trim();
+      setEditingProfile(isNew);
+    }
+  }, [section, userProfile?.uid]);
 
   // Sync form when profile loads
   useEffect(() => {
@@ -156,7 +165,8 @@ export default function BuyerProfileDrawer() {
     setUserProfile({ ...userProfile, ...formData });
     setSaving(false);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setEditingProfile(false);
+    setTimeout(() => setSaved(false), 3000);
   }
 
   async function handleChangePassword() {
@@ -345,9 +355,83 @@ export default function BuyerProfileDrawer() {
           </div>
 
           {/* My Profile */}
-          {section === 'account' && (
+          {section === 'account' && !editingProfile && (
             <div className="space-y-4">
-              <h2 className="font-display text-display-sm text-white">My Profile</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-display-sm text-white">My Profile</h2>
+                <button type="button" onClick={() => setEditingProfile(true)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border"
+                  style={{ borderColor: '#e8442a', color: '#e8442a' }}>
+                  Edit
+                </button>
+              </div>
+              {saved && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ background: '#0a1f0a', border: '1px solid #1a3a1a' }}>
+                  <Check size={13} style={{ color: '#4ade80' }} />
+                  <span className="text-sm" style={{ color: '#4ade80' }}>Profile saved</span>
+                </div>
+              )}
+              <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+                {/* Avatar + name */}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center font-display text-lg font-bold flex-shrink-0"
+                    style={{ background: '#e8442a', color: '#fff' }}>
+                    {userProfile.avatarUrl
+                      ? <img src={userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      : `${userProfile.firstName?.[0] ?? ''}${userProfile.lastName?.[0] ?? ''}`.toUpperCase() || '?'}
+                  </div>
+                  <div>
+                    <p className="text-base font-medium text-white leading-tight">
+                      {userProfile.firstName || userProfile.lastName
+                        ? `${userProfile.firstName} ${userProfile.lastName}`.trim()
+                        : <span className="text-[#444] italic text-sm">No name set</span>}
+                    </p>
+                    {userProfile.username
+                      ? <p className="text-xs mt-0.5" style={{ color: '#555' }}>@{userProfile.username}</p>
+                      : <p className="text-xs mt-0.5 italic" style={{ color: '#333' }}>No username</p>}
+                  </div>
+                </div>
+
+                {/* Bio */}
+                {userProfile.bio
+                  ? <p className="text-sm leading-relaxed" style={{ color: '#888' }}>{userProfile.bio}</p>
+                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio yet</p>}
+
+                {/* Other fields */}
+                <div className="space-y-2 pt-1" style={{ borderTop: '1px solid #1a1a1a', paddingTop: '12px' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: '#555' }}>Email</span>
+                    <span className="text-xs" style={{ color: '#aaa' }}>{userProfile.email}</span>
+                  </div>
+                  {userProfile.phone && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: '#555' }}>Phone</span>
+                      <span className="text-xs" style={{ color: '#aaa' }}>{userProfile.phone}</span>
+                    </div>
+                  )}
+                  {userProfile.country && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: '#555' }}>Country</span>
+                      <span className="text-xs" style={{ color: '#aaa' }}>{userProfile.country}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {section === 'account' && editingProfile && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-display-sm text-white">Edit Profile</h2>
+                {(userProfile.firstName?.trim() || userProfile.lastName?.trim() || userProfile.username?.trim()) && (
+                  <button type="button" onClick={() => setEditingProfile(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border"
+                    style={{ borderColor: '#333', color: '#888' }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
               <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 <div className="grid grid-cols-2 gap-3">
                   {(['firstName', 'lastName'] as const).map((key) => (
@@ -375,9 +459,9 @@ export default function BuyerProfileDrawer() {
                 </div>
                 <button type="button" onClick={handleSaveProfile} disabled={saving}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-                  style={{ background: saved ? '#4ade80' : '#e8442a', color: saved ? '#000' : '#fff' }}>
-                  {saving ? <LoadingSpinner size={13} color="#fff" /> : saved ? <Check size={13} /> : null}
-                  {saved ? 'Saved' : 'Save Changes'}
+                  style={{ background: '#e8442a', color: '#fff' }}>
+                  {saving && <LoadingSpinner size={13} color="#fff" />}
+                  Save Changes
                 </button>
               </div>
             </div>
