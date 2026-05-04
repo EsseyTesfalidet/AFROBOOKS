@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Feather, Star, Users, BookMarked, Zap, ArrowRight, CheckCircle, Search } from 'lucide-react';
+import { BookOpen, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Heart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import { useAuthStore } from '@/store/authStore';
 import { getLiveBooks } from '@/lib/firebase/firestore';
@@ -292,19 +292,178 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── ABOUT & CONTACT ── */}
+      <section id="about" className="px-5 sm:px-10 py-20" style={{ borderTop: '1px solid #1a1a1a' }}>
+        <div className="max-w-5xl mx-auto grid sm:grid-cols-2 gap-12 items-start">
+
+          {/* About */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#e8442a' }}>About Us</p>
+            <h2 className="font-display text-3xl text-white mb-5 leading-tight">
+              Built for Africa's<br />Literary Future
+            </h2>
+            <p className="text-sm leading-relaxed mb-4" style={{ color: '#666' }}>
+              AfroBooks is a digital marketplace dedicated to African storytelling. We believe every African story deserves a global audience — and every African author deserves fair compensation for their craft.
+            </p>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: '#555' }}>
+              Founded with a mission to bridge the gap between Africa's brilliant writers and a world hungry for authentic African narratives, we provide authors with the tools, platform, and audience they need to thrive.
+            </p>
+            <div className="flex items-center gap-2 text-sm" style={{ color: '#888' }}>
+              <Heart size={13} style={{ color: '#e8442a' }} />
+              Made with love for African literature
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#f5b800' }}>Get In Touch</p>
+            <h2 className="font-display text-3xl text-white mb-5">Contact Us</h2>
+
+            <div className="space-y-4 mb-8">
+              <a
+                href="mailto:hello@afrobs.com"
+                className="flex items-center gap-3 p-4 rounded-xl border transition-all hover:border-[#333] group"
+                style={{ background: '#111', borderColor: '#1a1a1a' }}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#1a1a1a' }}>
+                  <Mail size={15} style={{ color: '#e8442a' }} />
+                </div>
+                <div>
+                  <p className="text-xs mb-0.5" style={{ color: '#555' }}>General enquiries</p>
+                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>hello@afrobs.com</p>
+                </div>
+              </a>
+
+              <a
+                href="mailto:authors@afrobs.com"
+                className="flex items-center gap-3 p-4 rounded-xl border transition-all hover:border-[#333] group"
+                style={{ background: '#111', borderColor: '#1a1a1a' }}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#1a1a1a' }}>
+                  <Feather size={15} style={{ color: '#f5b800' }} />
+                </div>
+                <div>
+                  <p className="text-xs mb-0.5" style={{ color: '#555' }}>Author support</p>
+                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>authors@afrobs.com</p>
+                </div>
+              </a>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#1a1a1a' }}>
+                  <MapPin size={15} style={{ color: '#888' }} />
+                </div>
+                <div>
+                  <p className="text-xs mb-0.5" style={{ color: '#555' }}>Headquarters</p>
+                  <p className="text-sm" style={{ color: '#aaa' }}>Africa · Serving the World</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Social links */}
+            <div>
+              <p className="text-xs mb-3" style={{ color: '#444' }}>Follow us</p>
+              <div className="flex items-center gap-3">
+                {[
+                  { icon: Twitter, href: 'https://twitter.com/afrobs', label: 'X / Twitter' },
+                  { icon: Instagram, href: 'https://instagram.com/afrobs', label: 'Instagram' },
+                  { icon: Linkedin, href: 'https://linkedin.com/company/afrobs', label: 'LinkedIn' },
+                ].map(({ icon: Icon, href, label }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center border transition-all hover:border-[#444] hover:text-white"
+                    style={{ background: '#111', borderColor: '#1a1a1a', color: '#555' }}
+                  >
+                    <Icon size={15} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FOOTER ── */}
-      <footer className="px-5 sm:px-10 py-10" style={{ borderTop: '1px solid #1a1a1a' }}>
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <Logo size="sm" />
-          <nav className="flex flex-wrap items-center justify-center gap-5 text-sm" style={{ color: '#444' }}>
-            <Link href="/browse" className="hover:text-white transition-colors">Browse</Link>
-            <Link href="/discover" className="hover:text-white transition-colors">Discover</Link>
-            <Link href="/subscription" className="hover:text-white transition-colors">Subscription</Link>
-            <Link href="/signup?role=seller" className="hover:text-white transition-colors">Sell Books</Link>
-            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
-            <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
-          </nav>
-          <p className="text-xs" style={{ color: '#2a2a2a' }}>© 2025 AFROBOOKS</p>
+      <footer style={{ borderTop: '1px solid #1a1a1a', background: '#080808' }}>
+        <div className="max-w-5xl mx-auto px-5 sm:px-10 py-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-10">
+
+            <div className="col-span-2 sm:col-span-1">
+              <Logo size="sm" />
+              <p className="text-xs mt-3 leading-relaxed" style={{ color: '#444' }}>
+                Africa's boldest ebook marketplace. Discover, buy, and support African authors.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Readers</p>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Browse Books', href: '/browse' },
+                  { label: 'Discover', href: '/discover' },
+                  { label: 'Subscription', href: '/subscription' },
+                  { label: 'Sign In', href: '/login' },
+                  { label: 'Create Account', href: '/signup' },
+                ].map(({ label, href }) => (
+                  <li key={label}>
+                    <Link href={href} className="text-sm transition-colors hover:text-white" style={{ color: '#444' }}>{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Authors</p>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Start Selling', href: '/signup?role=seller' },
+                  { label: 'Author Dashboard', href: '/dashboard' },
+                  { label: 'Publish a Book', href: '/publish' },
+                  { label: 'Earnings', href: '/earnings' },
+                ].map(({ label, href }) => (
+                  <li key={label}>
+                    <Link href={href} className="text-sm transition-colors hover:text-white" style={{ color: '#444' }}>{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Company</p>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'About Us', href: '#about' },
+                  { label: 'Terms of Service', href: '/terms' },
+                  { label: 'hello@afrobs.com', href: 'mailto:hello@afrobs.com' },
+                  { label: 'authors@afrobs.com', href: 'mailto:authors@afrobs.com' },
+                ].map(({ label, href }) => (
+                  <li key={label}>
+                    <Link href={href} className="text-sm transition-colors hover:text-white break-all" style={{ color: '#444' }}>{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: '1px solid #111' }}>
+            <p className="text-xs" style={{ color: '#2a2a2a' }}>© 2025 AfroBooks. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              {[
+                { icon: Twitter, href: 'https://twitter.com/afrobs', label: 'X / Twitter' },
+                { icon: Instagram, href: 'https://instagram.com/afrobs', label: 'Instagram' },
+                { icon: Linkedin, href: 'https://linkedin.com/company/afrobs', label: 'LinkedIn' },
+              ].map(({ icon: Icon, href, label }) => (
+                <a key={href} href={href} target="_blank" rel="noopener noreferrer"
+                  aria-label={label}
+                  className="transition-colors hover:text-white" style={{ color: '#2a2a2a' }}>
+                  <Icon size={14} />
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </footer>
 

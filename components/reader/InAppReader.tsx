@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Type, X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import PreviewGate from './PreviewGate';
+import Link from 'next/link';
 import {
   useReaderStore,
   THEME_STYLES,
@@ -277,30 +278,78 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
 
             {/* End-of-chapter nav */}
             {!showPreviewGate && (
-              <div
-                className="flex items-center justify-between mt-14 pt-6 select-none"
-                style={{ borderTop: `1px solid ${th.border}` }}
-              >
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); prevChapter && changeChapter(currentChapter - 1); }}
-                  disabled={!prevChapter}
-                  className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
-                  style={{ background: th.surface, color: th.text }}
+              <>
+                <div
+                  className="flex items-center justify-between mt-14 pt-6 select-none"
+                  style={{ borderTop: `1px solid ${th.border}` }}
                 >
-                  <ChevronLeft size={14} /> Prev
-                </button>
-                <span style={{ fontSize: 12, color: th.muted }}>{currentChapter} / {totalChapters}</span>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); nextChapter && changeChapter(currentChapter + 1); }}
-                  disabled={!nextChapter}
-                  className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
-                  style={{ background: th.accent, color: '#fff' }}
-                >
-                  Next <ChevronRight size={14} />
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); prevChapter && changeChapter(currentChapter - 1); }}
+                    disabled={!prevChapter}
+                    className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
+                    style={{ background: th.surface, color: th.text }}
+                  >
+                    <ChevronLeft size={14} /> Prev
+                  </button>
+                  <span style={{ fontSize: 12, color: th.muted }}>{currentChapter} / {totalChapters}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); nextChapter && changeChapter(currentChapter + 1); }}
+                    disabled={!nextChapter}
+                    className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
+                    style={{ background: th.accent, color: '#fff' }}
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                {/* About the author — shown after last chapter */}
+                {!nextChapter && (
+                  <div
+                    className="mt-8 p-5 rounded-2xl select-none"
+                    style={{ background: th.surface, border: `1px solid ${th.border}` }}
+                  >
+                    <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>
+                      About the Author
+                    </p>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                        style={{ background: th.border, color: th.accent }}
+                      >
+                        {book.authorName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: th.text }}>{book.authorName}</p>
+                        <p className="text-xs" style={{ color: th.muted }}>Author of "{book.title}"</p>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/author/${book.sellerId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-xl transition-opacity hover:opacity-75"
+                      style={{ background: th.accent, color: '#fff' }}
+                    >
+                      View author profile <ChevronRight size={12} />
+                    </Link>
+                  </div>
+                )}
+
+                {/* Subtle author link mid-book */}
+                {nextChapter && currentChapter % 3 === 0 && (
+                  <div className="mt-6 flex justify-center">
+                    <Link
+                      href={`/author/${book.sellerId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs transition-opacity hover:opacity-75"
+                      style={{ color: th.muted }}
+                    >
+                      More by {book.authorName} →
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
