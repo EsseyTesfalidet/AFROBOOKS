@@ -366,7 +366,6 @@ export default function LandingPage() {
                 {[
                   { icon: Facebook, href: 'https://facebook.com/AfroBooks', label: 'Facebook' },
                   { icon: Linkedin, href: 'https://linkedin.com/AFROBOOKS/AFROBS', label: 'LinkedIn' },
-                  { icon: Instagram, href: 'https://instagram.com/afrobs', label: 'Instagram' },
                 ].map(({ icon: Icon, href, label }) => (
                   <a
                     key={label}
