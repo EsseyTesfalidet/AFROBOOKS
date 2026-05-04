@@ -321,7 +321,7 @@ export default function LandingPage() {
 
             <div className="space-y-4 mb-8">
               <a
-                href="mailto:hello@afrobs.com"
+                href="mailto:esseytesfa@gmail.com"
                 className="flex items-center gap-3 p-4 rounded-xl border transition-all hover:border-[#333] group"
                 style={{ background: '#111', borderColor: '#1a1a1a' }}
               >
@@ -330,12 +330,12 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <p className="text-xs mb-0.5" style={{ color: '#555' }}>General enquiries</p>
-                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>hello@afrobs.com</p>
+                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>esseytesfa@gmail.com</p>
                 </div>
               </a>
 
               <a
-                href="mailto:authors@afrobs.com"
+                href="mailto:esseytesfa@gmail.com"
                 className="flex items-center gap-3 p-4 rounded-xl border transition-all hover:border-[#333] group"
                 style={{ background: '#111', borderColor: '#1a1a1a' }}
               >
@@ -344,7 +344,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <p className="text-xs mb-0.5" style={{ color: '#555' }}>Author support</p>
-                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>authors@afrobs.com</p>
+                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>esseytesfa@gmail.com</p>
                 </div>
               </a>
 
@@ -437,8 +437,7 @@ export default function LandingPage() {
                 {[
                   { label: 'About Us', href: '#about' },
                   { label: 'Terms of Service', href: '/terms' },
-                  { label: 'hello@afrobs.com', href: 'mailto:hello@afrobs.com' },
-                  { label: 'authors@afrobs.com', href: 'mailto:authors@afrobs.com' },
+                  { label: 'esseytesfa@gmail.com', href: 'mailto:esseytesfa@gmail.com' },
                 ].map(({ label, href }) => (
                   <li key={label}>
                     <Link href={href} className="text-sm transition-colors hover:text-white break-all" style={{ color: '#444' }}>{label}</Link>
