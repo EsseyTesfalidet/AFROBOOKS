@@ -12,7 +12,7 @@ import ReviewCard from '@/components/buyer/ReviewCard';
 import ReviewForm from '@/components/buyer/ReviewForm';
 import PromoCodeInput from '@/components/buyer/PromoCodeInput';
 import FollowButton from '@/components/shared/FollowButton';
-import { getBook, getBookReviews, isBookInLibrary, createReport } from '@/lib/firebase/firestore';
+import { getBook, getBookReviews, isBookInLibrary, createReport, getSimilarBooks } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
@@ -35,6 +35,7 @@ export default function BookDetailPage() {
 
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [similar, setSimilar] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [owned, setOwned] = useState(false);
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
@@ -60,6 +61,7 @@ export default function BookDetailPage() {
       setOwned(o);
       setLoading(false);
       setReviewsLoaded(true);
+      if (b) getSimilarBooks(b.genre, id).then(setSimilar);
     });
   }, [id, userProfile?.uid]);
 
@@ -313,6 +315,41 @@ export default function BookDetailPage() {
             )}
           </div>
         </div>
+        {/* Similar books */}
+        {similar.length > 0 && (
+          <div>
+            <h2 className="font-display text-display-sm text-white mb-4">You might also like</h2>
+            <div
+              className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
+              style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+            >
+              {similar.map((b) => (
+                <Link
+                  key={b.id}
+                  href={`/book/${b.id}`}
+                  className="flex-shrink-0 snap-start rounded-xl overflow-hidden border"
+                  style={{ width: 118, background: '#111', borderColor: '#1a1a1a' }}
+                >
+                  <div className="relative" style={{ height: 158, background: b.coverBgColor || '#1a1a1a' }}>
+                    <div className="absolute top-0 left-0 right-0 h-1" style={{ background: b.coverAccentColor || '#f5b800' }} />
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.88))' }} />
+                    {b.coverUrl && <img src={b.coverUrl} alt={b.title} className="absolute inset-0 w-full h-full object-cover" />}
+                    <div className="absolute bottom-0 left-0 right-0 p-2">
+                      <p className="text-white font-medium truncate" style={{ fontSize: 11 }}>{b.title}</p>
+                      <p className="truncate" style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>{b.authorName}</p>
+                    </div>
+                  </div>
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-medium" style={{ color: '#f5b800' }}>{centsToDisplay(b.price)}</p>
+                    {b.averageRating > 0 && (
+                      <p className="text-xs mt-0.5" style={{ color: '#555' }}>★ {b.averageRating.toFixed(1)}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Report Modal */}

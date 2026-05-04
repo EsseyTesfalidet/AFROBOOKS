@@ -63,6 +63,24 @@ export async function getSellerBooks(sellerId: string): Promise<Book[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Book));
 }
 
+export async function getSimilarBooks(genre: string, excludeId: string, max = 6): Promise<Book[]> {
+  return getLiveBooks([where('genre', '==', genre), limit(max + 1)]).then((books) =>
+    books.filter((b) => b.id !== excludeId).slice(0, max)
+  );
+}
+
+export async function getActiveReadingProgress(userId: string): Promise<ReadingProgress[]> {
+  const q = query(
+    collection(db, 'readingProgress'),
+    where('userId', '==', userId),
+    where('isFinished', '==', false),
+    orderBy('lastReadAt', 'desc'),
+    limit(10)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as ReadingProgress);
+}
+
 // ── Follows ────────────────────────────────────────────────────────────────
 
 export async function followAuthor(userId: string, sellerId: string): Promise<void> {

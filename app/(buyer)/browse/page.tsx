@@ -9,11 +9,14 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { getLiveBooks } from '@/lib/firebase/firestore';
 import { orderBy, limit } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import ContinueReadingShelf from '@/components/buyer/ContinueReadingShelf';
+import { useAuthStore } from '@/store/authStore';
 import type { Book } from '@/types/book';
 
 const GENRES = ['All', 'Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 
 export default function BrowsePage() {
+  const userProfile = useAuthStore((s) => s.userProfile);
   const [books, setBooks] = useState<Book[]>([]);
   const [bestsellers, setBestsellers] = useState<Book[]>([]);
   const [filtered, setFiltered] = useState<Book[]>([]);
@@ -83,6 +86,9 @@ export default function BrowsePage() {
             ))}
           </div>
         </div>
+
+        {/* Continue Reading — only for logged-in users with active progress */}
+        {userProfile && <ContinueReadingShelf userId={userProfile.uid} />}
 
         {/* New Arrivals — swipe carousel (hidden when searching/filtering) */}
         {!loading && books.length > 0 && !search && genre === 'All' && (
