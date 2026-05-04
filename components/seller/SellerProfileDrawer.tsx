@@ -48,6 +48,7 @@ export default function SellerProfileDrawer() {
   const [loadingSeller, setLoadingSeller] = useState(false);
   const [form, setForm] = useState({ penName: '', website: '', bio: '', twitter: '', instagram: '', linkedin: '', goodreads: '' });
   const [saving, setSaving] = useState(false);
+  const [savedProfile, setSavedProfile] = useState(false);
 
   const [idRequest, setIdRequest] = useState<{ status: string } | null>(null);
   const [idUploading, setIdUploading] = useState(false);
@@ -143,6 +144,8 @@ export default function SellerProfileDrawer() {
     ]);
     setUserProfile({ ...userProfile, bio: form.bio });
     setSaving(false);
+    setSavedProfile(true);
+    setSection('preview');
   }
 
   async function submitIdVerification() {
@@ -343,14 +346,15 @@ export default function SellerProfileDrawer() {
         <div className="overflow-x-auto px-5 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
           <div className="flex gap-2 w-max">
             {ALL_ITEMS.map((item) => (
-              <button key={item.id} type="button" onClick={() => setSection(item.id)}
+              <button key={item.id} type="button"
+                onClick={() => { setSection(item.id); if (item.id === 'identity') setSavedProfile(false); }}
                 className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap"
                 style={{
                   background: section === item.id ? '#f5b800' : '#1a1a1a',
                   color: section === item.id ? '#000' : '#888',
                   border: `1px solid ${section === item.id ? '#f5b800' : '#333'}`,
                 }}>
-                {item.label}
+                {item.id === 'identity' && savedProfile ? 'Edit Profile' : item.label}
               </button>
             ))}
           </div>
@@ -423,7 +427,21 @@ export default function SellerProfileDrawer() {
           {/* Preview */}
           {section === 'preview' && (
             <div className="space-y-4">
-              <h2 className="font-display text-display-sm text-white">Public Page Preview</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-display-sm text-white">Public Page Preview</h2>
+                <button type="button"
+                  onClick={() => { setSavedProfile(false); setSection('identity'); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border"
+                  style={{ borderColor: '#f5b800', color: '#f5b800' }}>
+                  Edit Profile
+                </button>
+              </div>
+              {savedProfile && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ background: '#0f2e1a', border: '1px solid #1a4a2a' }}>
+                  <CheckCircle size={14} style={{ color: '#4ade80' }} />
+                  <span className="text-sm" style={{ color: '#4ade80' }}>Profile saved successfully</span>
+                </div>
+              )}
               {userProfile && (
                 <div className="flex items-center gap-2 p-3 rounded-lg border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                   <span className="text-xs text-[#555] flex-1 truncate">/author/{userProfile.uid.slice(0, 12)}...</span>

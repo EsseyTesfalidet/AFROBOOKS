@@ -143,7 +143,7 @@ export default function ListingsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Link href={`/publish?edit=${book.id}`} className="text-xs text-[#e8442a] hover:underline">Edit</Link>
-                          <button type="button" onClick={() => removeBook(book.id)} className="text-[#555] hover:text-[#e8442a]"><Trash2 size={13} /></button>
+                          <button type="button" title="Remove book" onClick={() => removeBook(book.id)} className="text-[#555] hover:text-[#e8442a]"><Trash2 size={13} /></button>
                         </div>
                       </td>
                     </tr>
@@ -160,10 +160,10 @@ export default function ListingsPage() {
             {/* Create form */}
             <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <h3 className="font-display text-display-sm text-white mb-4">Create Promo Code</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-[#aaa] mb-1.5">Discount Type</label>
-                  <select value={codeForm.discountType} onChange={(e) => setCodeForm((f) => ({ ...f, discountType: e.target.value as typeof f.discountType }))}
+                  <select value={codeForm.discountType} title="Discount Type" onChange={(e) => setCodeForm((f) => ({ ...f, discountType: e.target.value as typeof f.discountType }))}
                     className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
                     <option value="percentage">Percentage</option>
                     <option value="fixed">Fixed Amount</option>
@@ -189,7 +189,7 @@ export default function ListingsPage() {
                 </div>
                 <div>
                   <label className="block text-sm text-[#aaa] mb-1.5">Expiry Date</label>
-                  <input type="date" value={codeForm.expiryDate} onChange={(e) => setCodeForm((f) => ({ ...f, expiryDate: e.target.value }))}
+                  <input type="date" title="Expiry Date" value={codeForm.expiryDate} onChange={(e) => setCodeForm((f) => ({ ...f, expiryDate: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
                 </div>
               </div>
@@ -203,7 +203,8 @@ export default function ListingsPage() {
             {/* Codes table */}
             {promoCodes.length > 0 && (
               <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[480px]">
                   <thead>
                     <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
                       {['Code', 'Discount', 'Uses', 'Expires', 'Status'].map((h) => (
@@ -225,6 +226,7 @@ export default function ListingsPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
