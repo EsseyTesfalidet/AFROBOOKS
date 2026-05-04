@@ -279,6 +279,29 @@ export default function BuyerProfilePage() {
         {/* Content */}
         <div className="flex-1 min-w-0">
 
+          {/* Mobile seller switch — desktop has this in the sidebar */}
+          <div className="sm:hidden mb-5">
+            {(userProfile.role === 'seller' || userProfile.role === 'both') ? (
+              <button
+                type="button"
+                onClick={() => updateUserProfile(userProfile.uid, { activeRole: 'seller' }).then(() => router.push('/dashboard'))}
+                className="w-full py-3 rounded-xl text-sm font-medium border flex items-center justify-center gap-2"
+                style={{ borderColor: '#f5b800', color: '#f5b800' }}
+              >
+                <ShoppingBag size={15} /> Switch to Seller Dashboard
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleBecomeSeller}
+                className="w-full py-3 rounded-xl text-sm font-medium border flex items-center justify-center gap-2"
+                style={{ borderColor: '#f5b800', color: '#f5b800' }}
+              >
+                <ShoppingBag size={15} /> Become a Seller
+              </button>
+            )}
+          </div>
+
           {/* My Profile */}
           {section === 'account' && (
             <div className="space-y-5">

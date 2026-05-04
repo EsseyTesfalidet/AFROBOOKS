@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, PlayCircle } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import ProgressBar from '@/components/shared/ProgressBar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -56,6 +56,45 @@ export default function LibraryPage() {
       <BuyerHeader />
       <main className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="font-display text-display-lg text-white mb-6">My Library</h1>
+
+        {/* Continue Reading — swipe carousel */}
+        {(() => {
+          const inProgress = entries.filter((e) => e.progress > 0 && e.progress < 95);
+          if (inProgress.length === 0) return null;
+          return (
+            <div className="mb-7">
+              <div className="flex items-center gap-2 mb-3">
+                <PlayCircle size={14} style={{ color: '#e8442a' }} />
+                <p className="text-sm font-medium text-white">Continue Reading</p>
+              </div>
+              <div
+                className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
+                style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+              >
+                {inProgress.map(({ bookId, book, progress, currentChapter }) => (
+                  <Link
+                    key={bookId}
+                    href={`/read/${bookId}`}
+                    className="flex-shrink-0 rounded-xl overflow-hidden snap-start border"
+                    style={{ width: 150, background: '#111', borderColor: '#1a1a1a' }}
+                  >
+                    <div className="relative" style={{ height: 90, background: book?.coverBgColor || '#1a1040' }}>
+                      <div className="absolute top-0 left-0 right-0 h-1" style={{ background: book?.coverAccentColor || '#7c3aed' }} />
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85))' }} />
+                      <div className="absolute bottom-0 left-0 right-0 p-2">
+                        <p className="text-white font-medium truncate" style={{ fontSize: 11 }}>{book?.title ?? bookId}</p>
+                      </div>
+                    </div>
+                    <div className="px-2.5 pt-2 pb-2.5 space-y-1">
+                      <ProgressBar value={progress} color="#e8442a" height={3} />
+                      <p className="text-xs" style={{ color: '#555' }}>{progress}% · Ch. {currentChapter}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {entries.length === 0 ? (
           <div className="text-center py-20">

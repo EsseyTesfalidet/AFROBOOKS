@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
+import Link from 'next/link';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCard from '@/components/buyer/BookCard';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { getLiveBooks } from '@/lib/firebase/firestore';
-import { where, orderBy } from 'firebase/firestore';
+import { orderBy } from 'firebase/firestore';
+import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 
 const GENRES = ['All', 'Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
@@ -76,6 +78,38 @@ export default function BrowsePage() {
             ))}
           </div>
         </div>
+
+        {/* New Arrivals — swipe carousel (hidden when searching/filtering) */}
+        {!loading && books.length > 0 && !search && genre === 'All' && (
+          <div className="mb-6">
+            <p className="text-sm font-medium text-white mb-3">New Arrivals</p>
+            <div
+              className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
+              style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+            >
+              {books.slice(0, 14).map((book) => (
+                <Link
+                  key={book.id}
+                  href={`/book/${book.id}`}
+                  className="flex-shrink-0 rounded-xl overflow-hidden snap-start"
+                  style={{ width: 118 }}
+                >
+                  <div className="relative" style={{ height: 158, background: book.coverBgColor || '#1a1040' }}>
+                    <div className="absolute top-0 left-0 right-0 h-1" style={{ background: book.coverAccentColor || '#7c3aed' }} />
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.88))' }} />
+                    <div className="absolute bottom-0 left-0 right-0 p-2">
+                      <p className="text-white font-medium truncate" style={{ fontSize: 11 }}>{book.title}</p>
+                      <p className="truncate" style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>{book.authorName}</p>
+                    </div>
+                  </div>
+                  <div className="px-2 py-1.5" style={{ background: '#111' }}>
+                    <p className="text-xs font-medium" style={{ color: '#f5b800' }}>{centsToDisplay(book.price)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search + Genre Filters */}
         <div className="mb-5 space-y-3">
