@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -18,7 +18,11 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
   const { notifications, markRead, markAllRead } = useNotificationStore();
   const userProfile = useAuthStore((s) => s.userProfile);
 
-  // Swipe-to-dismiss on mobile (vertical, on panel)
+  // Entry animation: start offscreen above, slide down after mount
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
+
+  // Swipe-up-to-dismiss on mobile (vertical, on panel)
   const startY = useRef(0);
   const startX = useRef(0);
   const [dragY, setDragY] = useState(0);
@@ -33,11 +37,11 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
     if (!dragging.current) return;
     const dy = e.touches[0].clientY - startY.current;
     const dx = e.touches[0].clientX - startX.current;
-    if (Math.abs(dy) > Math.abs(dx) && dy > 0) setDragY(dy);
+    if (Math.abs(dy) > Math.abs(dx) && dy < 0) setDragY(dy);
   }
   function onPanelTouchEnd() {
     dragging.current = false;
-    if (dragY > 80) { onClose(); }
+    if (dragY < -80) { onClose(); }
     setDragY(0);
   }
 
@@ -87,27 +91,23 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           style={{ backdropFilter: 'blur(3px)' }}
           onClick={onClose}
         />
-        {/* Bottom sheet */}
+        {/* Top sheet */}
         <div
-          className="fixed left-0 right-0 bottom-0 z-50 rounded-t-2xl flex flex-col"
+          className="fixed left-0 right-0 top-0 z-50 rounded-b-2xl flex flex-col"
           style={{
             background: '#111',
-            borderTop: '1px solid #222',
+            borderBottom: '1px solid #222',
             maxHeight: '80vh',
-            transform: `translateY(${dragY}px)`,
+            paddingTop: 'env(safe-area-inset-top)',
+            transform: dragging.current ? `translateY(${dragY}px)` : visible ? 'translateY(0)' : 'translateY(-100%)',
             transition: dragging.current ? 'none' : 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
           }}
           onTouchStart={onPanelTouchStart}
           onTouchMove={onPanelTouchMove}
           onTouchEnd={onPanelTouchEnd}
         >
-          {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-            <div className="w-10 h-1 rounded-full" style={{ background: '#333' }} />
-          </div>
-
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
+          <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ paddingTop: '16px' }}>
             <h3 className="font-display text-lg text-white">Notifications</h3>
             <div className="flex items-center gap-3">
               <button type="button" onClick={handleMarkAll} className="text-xs" style={{ color: '#f5b800' }}>
@@ -149,10 +149,15 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid #1a1a1a', paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+          <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid #1a1a1a' }}>
             <Link href="/notifications" onClick={onClose} className="text-xs" style={{ color: '#aaa' }}>
               View all notifications →
             </Link>
+          </div>
+
+          {/* Swipe-up hint */}
+          <div className="flex justify-center pb-3 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full" style={{ background: '#333' }} />
           </div>
         </div>
       </>
