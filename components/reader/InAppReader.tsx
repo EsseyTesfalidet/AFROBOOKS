@@ -2,14 +2,27 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Settings } from 'lucide-react';
-import ReaderProgress from './ReaderProgress';
-import ChapterNav from './ChapterNav';
+import { ArrowLeft, Type, X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import PreviewGate from './PreviewGate';
-import { useReaderStore, THEME_STYLES, FONT_SIZE_PX, LINE_SPACING_VALUE } from '@/store/readerStore';
-import { getChapters } from '@/lib/firebase/firestore';
-import { saveReadingProgress } from '@/lib/firebase/firestore';
+import {
+  useReaderStore,
+  THEME_STYLES,
+  FONT_SIZE_PX,
+  LINE_SPACING_VALUE,
+  FONT_FAMILIES,
+  FONT_LABELS,
+  MARGIN_MAX_WIDTH,
+  MARGIN_PADDING_X,
+  type ReaderTheme,
+  type FontFamily,
+} from '@/store/readerStore';
+import { getChapters, saveReadingProgress } from '@/lib/firebase/firestore';
 import type { Book, Chapter } from '@/types/book';
+
+const WPM = 238;
+function countWords(html: string): number {
+  return html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+}
 
 interface Props {
   book: Book;
@@ -19,14 +32,25 @@ interface Props {
 
 export default function InAppReader({ book, userId, hasAccess }: Props) {
   const router = useRouter();
-  const { theme, fontSize, lineSpacing, currentChapter, setCurrentChapter } = useReaderStore();
+  const {
+    theme, fontSize, lineSpacing, fontFamily, marginSize,
+    currentChapter, setCurrentChapter,
+  } = useReaderStore();
+
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [percent, setPercent] = useState(0);
   const [showPreviewGate, setShowPreviewGate] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const [footerVisible, setFooterVisible] = useState(true);
+  const [fadeIn, setFadeIn] = useState(true);
+
   const contentRef = useRef<HTMLDivElement>(null);
-  const saveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScrollY = useRef(0);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
 
   useEffect(() => {
     getChapters(book.id).then((chs) => {
@@ -37,11 +61,14 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
 
   const activeChapter = chapters.find((c) => c.chapterNumber === currentChapter);
   const isPreviewChapter = activeChapter?.isPreview ?? false;
-  const isLocked = activeChapter?.isLocked ?? false;
+  const totalChapters = chapters.length;
+  const prevChapter = chapters.find((c) => c.chapterNumber === currentChapter - 1);
+  const nextChapter = chapters.find((c) => c.chapterNumber === currentChapter + 1);
+  const wordCount = activeChapter ? countWords(activeChapter.content) : 0;
+  const readingMins = Math.max(1, Math.ceil(wordCount / WPM));
+  const remainingMins = Math.max(0, Math.ceil((wordCount * (1 - percent / 100)) / WPM));
 
-  const themeStyle = THEME_STYLES[theme];
-  const fontSizePx = FONT_SIZE_PX[fontSize];
-  const lineHeightVal = LINE_SPACING_VALUE[lineSpacing];
+  const th = THEME_STYLES[theme];
 
   const handleScroll = useCallback(() => {
     const el = contentRef.current;
@@ -51,14 +78,22 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
     const pct = total > 0 ? Math.round((scrolled / total) * 100) : 0;
     setPercent(pct);
 
-    // Show preview gate when reaching end of preview chapter
-    if (isPreviewChapter && !hasAccess && pct >= 90) {
-      setShowPreviewGate(true);
+    const delta = scrolled - lastScrollY.current;
+    if (Math.abs(delta) > 6) {
+      if (delta > 0 && scrolled > 60) {
+        setHeaderVisible(false);
+        setFooterVisible(false);
+      } else {
+        setHeaderVisible(true);
+        setFooterVisible(true);
+      }
     }
+    lastScrollY.current = scrolled;
 
-    // Auto-save every 30s
-    if (saveRef.current) clearTimeout(saveRef.current);
-    saveRef.current = setTimeout(() => {
+    if (isPreviewChapter && !hasAccess && pct >= 90) setShowPreviewGate(true);
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
       saveReadingProgress(userId, book.id, {
         currentChapter,
         scrollPosition: scrolled,
@@ -73,153 +108,425 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
       setShowPreviewGate(true);
       return;
     }
-    setCurrentChapter(num);
-    setShowPreviewGate(false);
-    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    setFadeIn(false);
+    setTimeout(() => {
+      setCurrentChapter(num);
+      setShowPreviewGate(false);
+      contentRef.current?.scrollTo({ top: 0 });
+      lastScrollY.current = 0;
+      setPercent(0);
+      setFadeIn(true);
+    }, 160);
+  }
+
+  function onContentClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (settingsOpen) return;
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'A' || tag === 'BUTTON') return;
+    const sel = window.getSelection();
+    if (sel && sel.toString().length > 0) return;
+    setHeaderVisible((v) => !v);
+    setFooterVisible((v) => !v);
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    if (dx < 0 && nextChapter) changeChapter(currentChapter + 1);
+    else if (dx > 0 && prevChapter) changeChapter(currentChapter - 1);
   }
 
   const isReading = hasAccess || isPreviewChapter;
 
+  const dotRange = chapters.slice(
+    Math.max(0, currentChapter - 3),
+    Math.min(totalChapters, currentChapter + 2)
+  );
+
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: themeStyle.bg }}>
-      {/* Header */}
+    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: th.bg }}>
+
+      {/* ── Top bar ─────────────────────────────────────────── */}
       <div
-        className="flex items-center justify-between px-4 h-12 flex-shrink-0 z-10"
-        style={{ background: '#0e0e0e', borderBottom: '1px solid #1a1a1a' }}
+        className="flex items-center justify-between flex-shrink-0 z-20 transition-transform duration-300 select-none"
+        style={{
+          height: 52,
+          background: th.headerBg,
+          borderBottom: `1px solid ${th.border}`,
+          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
+          paddingLeft: 12, paddingRight: 12,
+        }}
       >
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border"
-          style={{ borderColor: '#2a2a2a', color: '#aaa' }}
+          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 transition-opacity hover:opacity-60"
+          style={{ color: th.muted }}
         >
-          <ArrowLeft size={14} />
-          Exit Reader
+          <ArrowLeft size={16} />
+          <span className="text-sm hidden sm:inline" style={{ color: th.muted }}>Back</span>
         </button>
 
-        <p className="font-display text-sm text-white truncate max-w-[200px]">{book.title}</p>
-
-        <div className="flex items-center gap-2">
-          <span
-            className="text-xs px-2 py-0.5 rounded font-medium"
-            style={{
-              background: isPreviewChapter && !hasAccess ? '#2e1a0f' : '#0f2e1a',
-              color: isPreviewChapter && !hasAccess ? '#f5b800' : '#4ade80',
-            }}
-          >
-            {isPreviewChapter && !hasAccess ? 'PREVIEW' : 'READING'}
-          </span>
-
-          {!loading && (
-            <ChapterNav chapters={chapters} current={currentChapter} onSelect={changeChapter} />
-          )}
-
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(!settingsOpen)}
-            className="p-1.5 rounded-lg border"
-            style={{ borderColor: '#2a2a2a', color: '#aaa' }}
-          >
-            <Settings size={14} />
-          </button>
+        <div className="flex-1 text-center min-w-0 mx-3">
+          <p className="text-xs font-medium truncate" style={{ color: th.text, opacity: 0.75 }}>
+            {book.title}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: th.muted, fontSize: 10 }}>
+            Ch {currentChapter}/{totalChapters}
+            {percent > 0 && remainingMins > 0 ? ` · ${remainingMins}m left` : ` · ${readingMins}m read`}
+          </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center justify-center rounded-xl px-3 py-1.5 transition-opacity hover:opacity-60"
+          style={{ color: th.muted }}
+        >
+          <Type size={16} />
+        </button>
       </div>
 
-      {/* Progress bar */}
-      <ReaderProgress percent={percent} />
+      {/* ── Progress bar ────────────────────────────────────── */}
+      <div className="w-full flex-shrink-0" style={{ height: 2, background: th.border }}>
+        <div
+          className="h-full transition-all duration-700 ease-out"
+          style={{ width: `${Math.min(100, percent)}%`, background: th.accent }}
+        />
+      </div>
 
-      {/* Settings panel */}
+      {/* ── Scrollable content ──────────────────────────────── */}
+      <div
+        ref={contentRef}
+        onScroll={handleScroll}
+        onClick={onContentClick}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        className="flex-1 overflow-y-auto"
+        style={{ paddingBottom: 72 }}
+      >
+        {loading ? (
+          <div className="flex justify-center pt-24">
+            <div
+              className="animate-spin rounded-full"
+              style={{ width: 32, height: 32, border: `2px solid ${th.border}`, borderTopColor: th.accent }}
+            />
+          </div>
+        ) : !isReading ? (
+          <div className="max-w-xl mx-auto px-4 pt-12">
+            <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />
+          </div>
+        ) : activeChapter ? (
+          <div
+            className="mx-auto transition-opacity duration-150"
+            style={{
+              maxWidth: MARGIN_MAX_WIDTH[marginSize],
+              paddingLeft: MARGIN_PADDING_X[marginSize],
+              paddingRight: MARGIN_PADDING_X[marginSize],
+              paddingTop: 48,
+              paddingBottom: 64,
+              opacity: fadeIn ? 1 : 0,
+            }}
+          >
+            {/* Chapter header */}
+            <div className="mb-10">
+              <p
+                className="uppercase tracking-widest mb-2"
+                style={{ fontSize: 10, color: th.accent, fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Chapter {activeChapter.chapterNumber}
+              </p>
+              <h2
+                style={{
+                  fontSize: '1.45em',
+                  fontWeight: 700,
+                  lineHeight: 1.25,
+                  color: th.text,
+                  fontFamily: FONT_FAMILIES[fontFamily],
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {activeChapter.title}
+              </h2>
+              <div style={{ marginTop: 14, height: 2, width: 40, background: th.accent, borderRadius: 1, opacity: 0.6 }} />
+            </div>
+
+            {/* Chapter body */}
+            <div
+              className="reader-content"
+              style={{
+                fontSize: FONT_SIZE_PX[fontSize],
+                lineHeight: LINE_SPACING_VALUE[lineSpacing],
+                color: th.text,
+                fontFamily: FONT_FAMILIES[fontFamily],
+              }}
+              dangerouslySetInnerHTML={{ __html: activeChapter.content }}
+            />
+
+            {showPreviewGate && (
+              <div className="mt-10">
+                <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />
+              </div>
+            )}
+
+            {/* End-of-chapter nav */}
+            {!showPreviewGate && (
+              <div
+                className="flex items-center justify-between mt-14 pt-6 select-none"
+                style={{ borderTop: `1px solid ${th.border}` }}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); prevChapter && changeChapter(currentChapter - 1); }}
+                  disabled={!prevChapter}
+                  className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
+                  style={{ background: th.surface, color: th.text }}
+                >
+                  <ChevronLeft size={14} /> Prev
+                </button>
+                <span style={{ fontSize: 12, color: th.muted }}>{currentChapter} / {totalChapters}</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); nextChapter && changeChapter(currentChapter + 1); }}
+                  disabled={!nextChapter}
+                  className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
+                  style={{ background: th.accent, color: '#fff' }}
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-center py-16 text-sm" style={{ color: th.muted }}>No content available.</p>
+        )}
+      </div>
+
+      {/* ── Bottom chapter nav ───────────────────────────────── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 flex items-center justify-between flex-shrink-0 z-20 transition-transform duration-300 select-none"
+        style={{
+          height: 52,
+          background: th.headerBg,
+          borderTop: `1px solid ${th.border}`,
+          transform: footerVisible ? 'translateY(0)' : 'translateY(100%)',
+          paddingLeft: 12, paddingRight: 12,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => prevChapter && changeChapter(currentChapter - 1)}
+          disabled={!prevChapter}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-opacity disabled:opacity-25 hover:opacity-70"
+          style={{ color: th.text, maxWidth: '30%' }}
+        >
+          <ChevronLeft size={14} />
+          <span className="truncate">{prevChapter ? prevChapter.title : 'Previous'}</span>
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          {dotRange.map((ch) => (
+            <button
+              key={ch.id}
+              type="button"
+              onClick={() => changeChapter(ch.chapterNumber)}
+              className="rounded-full transition-all duration-200"
+              style={{
+                width: ch.chapterNumber === currentChapter ? 22 : 6,
+                height: 6,
+                background: ch.chapterNumber === currentChapter ? th.accent : th.border,
+              }}
+            />
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => nextChapter && changeChapter(currentChapter + 1)}
+          disabled={!nextChapter}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-opacity disabled:opacity-25 hover:opacity-70"
+          style={{ color: th.text, maxWidth: '30%' }}
+        >
+          <span className="truncate">{nextChapter ? nextChapter.title : 'Next'}</span>
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* ── Settings bottom sheet ────────────────────────────── */}
       {settingsOpen && (
         <div
-          className="absolute top-12 right-4 z-20 w-64 p-4 rounded-xl border space-y-4"
-          style={{ background: '#111', borderColor: '#222' }}
+          className="fixed inset-0 z-30 flex flex-col justify-end"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setSettingsOpen(false)}
         >
-          <div>
-            <p className="text-xs text-[#555] uppercase tracking-wider mb-2">Theme</p>
-            <div className="grid grid-cols-4 gap-2">
-              {(Object.keys(THEME_STYLES) as (keyof typeof THEME_STYLES)[]).map((t) => (
+          <div
+            className="rounded-t-2xl space-y-5 overflow-y-auto"
+            style={{ background: th.headerBg, border: `1px solid ${th.border}`, padding: '20px 20px 32px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center -mt-1 mb-1">
+              <div className="rounded-full" style={{ width: 36, height: 4, background: th.border }} />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold" style={{ color: th.text }}>Reading settings</p>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="p-1.5 rounded-lg"
+                style={{ background: th.surface }}
+              >
+                <X size={14} style={{ color: th.muted }} />
+              </button>
+            </div>
+
+            {/* Theme */}
+            <div>
+              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Theme</p>
+              <div className="grid grid-cols-4 gap-2.5">
+                {(Object.entries(THEME_STYLES) as [ReaderTheme, typeof THEME_STYLES[ReaderTheme]][]).map(([t, s]) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => useReaderStore.getState().setTheme(t)}
+                    className="py-4 rounded-xl relative transition-all"
+                    style={{
+                      background: s.bg,
+                      border: `2px solid ${theme === t ? s.accent : s.border}`,
+                    }}
+                  >
+                    {theme === t && (
+                      <Check size={10} className="absolute top-1.5 right-1.5" style={{ color: s.accent }} />
+                    )}
+                    <p className="text-xs font-medium" style={{ color: s.text }}>{s.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font family */}
+            <div>
+              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Font</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {(Object.entries(FONT_FAMILIES) as [FontFamily, string][]).map(([f, fam]) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => useReaderStore.getState().setFontFamily(f)}
+                    className="py-3.5 rounded-xl transition-all text-sm"
+                    style={{
+                      fontFamily: fam,
+                      background: fontFamily === f ? th.accent : th.surface,
+                      color: fontFamily === f ? '#fff' : th.text,
+                      border: `1.5px solid ${fontFamily === f ? th.accent : th.border}`,
+                    }}
+                  >
+                    {FONT_LABELS[f]}
+                    <span className="block text-xs mt-0.5 opacity-60">{f === 'serif' ? 'Classic reading' : 'Modern clean'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font size */}
+            <div>
+              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>
+                Text size
+              </p>
+              <div className="flex items-end gap-3">
                 <button
-                  key={t}
                   type="button"
-                  onClick={() => useReaderStore.getState().setTheme(t)}
-                  className="p-2 rounded-lg border text-xs"
-                  style={{
-                    background: THEME_STYLES[t].bg,
-                    color: THEME_STYLES[t].text,
-                    border: theme === t ? '1.5px solid #e8442a' : '1.5px solid #333',
+                  onClick={() => {
+                    const s = ['small', 'medium', 'large', 'xlarge'] as const;
+                    const i = s.indexOf(fontSize);
+                    if (i > 0) useReaderStore.getState().setFontSize(s[i - 1]);
                   }}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center font-bold select-none"
+                  style={{ background: th.surface, color: th.text, fontSize: 16 }}
                 >
-                  {THEME_STYLES[t].label}
+                  A
                 </button>
-              ))}
+                <div className="flex-1 flex items-end gap-1.5 pb-1">
+                  {(['small', 'medium', 'large', 'xlarge'] as const).map((s, i) => (
+                    <div
+                      key={s}
+                      onClick={() => useReaderStore.getState().setFontSize(s)}
+                      className="flex-1 rounded-full cursor-pointer transition-all"
+                      style={{
+                        height: 4 + i * 3,
+                        background: fontSize === s ? th.accent : th.border,
+                      }}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s = ['small', 'medium', 'large', 'xlarge'] as const;
+                    const i = s.indexOf(fontSize);
+                    if (i < s.length - 1) useReaderStore.getState().setFontSize(s[i + 1]);
+                  }}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center font-bold select-none"
+                  style={{ background: th.surface, color: th.text, fontSize: 22 }}
+                >
+                  A
+                </button>
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="text-xs text-[#555] uppercase tracking-wider mb-2">Font Size</p>
-            <div className="flex gap-2">
-              {(['small', 'medium', 'large', 'xlarge'] as const).map((s) => (
-                <button key={s} type="button" onClick={() => useReaderStore.getState().setFontSize(s)}
-                  className="flex-1 py-1.5 rounded-lg border text-xs capitalize"
-                  style={{ background: fontSize === s ? '#e8442a' : '#1a1a1a', color: fontSize === s ? '#fff' : '#888', borderColor: fontSize === s ? '#e8442a' : '#333' }}>
-                  {s[0].toUpperCase()}
-                </button>
-              ))}
+
+            {/* Line spacing */}
+            <div>
+              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Line spacing</p>
+              <div className="flex gap-2.5">
+                {(['compact', 'normal', 'relaxed'] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => useReaderStore.getState().setLineSpacing(s)}
+                    className="flex-1 py-3 rounded-xl text-xs capitalize font-medium transition-all"
+                    style={{
+                      background: lineSpacing === s ? th.accent : th.surface,
+                      color: lineSpacing === s ? '#fff' : th.text,
+                      border: `1.5px solid ${lineSpacing === s ? th.accent : th.border}`,
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="text-xs text-[#555] uppercase tracking-wider mb-2">Line Spacing</p>
-            <div className="flex gap-2">
-              {(['compact', 'normal', 'relaxed'] as const).map((s) => (
-                <button key={s} type="button" onClick={() => useReaderStore.getState().setLineSpacing(s)}
-                  className="flex-1 py-1.5 rounded-lg border text-xs capitalize"
-                  style={{ background: lineSpacing === s ? '#e8442a' : '#1a1a1a', color: lineSpacing === s ? '#fff' : '#888', borderColor: lineSpacing === s ? '#e8442a' : '#333' }}>
-                  {s[0].toUpperCase()}
-                </button>
-              ))}
+
+            {/* Margins */}
+            <div>
+              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Margins</p>
+              <div className="flex gap-2.5">
+                {(['narrow', 'normal', 'wide'] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => useReaderStore.getState().setMarginSize(s)}
+                    className="flex-1 py-3 rounded-xl text-xs capitalize font-medium transition-all"
+                    style={{
+                      background: marginSize === s ? th.accent : th.surface,
+                      color: marginSize === s ? '#fff' : th.text,
+                      border: `1.5px solid ${marginSize === s ? th.accent : th.border}`,
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Content */}
-      <div
-        ref={contentRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-8"
-      >
-        {loading ? (
-          <div className="flex justify-center pt-16">
-            <div className="animate-spin w-8 h-8 border-2 rounded-full" style={{ borderColor: '#333', borderTopColor: '#e8442a' }} />
-          </div>
-        ) : !isReading ? (
-          <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />
-        ) : activeChapter ? (
-          <div className="max-w-[640px] mx-auto">
-            <h2
-              className="font-display mb-6"
-              style={{ fontSize: '20px', color: themeStyle.text }}
-            >
-              {activeChapter.title}
-            </h2>
-            <div
-              className="font-reader prose max-w-none"
-              style={{
-                fontSize: fontSizePx,
-                lineHeight: lineHeightVal,
-                color: themeStyle.text,
-              }}
-              dangerouslySetInnerHTML={{ __html: activeChapter.content }}
-            />
-            {showPreviewGate && (
-              <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />
-            )}
-          </div>
-        ) : (
-          <p className="text-center py-16" style={{ color: themeStyle.text, opacity: 0.4 }}>
-            No content available.
-          </p>
-        )}
-      </div>
     </div>
   );
 }
