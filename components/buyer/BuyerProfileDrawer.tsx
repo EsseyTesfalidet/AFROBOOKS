@@ -231,12 +231,21 @@ export default function BuyerProfileDrawer() {
     return () => mq.removeEventListener('change', h);
   }, []);
 
-  // Lock body overscroll (pull-to-refresh) while drawer is open
+  // Lock body scroll + hide page scrollbar while drawer is open
   useEffect(() => {
     if (!isOpen) return;
-    const prev = document.body.style.overscrollBehavior;
+    const prevOverscroll = document.body.style.overscrollBehavior;
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overscrollBehavior = 'none';
-    return () => { document.body.style.overscrollBehavior = prev; };
+    document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = `${scrollbarWidth}px`; // prevent layout shift
+    return () => {
+      document.body.style.overscrollBehavior = prevOverscroll;
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
   }, [isOpen]);
 
   // Native non-passive touch listeners — lets us preventDefault to block pull-to-refresh
@@ -293,6 +302,7 @@ export default function BuyerProfileDrawer() {
     background: '#0e0e0e',
     borderTop: '1px solid #1a1a1a',
     borderRadius: '20px 20px 0 0',
+    overflow: 'hidden',
     transform: isOpen ? `translateY(${dragY}px)` : 'translateY(100%)',
     transition: dragging ? 'none' : 'transform 0.35s cubic-bezier(0.32,0.72,0,1)',
     willChange: 'transform',
@@ -308,6 +318,7 @@ export default function BuyerProfileDrawer() {
     flexDirection: 'column',
     background: '#0e0e0e',
     borderLeft: '1px solid #1a1a1a',
+    overflow: 'hidden',
     transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
     transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
     willChange: 'transform',
