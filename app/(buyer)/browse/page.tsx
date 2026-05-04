@@ -7,7 +7,7 @@ import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCard from '@/components/buyer/BookCard';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { getLiveBooks } from '@/lib/firebase/firestore';
-import { orderBy } from 'firebase/firestore';
+import { orderBy, limit } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 
@@ -15,15 +15,20 @@ const GENRES = ['All', 'Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'B
 
 export default function BrowsePage() {
   const [books, setBooks] = useState<Book[]>([]);
+  const [bestsellers, setBestsellers] = useState<Book[]>([]);
   const [filtered, setFiltered] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('All');
 
   useEffect(() => {
-    getLiveBooks([orderBy('publishedAt', 'desc')]).then((data) => {
-      setBooks(data);
-      setFiltered(data);
+    Promise.all([
+      getLiveBooks([orderBy('publishedAt', 'desc')]),
+      getLiveBooks([orderBy('totalSales', 'desc'), limit(12)]),
+    ]).then(([all, top]) => {
+      setBooks(all);
+      setFiltered(all);
+      setBestsellers(top.filter((b) => b.totalSales > 0));
       setLoading(false);
     });
   }, []);
@@ -97,6 +102,46 @@ export default function BrowsePage() {
                   <div className="relative" style={{ height: 158, background: book.coverBgColor || '#1a1040' }}>
                     <div className="absolute top-0 left-0 right-0 h-1" style={{ background: book.coverAccentColor || '#7c3aed' }} />
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.88))' }} />
+                    <div className="absolute bottom-0 left-0 right-0 p-2">
+                      <p className="text-white font-medium truncate" style={{ fontSize: 11 }}>{book.title}</p>
+                      <p className="truncate" style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>{book.authorName}</p>
+                    </div>
+                  </div>
+                  <div className="px-2 py-1.5" style={{ background: '#111' }}>
+                    <p className="text-xs font-medium" style={{ color: '#f5b800' }}>{centsToDisplay(book.price)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bestsellers — swipe carousel (hidden when searching/filtering) */}
+        {!loading && bestsellers.length > 0 && !search && genre === 'All' && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-white">Bestsellers</p>
+              <span className="text-xs" style={{ color: '#555' }}>Most purchased</span>
+            </div>
+            <div
+              className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
+              style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+            >
+              {bestsellers.map((book, idx) => (
+                <Link
+                  key={book.id}
+                  href={`/book/${book.id}`}
+                  className="flex-shrink-0 rounded-xl overflow-hidden snap-start relative"
+                  style={{ width: 118 }}
+                >
+                  <div className="relative" style={{ height: 158, background: book.coverBgColor || '#1a1a1a' }}>
+                    <div className="absolute top-0 left-0 right-0 h-1" style={{ background: book.coverAccentColor || '#f5b800' }} />
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.88))' }} />
+                    {book.coverUrl && <img src={book.coverUrl} alt={book.title} className="absolute inset-0 w-full h-full object-cover" />}
+                    <span className="absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{ background: idx === 0 ? '#f5b800' : idx === 1 ? '#aaa' : idx === 2 ? '#cd7f32' : '#222', color: idx < 3 ? '#000' : '#888', fontSize: 9 }}>
+                      {idx + 1}
+                    </span>
                     <div className="absolute bottom-0 left-0 right-0 p-2">
                       <p className="text-white font-medium truncate" style={{ fontSize: 11 }}>{book.title}</p>
                       <p className="truncate" style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>{book.authorName}</p>
