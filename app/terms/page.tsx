@@ -1,5 +1,11 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Logo from '@/components/shared/Logo';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description: 'Read the AfroBooks Terms of Service and Privacy Policy.',
+};
 
 export default function TermsPage() {
   return (

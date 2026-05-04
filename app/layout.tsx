@@ -7,8 +7,39 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
-  description: 'Browse, purchase, and read ebooks by African authors. In-app reading only.',
+  title: {
+    default: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
+    template: '%s — AfroBooks',
+  },
+  description: 'Discover and read ebooks by African authors. Browse thousands of titles across fiction, history, science, and more. Africa\'s boldest ebook marketplace.',
+  keywords: ['African ebooks', 'African authors', 'ebook marketplace', 'African literature', 'buy ebooks online', 'AfroBooks'],
+  authors: [{ name: 'AfroBooks' }],
+  creator: 'AfroBooks',
+  publisher: 'AfroBooks',
+  metadataBase: new URL('https://afrobs.com'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://afrobs.com',
+    siteName: 'AfroBooks',
+    title: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
+    description: 'Discover and read ebooks by African authors. Browse thousands of titles across fiction, history, science, and more.',
+    images: [{ url: '/pwa-512x512.png', width: 512, height: 512, alt: 'AfroBooks' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
+    description: 'Discover and read ebooks by African authors.',
+    images: ['/pwa-512x512.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
   manifest: '/manifest.json',
   icons: {
     icon: [
