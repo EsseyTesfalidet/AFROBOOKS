@@ -2,7 +2,7 @@
 
 **Africa's boldest ebook marketplace** — discover, buy, and read African ebooks online.
 
-🌍 **Live:** [campusconnect-nine-psi.vercel.app](https://campusconnect-nine-psi.vercel.app)
+🌍 **Live:** [afrobs.com](https://afrobs.com)
 
 ---
 
