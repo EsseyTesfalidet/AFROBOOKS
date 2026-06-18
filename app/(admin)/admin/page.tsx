@@ -90,7 +90,7 @@ export default function AdminDashboard() {
   const statCards = [
     { label: 'Total Revenue', value: centsToDisplay(stats.totalRevenue), color: '#4ade80' },
     { label: 'Total Users', value: stats.users.toString(), color: '#f5b800' },
-    { label: 'Active Sellers', value: stats.activeSellers.toString(), color: '#f5b800' },
+    { label: 'Active Authors', value: stats.activeSellers.toString(), color: '#f5b800' },
     { label: 'Live Ebooks', value: stats.books.toString(), color: '#fff' },
     { label: 'Subscribers', value: stats.subscribers.toString(), color: '#7c3aed' },
     { label: 'Sales Today', value: stats.salesToday.toString(), color: '#4ade80' },
@@ -133,7 +133,7 @@ export default function AdminDashboard() {
               { label: 'Revenue', value: centsToDisplay(stats.totalRevenue), hint: 'All-time gross' },
               { label: 'Open Reports', value: stats.openReports.toString(), hint: 'Needs review now' },
               { label: 'Flagged Books', value: stats.flagged.toString(), hint: 'Moderation queue' },
-              { label: 'Active Sellers', value: stats.activeSellers.toString(), hint: 'Creator supply' },
+              { label: 'Active Authors', value: stats.activeSellers.toString(), hint: 'Creator supply' },
             ].map(({ label, value, hint }) => (
               <div key={label} className="p-3 rounded-xl border" style={{ background: 'rgba(17,17,17,0.88)', borderColor: '#2a2111' }}>
                 <p className="text-xs text-[#6b7280]">{label}</p>

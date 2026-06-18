@@ -65,9 +65,9 @@ export default function AdminUsersPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email..." className="flex-1 min-w-[180px] px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
             <option value="all">All Roles</option>
-            <option value="buyer">Buyer</option>
-            <option value="seller">Seller</option>
-            <option value="both">Both</option>
+            <option value="buyer">Reader</option>
+            <option value="seller">Author</option>
+            <option value="both">Reader + Author</option>
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
             <option value="all">All Statuses</option>

@@ -92,8 +92,8 @@ export default function AdminAnnouncementsPage() {
                 <select value={form.targetAudience} onChange={(e) => setForm((f) => ({ ...f, targetAudience: e.target.value as typeof form.targetAudience }))}
                   className="w-full px-3 py-2 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
                   <option value="all">All Users</option>
-                  <option value="buyers">Buyers Only</option>
-                  <option value="sellers">Sellers Only</option>
+                  <option value="buyers">Readers Only</option>
+                  <option value="sellers">Authors Only</option>
                 </select>
               </div>
               <div className="flex-1">

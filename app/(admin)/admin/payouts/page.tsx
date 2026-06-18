@@ -89,7 +89,7 @@ export default function AdminPayoutsPage() {
             <table className="w-full text-sm min-w-[580px]">
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                  {['Seller', 'Amount', 'Period', 'Status', 'Requested', 'Actions'].map((h) => (
+                  {['Author', 'Amount', 'Period', 'Status', 'Requested', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>

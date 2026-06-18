@@ -11,14 +11,14 @@ const roles = [
   {
     id: 'buyer' as const,
     icon: BookOpen,
-    label: 'Buyer',
-    description: 'Browse and read ebooks',
+    label: 'Reader',
+    description: 'Discover and read ebooks',
   },
   {
     id: 'seller' as const,
     icon: PenLine,
-    label: 'Seller',
-    description: 'Publish and sell your ebooks',
+    label: 'Author',
+    description: 'Publish and earn from your ebooks',
   },
 ];
 

@@ -113,7 +113,7 @@ export default function AdminSettingsPage() {
             {[
               { key: 'autoApproveBooks', label: 'Auto-approve new ebooks' },
               { key: 'newUserSignupsOpen', label: 'New user signups open' },
-              { key: 'newSellerSignupsOpen', label: 'New seller signups open' },
+              { key: 'newSellerSignupsOpen', label: 'New author signups open' },
               { key: 'subscriptionSalesActive', label: 'Subscription sales active' },
               { key: 'maintenanceMode', label: 'Maintenance mode' },
             ].map(({ key, label }) => (

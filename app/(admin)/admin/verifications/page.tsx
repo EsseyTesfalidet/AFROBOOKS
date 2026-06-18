@@ -70,7 +70,7 @@ export default function AdminVerificationsPage() {
         });
       }
 
-      // Notify the seller
+      // Notify the author
       await addDoc(collection(db, 'notifications'), {
         userId: req.sellerId,
         type: 'verification',
@@ -104,7 +104,7 @@ export default function AdminVerificationsPage() {
       <AdminSidebar />
       <main className="flex-1 px-4 md:px-6 py-7">
         <h1 className="font-display text-display-lg text-white mb-1">ID Verifications</h1>
-        <p className="text-sm text-[#555] mb-5">Review seller identity documents</p>
+        <p className="text-sm text-[#555] mb-5">Review author identity documents</p>
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-5">
@@ -147,7 +147,7 @@ export default function AdminVerificationsPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white">{req.sellerName || 'Unknown Seller'}</p>
+                  <p className="text-sm font-medium text-white">{req.sellerName || 'Unknown Author'}</p>
                   <p className="text-xs text-[#555] mb-1">{req.sellerEmail || req.sellerId}</p>
                   <p className="text-xs text-[#444]">
                     Submitted: {req.submittedAt?.toDate?.()?.toLocaleDateString?.() ?? '—'}

@@ -65,7 +65,7 @@ export default function AdminRevenuePage() {
   const stats = [
     { label: 'Gross Revenue', value: centsToDisplay(totals.revenue), color: '#f5b800' },
     { label: 'Platform Fees', value: centsToDisplay(totals.platformFee), color: '#4ade80' },
-    { label: 'Seller Payouts', value: centsToDisplay(totals.sellerPayouts), color: '#60a5fa' },
+    { label: 'Author Payouts', value: centsToDisplay(totals.sellerPayouts), color: '#60a5fa' },
     { label: 'Total Orders', value: totals.orders.toLocaleString(), color: '#e8442a' },
   ];
 
@@ -111,7 +111,7 @@ export default function AdminRevenuePage() {
                   />
                   <Bar dataKey="revenue" name="Gross Revenue" fill="#f5b800" radius={[2, 2, 0, 0]} />
                   <Bar dataKey="platformFee" name="Platform Fee" fill="#4ade80" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="sellerPayouts" name="Seller Payouts" fill="#60a5fa" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="sellerPayouts" name="Author Payouts" fill="#60a5fa" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -136,7 +136,7 @@ export default function AdminRevenuePage() {
               <table className="w-full text-sm min-w-[580px]">
                 <thead>
                   <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                    {['Buyer', 'Book', 'Total', 'Platform Fee', 'Seller Earnings', 'Date'].map((h) => (
+                    {['Reader', 'Book', 'Total', 'Platform Fee', 'Author Earnings', 'Date'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>

@@ -358,7 +358,7 @@ export default function SellerProfilePage() {
                 }}
                 className="flex-1 py-2.5 rounded-xl text-xs font-medium border"
                 style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-                Switch to Buyer
+                Switch to Reader
               </button>
             )}
             <button type="button"
@@ -395,7 +395,7 @@ export default function SellerProfilePage() {
                       </span>
                     ) : (
                       <span className="text-xs px-2 py-1 rounded-full" style={{ background: '#1a1a2e', color: '#93c5fd' }}>
-                        Seller Profile
+                        Author Profile
                       </span>
                     )}
                   </div>
@@ -636,7 +636,7 @@ export default function SellerProfilePage() {
           {section === 'preview' && (
             <div>
               <h1 className="font-display text-display-sm text-white mb-2">Public Page Preview</h1>
-              <p className="text-sm text-[#555] mb-5">This is how buyers see your author profile.</p>
+              <p className="text-sm text-[#555] mb-5">This is how readers see your author profile.</p>
 
               {/* Share link */}
               {userProfile && (
@@ -820,7 +820,7 @@ export default function SellerProfilePage() {
           {section === 'tax' && (
             <div>
               <h1 className="font-display text-display-sm text-white mb-2">Tax Information</h1>
-              <p className="text-sm text-[#555] mb-5">Required for payouts. US sellers use W-9, international sellers use W-8BEN.</p>
+              <p className="text-sm text-[#555] mb-5">Required for payouts. US authors use W-9, international authors use W-8BEN.</p>
               <div className="p-6 rounded-xl border space-y-5" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 <div>
                   <p className="text-sm text-[#aaa] mb-2">Tax Form Type</p>

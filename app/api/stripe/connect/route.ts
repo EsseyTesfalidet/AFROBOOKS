@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   try {
     const requestUser = await requireRequestUser(req);
     if (!['seller', 'both', 'admin'].includes(requestUser.role)) {
-      return NextResponse.json({ error: 'Seller account required' }, { status: 403 });
+      return NextResponse.json({ error: 'Author account required' }, { status: 403 });
     }
     const stripe = getStripeServer();
     const adminDb = await getAdminDb();

@@ -63,7 +63,7 @@ export default function SignupForm() {
       return;
     }
     if (role === 'seller' && !signupsOpen.seller) {
-      setError('New seller signups are currently closed.');
+      setError('New author signups are currently closed.');
       return;
     }
     try {

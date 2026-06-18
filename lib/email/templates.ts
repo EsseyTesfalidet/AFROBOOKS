@@ -71,7 +71,7 @@ export function payoutEmail(params: {
     html: `
       <div style="font-family:'DM Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0e0e0e;color:#f5f2eb;padding:40px 32px;border-radius:16px;">
         <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroBooks</h1>
-        <p style="color:#555;font-size:13px;margin:0 0 32px;">Seller Payout</p>
+        <p style="color:#555;font-size:13px;margin:0 0 32px;">Author Payout</p>
         <h2 style="font-size:18px;color:#f5f2eb;margin:0 0 12px;">Your payout is on its way, ${params.sellerName}!</h2>
         <div style="background:#111;border:1px solid #1a1a1a;border-radius:12px;padding:20px 24px;margin-top:16px;">
           <p style="color:#555;font-size:12px;margin:0 0 4px;">Amount</p>

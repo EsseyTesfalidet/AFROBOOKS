@@ -134,7 +134,7 @@ export default function BrowsePage() {
                 <span style={{ color: '#f5b800' }}>{firstName}.</span>
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: '#888' }}>
-                Your buyer experience now centers around momentum: resume reading, new drops from authors you follow, and faster discovery in {favoriteGenre}.
+                Your reader experience now centers around momentum: resume reading, new drops from authors you follow, and faster discovery in {favoriteGenre}.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link

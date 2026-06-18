@@ -308,7 +308,7 @@ export default function PublishPage() {
                       ? 'ID verification is now required'
                       : booksRemainingBeforeVerification === 1
                         ? 'You can publish 1 more book before ID verification'
-                        : 'New seller grace period'}
+                        : 'New author grace period'}
                   </p>
                 </div>
                 <p className="text-xs text-[#94a3b8]">
@@ -543,8 +543,8 @@ export default function PublishPage() {
                   <div className="space-y-2">
                     {[
                       { value: 'now', label: 'Publish immediately', desc: 'Goes live right away (or enters review).' },
-                      { value: 'preorder', label: 'Set as pre-order', desc: 'Buyers can purchase now, access on release date.' },
-                      { value: 'draft', label: 'Save as draft', desc: 'Not visible to buyers yet.' },
+                      { value: 'preorder', label: 'Set as pre-order', desc: 'Readers can purchase now and unlock access on release date.' },
+                      { value: 'draft', label: 'Save as draft', desc: 'Not visible to readers yet.' },
                     ].map(({ value, label, desc }) => (
                       <label key={value} className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all"
                         style={{ border: publishMode === value ? '1.5px solid #4ade80' : '1.5px solid #2a2a2a', background: publishMode === value ? '#0a1f0a' : '#1a1a1a' }}>

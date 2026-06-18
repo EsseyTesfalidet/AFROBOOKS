@@ -394,7 +394,7 @@ export default function BuyerProfileDrawer() {
           <AvatarUpload size={40} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{userProfile.firstName} {userProfile.lastName}</p>
-            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#0f1e3a', color: '#0ea5e9' }}>Buyer</span>
+            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#0f1e3a', color: '#0ea5e9' }}>Reader</span>
           </div>
           <button type="button" onClick={close}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#1a1a1a] flex-shrink-0"
@@ -430,13 +430,13 @@ export default function BuyerProfileDrawer() {
                 onClick={async () => { await updateUserProfile(userProfile.uid, { activeRole: 'seller' }); setUserProfile({ ...userProfile, activeRole: 'seller' }); close(); router.push('/dashboard'); }}
                 className="w-full py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2"
                 style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-                <ShoppingBag size={13} /> Switch to Seller Dashboard
+                <ShoppingBag size={13} /> Open Author Studio
               </button>
             ) : (
               <button type="button" onClick={handleBecomeSeller}
                 className="w-full py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2"
                 style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-                <ShoppingBag size={13} /> Become a Seller
+                <ShoppingBag size={13} /> Become an Author
               </button>
             )}
           </div>
@@ -483,7 +483,7 @@ export default function BuyerProfileDrawer() {
                 { label: 'Completion', value: `${buyerProfileCompletion}/4` },
                 { label: 'Credits', value: centsToDisplay(userProfile.referralCredits) },
                 { label: 'Plan', value: userProfile.subscriptionStatus === 'active' ? userProfile.subscriptionPlan : 'Free' },
-                { label: 'Mode', value: userProfile.activeRole === 'seller' ? 'Seller' : 'Buyer' },
+                { label: 'Mode', value: userProfile.activeRole === 'seller' ? 'Author' : 'Reader' },
               ].map(({ label, value }) => (
                 <div key={label} className="p-2.5 rounded-xl border" style={{ background: 'rgba(17,17,17,0.86)', borderColor: '#1f2937' }}>
                   <p className="text-[11px] text-[#6b7280]">{label}</p>

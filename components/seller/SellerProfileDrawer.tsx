@@ -460,7 +460,7 @@ export default function SellerProfileDrawer() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{userProfile.firstName} {userProfile.lastName}</p>
             {seller?.isVerified && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#2e1a0f', color: '#f5b800' }}>Verified Author</span>}
-            {!seller?.isVerified && <span className="text-xs text-[#555]">Seller</span>}
+            {!seller?.isVerified && <span className="text-xs text-[#555]">Author</span>}
           </div>
           <button type="button" onClick={close}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#1a1a1a] flex-shrink-0"
@@ -495,7 +495,7 @@ export default function SellerProfileDrawer() {
               onClick={async () => { await updateUserProfile(userProfile.uid, { activeRole: 'buyer' }); setUserProfile({ ...userProfile, activeRole: 'buyer' }); close(); router.push('/browse'); }}
               className="w-full py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2"
               style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-              Switch to Buyer Mode
+              Switch to Reader Mode
             </button>
           )}
 
@@ -524,7 +524,7 @@ export default function SellerProfileDrawer() {
                     </span>
                   ) : (
                     <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: '#1a1a2e', color: '#93c5fd' }}>
-                      Seller
+                      Author
                     </span>
                   )}
                 </div>
@@ -932,7 +932,7 @@ export default function SellerProfileDrawer() {
           {section === 'tax' && (
             <div className="space-y-4">
               <h2 className="font-display text-display-sm text-white">Tax Information</h2>
-              <p className="text-xs text-[#555]">Required for payouts. US sellers use W-9, international sellers use W-8BEN.</p>
+              <p className="text-xs text-[#555]">Required for payouts. US authors use W-9, international authors use W-8BEN.</p>
               <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 <div>
                   <p className="text-xs text-[#aaa] mb-2">Tax Form Type</p>

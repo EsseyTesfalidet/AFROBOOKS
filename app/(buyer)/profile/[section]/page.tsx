@@ -248,7 +248,7 @@ export default function BuyerProfilePage() {
           <div className="flex flex-col items-center py-5 mb-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <AvatarUpload size={56} />
             <p className="text-sm font-medium text-white mt-2">{userProfile.firstName} {userProfile.lastName}</p>
-            <span className="mt-1 text-xs px-2 py-0.5 rounded" style={{ background: '#1a1a2e', color: '#0ea5e9' }}>Buyer</span>
+            <span className="mt-1 text-xs px-2 py-0.5 rounded" style={{ background: '#1a1a2e', color: '#0ea5e9' }}>Reader</span>
           </div>
 
           <nav className="space-y-4">
@@ -276,13 +276,13 @@ export default function BuyerProfilePage() {
             <button type="button" onClick={() => updateUserProfile(userProfile.uid, { activeRole: 'seller' }).then(() => router.push('/dashboard'))}
               className="mt-2 w-full py-2 rounded-lg text-xs font-medium border"
               style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-              Switch to Seller
+              Open Author Studio
             </button>
           ) : (
             <button type="button" onClick={handleBecomeSeller}
               className="mt-2 w-full py-2 rounded-lg text-xs font-medium border"
               style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-              Become a Seller
+              Become an Author
             </button>
           )}
         </aside>
@@ -337,7 +337,7 @@ export default function BuyerProfilePage() {
                     className="px-4 py-2.5 rounded-xl text-sm font-medium border"
                     style={{ borderColor: '#f5b800', color: '#f5b800' }}
                   >
-                    Switch to Seller
+                    Open Author Studio
                   </button>
                 ) : (
                   <button
@@ -346,7 +346,7 @@ export default function BuyerProfilePage() {
                     className="px-4 py-2.5 rounded-xl text-sm font-medium border"
                     style={{ borderColor: '#f5b800', color: '#f5b800' }}
                   >
-                    Become a Seller
+                    Become an Author
                   </button>
                 )}
                 <Link
@@ -364,7 +364,7 @@ export default function BuyerProfilePage() {
                 { label: 'Profile Completion', value: `${buyerProfileCompletion}/4`, hint: 'Reader setup' },
                 { label: 'Subscription', value: userProfile.subscriptionStatus === 'active' ? userProfile.subscriptionPlan : 'Free', hint: 'Current plan' },
                 { label: 'Referral Credits', value: centsToDisplay(userProfile.referralCredits), hint: 'Wallet bonus' },
-                { label: 'Reader Mode', value: userProfile.activeRole === 'seller' ? 'Seller' : 'Buyer', hint: 'Active experience' },
+                { label: 'Reader Mode', value: userProfile.activeRole === 'seller' ? 'Author' : 'Reader', hint: 'Active experience' },
               ].map(({ label, value, hint }) => (
                 <div key={label} className="p-3 rounded-xl border" style={{ background: 'rgba(17,17,17,0.86)', borderColor: '#1f2937' }}>
                   <p className="text-xs text-[#6b7280]">{label}</p>
@@ -386,7 +386,7 @@ export default function BuyerProfilePage() {
                 className="w-full py-3 rounded-xl text-sm font-medium border flex items-center justify-center gap-2"
                 style={{ borderColor: '#f5b800', color: '#f5b800' }}
               >
-                <ShoppingBag size={15} /> Switch to Seller Dashboard
+                <ShoppingBag size={15} /> Open Author Studio
               </button>
             ) : (
               <button
@@ -395,7 +395,7 @@ export default function BuyerProfilePage() {
                 className="w-full py-3 rounded-xl text-sm font-medium border flex items-center justify-center gap-2"
                 style={{ borderColor: '#f5b800', color: '#f5b800' }}
               >
-                <ShoppingBag size={15} /> Become a Seller
+                <ShoppingBag size={15} /> Become an Author
               </button>
             )}
           </div>

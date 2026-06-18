@@ -84,8 +84,8 @@ export default function ListingsPage() {
         title: publishMode === 'preorder' ? 'Pre-order is live.' : 'Book is live.',
         message:
           publishMode === 'preorder'
-            ? 'Buyers can now discover this title and place pre-orders.'
-            : 'Buyers can now discover this book in browse and search.',
+            ? 'Readers can now discover this title and place pre-orders.'
+            : 'Readers can now discover this book in browse and search.',
         styles: { background: '#0f2e1a', borderColor: '#1a4a2a', color: '#4ade80' },
       };
     }
@@ -93,7 +93,7 @@ export default function ListingsPage() {
     if (publishedStatus === 'in_review') {
       return {
         title: 'Book sent to review.',
-        message: 'It is saved correctly and will appear to buyers after approval in Admin > Books.',
+        message: 'It is saved correctly and will appear to readers after approval in Admin > Books.',
         styles: { background: '#102033', borderColor: '#1e3a5f', color: '#7dd3fc' },
       };
     }
@@ -138,7 +138,7 @@ export default function ListingsPage() {
           <div className="mb-6 rounded-xl border px-4 py-3" style={{ background: '#16120a', borderColor: '#3d2f14', color: '#f5b800' }}>
             <p className="text-sm font-medium">Review queue active</p>
             <p className="mt-1 text-xs opacity-90">
-              {inReviewBooksCount} book{inReviewBooksCount === 1 ? '' : 's'} waiting for approval. Use Admin &gt; Books to make them visible to buyers.
+              {inReviewBooksCount} book{inReviewBooksCount === 1 ? '' : 's'} waiting for approval. Use Admin &gt; Books to make them visible to readers.
             </p>
           </div>
         )}

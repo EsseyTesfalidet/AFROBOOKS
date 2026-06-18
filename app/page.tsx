@@ -99,7 +99,7 @@ export default function LandingPage() {
             <Link href="/signup?role=seller"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-medium border transition-all hover:border-[#555]"
               style={{ borderColor: '#2a2a2a', color: '#aaa', background: '#111' }}>
-              <Feather size={16} /> Start Selling
+              <Feather size={16} /> Start Publishing
             </Link>
           </div>
 
@@ -418,8 +418,8 @@ export default function LandingPage() {
               <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Authors</p>
               <ul className="space-y-2.5">
                 {[
-                  { label: 'Start Selling', href: '/signup?role=seller' },
-                  { label: 'Author Dashboard', href: '/dashboard' },
+                  { label: 'Start Publishing', href: '/signup?role=seller' },
+                  { label: 'Author Studio', href: '/dashboard' },
                   { label: 'Publish a Book', href: '/publish' },
                   { label: 'Earnings', href: '/earnings' },
                 ].map(({ label, href }) => (

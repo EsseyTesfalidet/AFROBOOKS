@@ -44,7 +44,7 @@ export default function SellerHeader() {
         <div className="flex items-center gap-3">
           <Logo href="/dashboard" size="sm" />
           <span className="text-xs px-2 py-0.5 rounded font-bold" style={{ background: '#2e1a0f', color: '#f5b800' }}>
-            SELLER
+            AUTHOR
           </span>
         </div>
 
@@ -72,7 +72,7 @@ export default function SellerHeader() {
               }}
               className="hidden sm:block text-xs px-2.5 py-1 rounded-lg border"
               style={{ borderColor: '#333', color: '#888' }}>
-              Switch to Buyer
+              Switch to Reader
             </button>
           )}
           <button type="button"

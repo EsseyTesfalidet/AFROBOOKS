@@ -48,7 +48,7 @@ export default function AdminBooksPage() {
       userId: book.sellerId,
       type: 'system',
       title: 'Book Approved',
-      message: `Your book "${book.title}" is now live in the buyer catalog.`,
+      message: `Your book "${book.title}" is now live in the reader catalog.`,
       isRead: false,
       actionUrl: '/listings',
       relatedBookId: book.id,
