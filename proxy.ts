@@ -27,8 +27,9 @@ export function proxy(request: NextRequest) {
   }
 
   const sessionCookie = request.cookies.get('__session')?.value;
+  const fallbackUidCookie = request.cookies.get('ab_uid')?.value;
   const roleCookie = request.cookies.get('ab_role')?.value ?? 'buyer';
-  const isAuthed = !!sessionCookie;
+  const isAuthed = !!sessionCookie || !!fallbackUidCookie;
   const canAccessSeller = roleCookie === 'seller' || roleCookie === 'both' || roleCookie === 'admin';
   const canAccessAdmin = roleCookie === 'admin';
 

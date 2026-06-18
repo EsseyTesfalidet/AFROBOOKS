@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { signUp } from '@/lib/firebase/auth';
-import { syncAuthSession } from '@/lib/firebase/session';
+import { setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import Logo from '@/components/shared/Logo';
 import RoleSelector from './RoleSelector';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -70,6 +70,7 @@ export default function SignupForm() {
       const fbUser = await signUp(email, password, firstName, lastName, role);
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
+      setClientAuthHints(fbUser.uid, role);
       fetch('/api/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

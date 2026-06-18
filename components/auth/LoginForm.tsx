@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { logIn, signInWithGoogle, getUserProfile } from '@/lib/firebase/auth';
-import { syncAuthSession } from '@/lib/firebase/session';
+import { setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import { useAuthStore } from '@/store/authStore';
 import Logo from '@/components/shared/Logo';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -47,6 +47,7 @@ export default function LoginForm() {
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
       const profile = await getUserProfile(fbUser.uid);
+      setClientAuthHints(fbUser.uid, profile?.role ?? 'buyer');
       if (profile?.role === 'admin') {
         router.replace('/admin');
       } else if (profile?.activeRole === 'seller') {
@@ -77,6 +78,7 @@ export default function LoginForm() {
       const token = await user.getIdToken();
       await syncAuthSession(token, user.uid);
       const profile = await getUserProfile(user.uid);
+      setClientAuthHints(user.uid, profile?.role ?? 'buyer');
       if (profile?.role === 'admin') router.replace('/admin');
       else if (profile?.activeRole === 'seller') router.replace('/dashboard');
       else router.replace('/browse');

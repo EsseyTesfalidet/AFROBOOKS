@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './config';
-import { syncAuthSession } from './session';
+import { setClientAuthHints, syncAuthSession } from './session';
 import type { User as UserProfile } from '@/types/user';
 
 const googleProvider = new GoogleAuthProvider();
@@ -197,6 +197,8 @@ export async function updateUserProfile(
   if ((data.role || data.activeRole) && auth.currentUser) {
     const token = await auth.currentUser.getIdToken();
     await syncAuthSession(token, auth.currentUser.uid);
+    const refreshedProfile = await getUserProfile(uid);
+    setClientAuthHints(auth.currentUser.uid, refreshedProfile?.role ?? data.role ?? 'buyer');
   }
 }
 

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { getUserProfile } from '@/lib/firebase/auth';
-import { clearAuthSession, syncAuthSession } from '@/lib/firebase/session';
+import { clearAuthSession, setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import { useAuthStore } from '@/store/authStore';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -22,6 +22,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             setFirebaseUser(firebaseUser);
             const profile = await getUserProfile(firebaseUser.uid);
             setUserProfile(profile);
+            setClientAuthHints(firebaseUser.uid, profile?.role ?? 'buyer');
           } catch {
             setFirebaseUser(firebaseUser);
             setUserProfile(null);
