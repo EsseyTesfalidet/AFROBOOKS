@@ -3,8 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
-
-const ROUTES = ['/browse', '/library', '/cart'];
+import { BUYER_SWIPE_ROUTES } from '@/components/buyer/buyerNavigation';
 
 export default function BuyerSwipeNav() {
   const router = useRouter();
@@ -36,19 +35,21 @@ export default function BuyerSwipeNav() {
       if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
 
       const current = pathnameRef.current;
-      const idx = ROUTES.findIndex((r) => current === r || current.startsWith(r + '/'));
+      const idx = BUYER_SWIPE_ROUTES.findIndex(
+        (route) => current === route || current.startsWith(route + '/')
+      );
 
       if (dx < 0) {
         // Swipe left → next
-        if (idx === ROUTES.length - 1) {
+        if (idx === BUYER_SWIPE_ROUTES.length - 1) {
           openDrawer('account');
         } else if (idx >= 0) {
-          router.push(ROUTES[idx + 1]);
+          router.push(BUYER_SWIPE_ROUTES[idx + 1]);
         }
       } else {
         // Swipe right → previous
         if (idx > 0) {
-          router.push(ROUTES[idx - 1]);
+          router.push(BUYER_SWIPE_ROUTES[idx - 1]);
         }
       }
     }
