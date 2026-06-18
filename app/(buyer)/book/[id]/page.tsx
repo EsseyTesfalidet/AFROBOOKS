@@ -31,7 +31,7 @@ export default function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const userProfile = useAuthStore((s) => s.userProfile);
-  const { addItem, isInCart } = useCartStore();
+  const { addItem, isInCart, applyPromo, removePromo, promoCode, promoBookId } = useCartStore();
 
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -64,6 +64,15 @@ export default function BookDetailPage() {
       if (b) getSimilarBooks(b.genre, id).then(setSimilar);
     });
   }, [id, userProfile?.uid]);
+
+  useEffect(() => {
+    if (promoBookId === id && promoCode) {
+      setAppliedCode(promoCode);
+    } else {
+      setAppliedCode(null);
+      setDiscount(0);
+    }
+  }, [id, promoBookId, promoCode]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
   if (!book) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] text-[#444]">Book not found.</div>;
@@ -164,8 +173,16 @@ export default function BookDetailPage() {
             bookId={book.id}
             sellerId={book.sellerId}
             bookPrice={book.price}
-            onApply={(c, d) => { setAppliedCode(c); setDiscount(d); }}
-            onRemove={() => { setAppliedCode(null); setDiscount(0); }}
+            onApply={(c, d, bookId) => {
+              setAppliedCode(c);
+              setDiscount(d);
+              applyPromo(c, d, bookId);
+            }}
+            onRemove={() => {
+              setAppliedCode(null);
+              setDiscount(0);
+              removePromo();
+            }}
             appliedCode={appliedCode}
           />
         )}

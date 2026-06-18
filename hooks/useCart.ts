@@ -24,6 +24,7 @@ export function useCart() {
     applyPromo: store.applyPromo,
     removePromo: store.removePromo,
     promoCode: store.promoCode,
+    promoBookId: store.promoBookId,
     subtotal: store.getSubtotal(),
     bundleDiscount: store.getBundleDiscount(),
     promoDiscount: store.discountAmount,

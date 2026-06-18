@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -26,6 +26,11 @@ export default function SignupForm() {
   const router = useRouter();
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const [error, setError] = useState('');
+  const [signupsOpen, setSignupsOpen] = useState({
+    buyer: true,
+    seller: true,
+    maintenanceMode: false,
+  });
 
   const {
     register,
@@ -33,16 +38,51 @@ export default function SignupForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  function setSessionCookie(token: string) {
-    document.cookie = `__session=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  useEffect(() => {
+    fetch('/api/platform/public')
+      .then((res) => res.json())
+      .then((data) => {
+        setSignupsOpen({
+          buyer: data.newUserSignupsOpen !== false,
+          seller: data.newSellerSignupsOpen !== false,
+          maintenanceMode: data.maintenanceMode === true,
+        });
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function setSessionCookie(token: string) {
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ idToken: token }),
+    });
   }
 
   async function onSubmit({ email, password, firstName, lastName }: FormData) {
     setError('');
+    if (signupsOpen.maintenanceMode) {
+      setError('AfroBooks is currently in maintenance mode. Please try again later.');
+      return;
+    }
+    if (!signupsOpen.buyer) {
+      setError('New account creation is currently disabled.');
+      return;
+    }
+    if (role === 'seller' && !signupsOpen.seller) {
+      setError('New seller signups are currently closed.');
+      return;
+    }
     try {
       const fbUser = await signUp(email, password, firstName, lastName, role);
       const token = await fbUser.getIdToken();
-      setSessionCookie(token);
+      await setSessionCookie(token);
+      fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'welcome', to: email, data: { firstName } }),
+      }).catch(() => undefined);
       if (role === 'seller') {
         router.replace('/dashboard');
       } else {

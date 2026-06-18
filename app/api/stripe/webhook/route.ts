@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripeServer } from '@/lib/stripe/server';
-import { db } from '@/lib/firebase/config';
-import {
-  collection, query, where, getDocs,
-  doc, updateDoc, addDoc, increment, serverTimestamp,
-} from 'firebase/firestore';
+import { getAdminDb, getAdminFieldValue } from '@/lib/firebase/admin';
+import { sendPurchaseReceiptEmail, sendSubscriptionConfirmation } from '@/lib/server/email';
 
 export const config = { api: { bodyParser: false } };
 
@@ -13,7 +10,9 @@ export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
   const body = await req.text();
 
-  if (!sig) return NextResponse.json({ error: 'No signature' }, { status: 400 });
+  if (!sig) {
+    return NextResponse.json({ error: 'No signature' }, { status: 400 });
+  }
 
   let event;
   try {
@@ -22,43 +21,77 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
   }
 
+  const adminDb = await getAdminDb();
+  const FieldValue = await getAdminFieldValue();
+
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object as { id: string; metadata: Record<string, string> };
-    const { userId, bookIds, promoCode } = pi.metadata;
-    const bookIdList = bookIds.split(',').filter(Boolean);
+    const { userId, promoCode } = pi.metadata;
 
-    // Update all pending orders for this payment intent
-    const ordersQ = query(collection(db, 'orders'), where('stripePaymentIntentId', '==', pi.id), where('status', '==', 'pending'));
-    const ordersSnap = await getDocs(ordersQ);
+    const ordersSnap = await adminDb
+      .collection('orders')
+      .where('stripePaymentIntentId', '==', pi.id)
+      .where('status', '==', 'pending')
+      .get();
+
+    const receiptItems: { title: string; authorName: string; priceCents: number }[] = [];
+    let totalCharged = 0;
+    let buyerEmail: string | null = null;
+    let buyerName = 'Reader';
 
     for (const orderDoc of ordersSnap.docs) {
-      const order = orderDoc.data();
-      await updateDoc(orderDoc.ref, { status: 'completed' });
+      const order = orderDoc.data() as {
+        buyerEmail: string | null;
+        bookId: string;
+        bookTitle: string;
+        authorName?: string;
+        sellerId: string;
+        sellerEarnings: number;
+        finalPrice: number;
+      };
 
-      // Add to library
-      await addDoc(collection(db, 'library'), {
-        id: `${userId}_${order.bookId}`,
-        userId,
-        bookId: order.bookId,
-        purchaseType: 'bought',
-        orderId: orderDoc.id,
-        addedAt: serverTimestamp(),
-      }).catch(() => {});
+      await orderDoc.ref.update({ status: 'completed' });
 
-      // Add earnings to seller pending balance
-      await updateDoc(doc(db, 'sellers', order.sellerId), {
-        pendingBalance: increment(order.sellerEarnings),
-        totalSales: increment(1),
-      }).catch(() => {});
+      await adminDb.collection('library').doc(`${userId}_${order.bookId}`).set(
+        {
+          id: `${userId}_${order.bookId}`,
+          userId,
+          bookId: order.bookId,
+          purchaseType: 'bought',
+          orderId: orderDoc.id,
+          addedAt: new Date(),
+        },
+        { merge: true }
+      );
 
-      // Update book sales count
-      await updateDoc(doc(db, 'books', order.bookId), {
-        totalSales: increment(1),
-        updatedAt: serverTimestamp(),
-      }).catch(() => {});
+      const sellerRef = adminDb.collection('sellers').doc(order.sellerId);
+      const sellerSnap = await sellerRef.get();
+      const sellerData = sellerSnap.data() ?? {};
+      const nextTotalSales = (sellerData.totalSales ?? 0) + 1;
+      await sellerRef.set(
+        {
+          pendingBalance: FieldValue.increment(order.sellerEarnings),
+          totalEarnings: FieldValue.increment(order.sellerEarnings),
+          totalSales: FieldValue.increment(1),
+          verificationStatus: {
+            ...(sellerData.verificationStatus ?? {}),
+            firstBookPublished: true,
+            tenSalesReached: nextTotalSales >= 10,
+          },
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
 
-      // Notify buyer
-      await addDoc(collection(db, 'notifications'), {
+      await adminDb.collection('books').doc(order.bookId).set(
+        {
+          totalSales: FieldValue.increment(1),
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      await adminDb.collection('notifications').add({
         userId,
         type: 'purchase',
         title: 'Purchase Successful',
@@ -66,11 +99,10 @@ export async function POST(req: NextRequest) {
         isRead: false,
         actionUrl: `/read/${order.bookId}`,
         relatedBookId: order.bookId,
-        createdAt: serverTimestamp(),
+        createdAt: new Date(),
       });
 
-      // Notify seller
-      await addDoc(collection(db, 'notifications'), {
+      await adminDb.collection('notifications').add({
         userId: order.sellerId,
         type: 'sale',
         title: 'New Sale',
@@ -78,25 +110,94 @@ export async function POST(req: NextRequest) {
         isRead: false,
         actionUrl: '/dashboard',
         relatedBookId: order.bookId,
-        createdAt: serverTimestamp(),
+        createdAt: new Date(),
       });
+
+      receiptItems.push({
+        title: order.bookTitle,
+        authorName: order.authorName ?? 'Unknown Author',
+        priceCents: order.finalPrice,
+      });
+      totalCharged += order.finalPrice;
+      buyerEmail = order.buyerEmail;
+    }
+
+    const buyerSnap = await adminDb.collection('users').doc(userId).get();
+    if (buyerSnap.exists) {
+      const buyer = buyerSnap.data() as { firstName?: string; lastName?: string };
+      buyerName = [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || 'Reader';
+    }
+
+    if (promoCode) {
+      const promoSnap = await adminDb
+        .collection('promoCodes')
+        .where('code', '==', promoCode)
+        .limit(1)
+        .get();
+
+      if (!promoSnap.empty) {
+        await promoSnap.docs[0].ref.set(
+          {
+            currentUses: FieldValue.increment(1),
+            totalRevenue: FieldValue.increment(totalCharged),
+          },
+          { merge: true }
+        );
+      }
+    }
+
+    if (buyerEmail && receiptItems.length) {
+      const sent = await sendPurchaseReceiptEmail({
+        to: buyerEmail,
+        buyerName,
+        items: receiptItems,
+        totalCents: totalCharged,
+        orderId: ordersSnap.docs[0]?.id ?? pi.id,
+      }).catch(() => false);
+
+      if (sent) {
+        await Promise.all(
+          ordersSnap.docs.map((orderDoc) =>
+            orderDoc.ref.update({ receiptEmailSent: true })
+          )
+        );
+      }
     }
   }
 
   if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
     const sub = event.data.object as {
-      id: string; customer: string; status: string;
-      current_period_start: number; current_period_end: number;
-      cancel_at_period_end: boolean; metadata: Record<string, string>;
+      id: string;
+      status: string;
+      metadata: Record<string, string>;
     };
     const { userId, plan } = sub.metadata;
+
     if (userId && plan) {
-      await updateDoc(doc(db, 'users', userId), {
-        subscriptionId: sub.id,
-        subscriptionPlan: plan,
-        subscriptionStatus: sub.status === 'active' ? 'active' : 'past_due',
-        updatedAt: serverTimestamp(),
-      }).catch(() => {});
+      await adminDb.collection('users').doc(userId).set(
+        {
+          subscriptionId: sub.id,
+          subscriptionPlan: plan,
+          subscriptionStatus: sub.status === 'active' ? 'active' : 'past_due',
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      if (sub.status === 'active') {
+        const userSnap = await adminDb.collection('users').doc(userId).get();
+        const user = userSnap.data() as
+          | { email?: string; firstName?: string; lastName?: string }
+          | undefined;
+        if (user?.email) {
+          await sendSubscriptionConfirmation({
+            to: user.email,
+            userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Reader',
+            plan: plan as 'basic' | 'standard' | 'premium',
+            amountCents: plan === 'basic' ? 499 : plan === 'standard' ? 999 : 1499,
+          }).catch(() => false);
+        }
+      }
     }
   }
 
@@ -104,12 +205,15 @@ export async function POST(req: NextRequest) {
     const sub = event.data.object as { metadata: Record<string, string> };
     const { userId } = sub.metadata;
     if (userId) {
-      await updateDoc(doc(db, 'users', userId), {
-        subscriptionPlan: 'none',
-        subscriptionStatus: 'cancelled',
-        subscriptionId: null,
-        updatedAt: serverTimestamp(),
-      }).catch(() => {});
+      await adminDb.collection('users').doc(userId).set(
+        {
+          subscriptionPlan: 'none',
+          subscriptionStatus: 'cancelled',
+          subscriptionId: null,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
     }
   }
 

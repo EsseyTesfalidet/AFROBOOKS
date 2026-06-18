@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Check } from 'lucide-react';
@@ -31,21 +31,26 @@ function PaymentModal({ plan, onClose }: { plan: typeof PLANS[0]; onClose: () =>
   const stripe = useStripe();
   const elements = useElements();
   const userProfile = useAuthStore((s) => s.userProfile);
+  const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const router = useRouter();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
-    if (!stripe || !elements || !userProfile) return;
+    if (!stripe || !elements || !userProfile || !firebaseUser) return;
     setLoading(true);
     setError('');
 
     try {
+      const token = await firebaseUser.getIdToken();
       const res = await fetch('/api/stripe/create-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan.id, userId: userProfile.uid }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan: plan.id }),
       });
       const { clientSecret } = await res.json();
       if (!clientSecret) { setError('Could not initialize payment.'); setLoading(false); return; }
@@ -95,7 +100,19 @@ function PaymentModal({ plan, onClose }: { plan: typeof PLANS[0]; onClose: () =>
 export default function SubscriptionPage() {
   const userProfile = useAuthStore((s) => s.userProfile);
   const [selectedPlan, setSelectedPlan] = useState<typeof PLANS[0] | null>(null);
+  const [subscriptionSalesActive, setSubscriptionSalesActive] = useState(true);
   const isSubscribed = userProfile?.subscriptionStatus === 'active';
+
+  useEffect(() => {
+    fetch('/api/platform/public')
+      .then((res) => res.json())
+      .then((data) => {
+        setSubscriptionSalesActive(
+          data.subscriptionSalesActive !== false && data.maintenanceMode !== true
+        );
+      })
+      .catch(() => undefined);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -139,7 +156,7 @@ export default function SubscriptionPage() {
                 ))}
               </ul>
               <button type="button" onClick={() => setSelectedPlan(plan)}
-                disabled={isSubscribed}
+                disabled={isSubscribed || !subscriptionSalesActive}
                 className="w-full py-3 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={plan.btnStyle}>
                 Subscribe{plan.featured ? ` — ${plan.label}` : ''}
@@ -175,6 +192,11 @@ export default function SubscriptionPage() {
             </tbody>
           </table>
         </div>
+        {!subscriptionSalesActive && (
+          <p className="text-center text-sm text-[#e8442a] mt-5">
+            Subscription sales are currently unavailable.
+          </p>
+        )}
       </main>
 
       {selectedPlan && (

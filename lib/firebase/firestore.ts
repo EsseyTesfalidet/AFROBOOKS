@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -150,9 +151,7 @@ export async function addToLibrary(
     orderId,
     addedAt: serverTimestamp() as unknown as import('firebase/firestore').Timestamp,
   };
-  await updateDoc(doc(db, 'library', `${userId}_${bookId}`), item).catch(() =>
-    addDoc(collection(db, 'library'), item)
-  );
+  await setDoc(doc(db, 'library', `${userId}_${bookId}`), item, { merge: true });
 }
 
 // ── Wishlist ───────────────────────────────────────────────────────────────
@@ -169,19 +168,12 @@ export async function toggleWishlist(userId: string, bookId: string): Promise<vo
   if (snap.exists()) {
     await deleteDoc(ref);
   } else {
-    await updateDoc(ref, {
+    await setDoc(ref, {
       id: `${userId}_${bookId}`,
       userId,
       bookId,
       addedAt: serverTimestamp(),
-    }).catch(() =>
-      addDoc(collection(db, 'wishlist'), {
-        id: `${userId}_${bookId}`,
-        userId,
-        bookId,
-        addedAt: serverTimestamp(),
-      })
-    );
+    });
   }
 }
 
@@ -230,11 +222,9 @@ export async function saveReadingProgress(
   data: Partial<ReadingProgress>
 ): Promise<void> {
   const ref = doc(db, 'readingProgress', `${userId}_${bookId}`);
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    await updateDoc(ref, { ...data, lastReadAt: serverTimestamp() });
-  } else {
-    await addDoc(collection(db, 'readingProgress'), {
+  await setDoc(
+    ref,
+    {
       id: `${userId}_${bookId}`,
       userId,
       bookId,
@@ -245,8 +235,9 @@ export async function saveReadingProgress(
       finishedAt: null,
       ...data,
       lastReadAt: serverTimestamp(),
-    });
-  }
+    },
+    { merge: true }
+  );
 }
 
 // ── Orders ─────────────────────────────────────────────────────────────────

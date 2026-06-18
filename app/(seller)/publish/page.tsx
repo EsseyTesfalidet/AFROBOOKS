@@ -161,6 +161,19 @@ export default function PublishPage() {
         });
       }
 
+      const { setDoc } = await import('firebase/firestore');
+      await setDoc(
+        doc(db, 'sellers', userProfile.uid),
+        {
+          verificationStatus: {
+            ...(seller?.verificationStatus ?? {}),
+            firstBookPublished: true,
+          },
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
       router.push('/listings');
     } catch (err) {
       console.error('Publish error:', err);

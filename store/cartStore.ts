@@ -17,11 +17,12 @@ export interface CartItem {
 interface CartState {
   items: CartItem[];
   promoCode: string | null;
+  promoBookId: string | null;
   discountAmount: number;
   addItem: (book: Book) => void;
   removeItem: (bookId: string) => void;
   clearCart: () => void;
-  applyPromo: (code: string, discount: number) => void;
+  applyPromo: (code: string, discount: number, bookId: string) => void;
   removePromo: () => void;
   isInCart: (bookId: string) => boolean;
   getSubtotal: () => number;
@@ -34,6 +35,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       promoCode: null,
+      promoBookId: null,
       discountAmount: 0,
 
       addItem: (book) => {
@@ -58,12 +60,18 @@ export const useCartStore = create<CartState>()(
       },
 
       removeItem: (bookId) =>
-        set({ items: get().items.filter((i) => i.bookId !== bookId) }),
+        set((state) => ({
+          items: state.items.filter((i) => i.bookId !== bookId),
+          promoCode: state.promoBookId === bookId ? null : state.promoCode,
+          promoBookId: state.promoBookId === bookId ? null : state.promoBookId,
+          discountAmount: state.promoBookId === bookId ? 0 : state.discountAmount,
+        })),
 
-      clearCart: () => set({ items: [], promoCode: null, discountAmount: 0 }),
+      clearCart: () => set({ items: [], promoCode: null, promoBookId: null, discountAmount: 0 }),
 
-      applyPromo: (code, discount) => set({ promoCode: code, discountAmount: discount }),
-      removePromo: () => set({ promoCode: null, discountAmount: 0 }),
+      applyPromo: (code, discount, bookId) =>
+        set({ promoCode: code, promoBookId: bookId, discountAmount: discount }),
+      removePromo: () => set({ promoCode: null, promoBookId: null, discountAmount: 0 }),
 
       isInCart: (bookId) => get().items.some((i) => i.bookId === bookId),
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripeServer } from '@/lib/stripe/server';
-import { db } from '@/lib/firebase/config';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import type { User } from '@/types/user';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { requireRequestUser } from '@/lib/server/auth';
 
 const PLAN_PRICE_IDS: Record<string, string> = {
   basic: process.env.STRIPE_BASIC_PRICE_ID ?? '',
@@ -10,74 +9,93 @@ const PLAN_PRICE_IDS: Record<string, string> = {
   premium: process.env.STRIPE_PREMIUM_PRICE_ID ?? '',
 };
 
+const PLAN_AMOUNTS: Record<string, number> = {
+  basic: 499,
+  standard: 999,
+  premium: 1499,
+};
+
 export async function POST(req: NextRequest) {
   try {
-    const { plan, userId } = await req.json();
-    if (!plan || !userId) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    const requestUser = await requireRequestUser(req);
+    const { plan } = await req.json();
+
+    if (!plan || !PLAN_AMOUNTS[plan]) {
+      return NextResponse.json({ error: 'Missing or invalid plan' }, { status: 400 });
+    }
 
     const stripe = getStripeServer();
-    const userSnap = await getDoc(doc(db, 'users', userId));
-    if (!userSnap.exists()) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const adminDb = await getAdminDb();
+    const settingsSnap = await adminDb.collection('platformSettings').doc('global').get();
+    const settings = settingsSnap.data() ?? {};
 
-    const user = userSnap.data() as User;
+    if (settings.maintenanceMode === true || settings.subscriptionSalesActive === false) {
+      return NextResponse.json({ error: 'Subscriptions are currently unavailable' }, { status: 403 });
+    }
 
-    // Get or create Stripe customer
+    const userSnap = await adminDb.collection('users').doc(requestUser.uid).get();
+
+    if (!userSnap.exists) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const user = userSnap.data() as {
+      email: string;
+      firstName: string;
+      lastName: string;
+      stripeCustomerId: string | null;
+    };
+
     let customerId = user.stripeCustomerId;
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email,
         name: `${user.firstName} ${user.lastName}`,
-        metadata: { userId },
+        metadata: { userId: requestUser.uid },
       });
       customerId = customer.id;
-      await updateDoc(doc(db, 'users', userId), {
+      await adminDb.collection('users').doc(requestUser.uid).update({
         stripeCustomerId: customerId,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date(),
       });
     }
 
-    // Create subscription
     const priceId = PLAN_PRICE_IDS[plan];
-    if (!priceId) {
-      // Fallback: create with inline price
-      const subscription = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          price_data: {
-            currency: 'usd',
-            product_data: { name: `AfroBooks ${plan.charAt(0).toUpperCase() + plan.slice(1)}` },
-            unit_amount: plan === 'basic' ? 499 : plan === 'standard' ? 999 : 1499,
-            recurring: { interval: 'month' },
-          } as any,
-        }],
-        payment_behavior: 'default_incomplete',
-        expand: ['latest_invoice.payment_intent'],
-        metadata: { userId, plan },
-      });
+    const subscription =
+      priceId
+        ? await stripe.subscriptions.create({
+            customer: customerId,
+            items: [{ price: priceId }],
+            payment_behavior: 'default_incomplete',
+            expand: ['latest_invoice.payment_intent'],
+            metadata: { userId: requestUser.uid, plan },
+          })
+        : await stripe.subscriptions.create({
+            customer: customerId,
+            items: [{
+              price_data: {
+                currency: 'usd',
+                product_data: { name: `AfroBooks ${plan.charAt(0).toUpperCase() + plan.slice(1)}` },
+                unit_amount: PLAN_AMOUNTS[plan],
+                recurring: { interval: 'month' },
+              } as any,
+            }],
+            payment_behavior: 'default_incomplete',
+            expand: ['latest_invoice.payment_intent'],
+            metadata: { userId: requestUser.uid, plan },
+          });
 
-      const invoice = subscription.latest_invoice as { payment_intent?: { client_secret?: string | null } };
-      return NextResponse.json({
-        subscriptionId: subscription.id,
-        clientSecret: invoice?.payment_intent?.client_secret ?? null,
-      });
-    }
+    const invoice = subscription.latest_invoice as {
+      payment_intent?: { client_secret?: string | null };
+    };
 
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: priceId }],
-      payment_behavior: 'default_incomplete',
-      expand: ['latest_invoice.payment_intent'],
-      metadata: { userId, plan },
-    });
-
-    const invoice = subscription.latest_invoice as { payment_intent?: { client_secret?: string | null } };
     return NextResponse.json({
       subscriptionId: subscription.id,
       clientSecret: invoice?.payment_intent?.client_secret ?? null,
     });
   } catch (err) {
     console.error('create-subscription error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const status = err instanceof Error && err.message === 'Unauthorized' ? 401 : 500;
+    return NextResponse.json({ error: status === 401 ? 'Unauthorized' : 'Internal server error' }, { status });
   }
 }

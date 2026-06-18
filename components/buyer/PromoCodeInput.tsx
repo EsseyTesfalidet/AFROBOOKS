@@ -11,7 +11,7 @@ interface Props {
   bookId: string;
   sellerId: string;
   bookPrice: number;
-  onApply: (code: string, discount: number) => void;
+  onApply: (code: string, discount: number, bookId: string) => void;
   onRemove: () => void;
   appliedCode?: string | null;
 }
@@ -63,7 +63,7 @@ export default function PromoCodeInput({
         discount = bookPrice;
       }
 
-      onApply(code.trim().toUpperCase(), discount);
+      onApply(code.trim().toUpperCase(), discount, bookId);
     } catch {
       setError('Failed to validate code. Try again.');
     } finally {

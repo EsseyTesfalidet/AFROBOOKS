@@ -62,7 +62,12 @@ export default function AdminVerificationsPage() {
           (sellerData.totalSales ?? 0) >= 10;
 
         await updateDoc(doc(db, 'sellers', req.sellerId), {
-          'verificationStatus.idVerified': true,
+          verificationStatus: {
+            ...vs,
+            idVerified: true,
+            bioAdded: bioLength >= 50,
+            tenSalesReached: (sellerData.totalSales ?? 0) >= 10,
+          },
           isVerified: allDone,
         });
       }
@@ -76,7 +81,7 @@ export default function AdminVerificationsPage() {
           ? 'Your identity document has been approved. Your ID verification step is now complete.'
           : 'Your identity document was not accepted. Please resubmit a clear photo of your government-issued ID.',
         actionUrl: '/seller/profile/verification',
-        read: false,
+        isRead: false,
         createdAt: serverTimestamp(),
       });
 

@@ -26,6 +26,18 @@ service cloud.firestore {
       );
     }
 
+    function hasBookAccess(bookId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/books/$(bookId)).data.sellerId == request.auth.uid ||
+        exists(/databases/$(database)/documents/library/$(request.auth.uid + '_' + bookId)) ||
+        (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionStatus == 'active' &&
+          get(/databases/$(database)/documents/books/$(bookId)).data.inSubscription == true
+        )
+      );
+    }
+
     // Users
     match /users/{uid} {
       allow read: if isSignedIn();
@@ -45,7 +57,7 @@ service cloud.firestore {
 
       // Chapters
       match /chapters/{chapterId} {
-        allow read: if isSignedIn();
+        allow read: if resource.data.isPreview == true || hasBookAccess(bookId);
         allow write: if isAdmin() ||
           (isSignedIn() && get(/databases/$(database)/documents/books/$(bookId)).data.sellerId == request.auth.uid);
       }

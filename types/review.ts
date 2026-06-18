@@ -57,6 +57,7 @@ export interface Notification {
     | 'low_rating'
     | 'milestone'
     | 'follower'
+    | 'verification'
     | 'system';
   title: string;
   message: string;

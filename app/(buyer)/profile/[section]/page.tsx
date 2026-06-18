@@ -173,7 +173,7 @@ export default function BuyerProfilePage() {
         stripeAccountId: null,
         stripeAccountStatus: 'not_connected',
         isVerified: false,
-        verificationStatus: { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false },
+        verificationStatus: { emailVerified: true, bioAdded: userProfile.bio.trim().length >= 50, firstBookPublished: false, idVerified: false, tenSalesReached: false },
         taxFormType: null,
         taxFormStatus: 'not_submitted',
         pendingBalance: 0,

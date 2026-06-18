@@ -17,7 +17,7 @@ export const processMonthlyPayouts = functions.pubsub
     const periodLabel = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
     // Fetch all sellers with a pending balance
-    const sellersSnap = await db.collection('users')
+    const sellersSnap = await db.collection('sellers')
       .where('pendingBalance', '>', 0)
       .get();
 
@@ -25,6 +25,8 @@ export const processMonthlyPayouts = functions.pubsub
 
     for (const sellerDoc of sellersSnap.docs) {
       const seller = sellerDoc.data();
+      const userSnap = await db.collection('users').doc(sellerDoc.id).get();
+      const user = userSnap.data() ?? {};
       const amountCents: number = seller.pendingBalance ?? 0;
       const stripeAccountId: string = seller.stripeAccountId ?? '';
 
@@ -32,7 +34,7 @@ export const processMonthlyPayouts = functions.pubsub
 
       const payoutRef = await db.collection('payouts').add({
         sellerId: sellerDoc.id,
-        sellerName: `${seller.firstName} ${seller.lastName}`,
+        sellerName: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || seller.penName || sellerDoc.id,
         stripeAccountId,
         amountCents,
         periodLabel,
@@ -50,7 +52,7 @@ export const processMonthlyPayouts = functions.pubsub
         });
 
         await payoutRef.update({ status: 'paid', paidAt: admin.firestore.FieldValue.serverTimestamp() });
-        await sellerDoc.ref.update({ pendingBalance: 0 });
+        await sellerDoc.ref.update({ pendingBalance: 0, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
 
         await db.collection('notifications').add({
           userId: sellerDoc.id,
@@ -58,7 +60,7 @@ export const processMonthlyPayouts = functions.pubsub
           title: 'Payout Processed',
           message: `Your payout of $${(amountCents / 100).toFixed(2)} for ${periodLabel} has been sent.`,
           isRead: false,
-          actionUrl: '/seller/earnings',
+          actionUrl: '/earnings',
           relatedBookId: null,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });

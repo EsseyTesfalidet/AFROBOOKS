@@ -40,9 +40,11 @@ export const processMonthlyBorrowPayouts = functions.pubsub
     const batch = db.batch();
     for (const [sellerId, readCount] of Object.entries(sellerReadCounts)) {
       const earnedCents = readCount * borrowRatePerRead;
-      const sellerRef = db.collection('users').doc(sellerId);
+      const sellerRef = db.collection('sellers').doc(sellerId);
       batch.update(sellerRef, {
         pendingBalance: admin.firestore.FieldValue.increment(earnedCents),
+        totalEarnings: admin.firestore.FieldValue.increment(earnedCents),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       const notifRef = db.collection('notifications').doc();
@@ -52,7 +54,7 @@ export const processMonthlyBorrowPayouts = functions.pubsub
         title: 'Subscription Earnings Added',
         message: `You earned $${(earnedCents / 100).toFixed(2)} from ${readCount} subscription read${readCount !== 1 ? 's' : ''} in ${periodLabel}.`,
         isRead: false,
-        actionUrl: '/seller/earnings',
+        actionUrl: '/earnings',
         relatedBookId: null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });

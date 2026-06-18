@@ -43,7 +43,7 @@ export default function SellerProfilePage() {
   const searchParams = useSearchParams();
   const stripeConnected = searchParams.get('connected') === '1';
   const stripeReauth = searchParams.get('reauth') === '1';
-  const { userProfile, setUserProfile, loading: authLoading } = useAuthStore();
+  const { userProfile, firebaseUser, setUserProfile, loading: authLoading } = useAuthStore();
   const [seller, setSeller] = useState<Seller | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
@@ -182,14 +182,19 @@ export default function SellerProfilePage() {
   }
 
   async function handleStripeConnect() {
-    if (!userProfile) return;
-    const res = await fetch(`/api/stripe/connect?userId=${userProfile.uid}`);
+    if (!userProfile || !firebaseUser) return;
+    const token = await firebaseUser.getIdToken();
+    const res = await fetch('/api/stripe/connect', {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    });
     const { url } = await res.json();
     if (url) window.location.href = url;
   }
 
   async function saveProfile() {
     if (!userProfile) return;
+    const bioAdded = form.bio.trim().length >= 50;
     setSaving(true);
     await Promise.all([
       updateUserProfile(userProfile.uid, { bio: form.bio }),
@@ -201,7 +206,11 @@ export default function SellerProfilePage() {
         stripeAccountId: seller?.stripeAccountId ?? null,
         stripeAccountStatus: seller?.stripeAccountStatus ?? 'not_connected',
         isVerified: seller?.isVerified ?? false,
-        verificationStatus: seller?.verificationStatus ?? { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false },
+        verificationStatus: {
+          ...(seller?.verificationStatus ?? { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false }),
+          emailVerified: true,
+          bioAdded,
+        },
         taxFormType: seller?.taxFormType ?? null,
         taxFormStatus: seller?.taxFormStatus ?? 'not_submitted',
         pendingBalance: seller?.pendingBalance ?? 0,

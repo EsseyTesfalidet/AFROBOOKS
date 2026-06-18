@@ -26,7 +26,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const sessionCookie = request.cookies.get('__session')?.value;
+  const sessionCookie =
+    request.cookies.get('__session')?.value ||
+    request.cookies.get('ab_uid')?.value;
 
   const isAuthed = !!sessionCookie;
 

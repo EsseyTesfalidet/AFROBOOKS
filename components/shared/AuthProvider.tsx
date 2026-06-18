@@ -6,13 +6,20 @@ import { auth } from '@/lib/firebase/config';
 import { getUserProfile } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/store/authStore';
 
-function setSessionCookie(token: string) {
-  const maxAge = 60 * 60 * 24 * 7;
-  document.cookie = `__session=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+async function setSessionCookie(token: string) {
+  await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ idToken: token }),
+  });
 }
 
-function clearSessionCookie() {
-  document.cookie = '__session=; path=/; max-age=0';
+async function clearSessionCookie() {
+  await fetch('/api/auth/session', {
+    method: 'DELETE',
+    credentials: 'include',
+  }).catch(() => undefined);
 }
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -26,7 +33,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         if (firebaseUser) {
           try {
             const token = await firebaseUser.getIdToken();
-            setSessionCookie(token);
+            await setSessionCookie(token);
             setFirebaseUser(firebaseUser);
             const profile = await getUserProfile(firebaseUser.uid);
             setUserProfile(profile);
@@ -37,7 +44,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             setLoading(false);
           }
         } else {
-          clearSessionCookie();
+          await clearSessionCookie();
           reset();
         }
       });

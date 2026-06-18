@@ -42,7 +42,7 @@ const ALL_ITEMS = SECTIONS.flatMap((g) => g.items);
 export default function SellerProfileDrawer() {
   const { isOpen, section, setSection, close } = useSellerDrawerStore();
   const router = useRouter();
-  const { userProfile, setUserProfile } = useAuthStore();
+  const { userProfile, firebaseUser, setUserProfile } = useAuthStore();
 
   const [seller, setSeller] = useState<Seller | null>(null);
   const [loadingSeller, setLoadingSeller] = useState(false);
@@ -128,6 +128,7 @@ export default function SellerProfileDrawer() {
 
   async function saveProfile() {
     if (!userProfile) return;
+    const bioAdded = form.bio.trim().length >= 50;
     setSaving(true);
     await Promise.all([
       updateUserProfile(userProfile.uid, { bio: form.bio }),
@@ -139,7 +140,11 @@ export default function SellerProfileDrawer() {
         stripeAccountId: seller?.stripeAccountId ?? null,
         stripeAccountStatus: seller?.stripeAccountStatus ?? 'not_connected',
         isVerified: seller?.isVerified ?? false,
-        verificationStatus: seller?.verificationStatus ?? { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false },
+        verificationStatus: {
+          ...(seller?.verificationStatus ?? { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false }),
+          emailVerified: true,
+          bioAdded,
+        },
         taxFormType: seller?.taxFormType ?? null,
         taxFormStatus: seller?.taxFormStatus ?? 'not_submitted',
         pendingBalance: seller?.pendingBalance ?? 0,
@@ -227,8 +232,12 @@ export default function SellerProfileDrawer() {
   }
 
   async function handleStripeConnect() {
-    if (!userProfile) return;
-    const res = await fetch(`/api/stripe/connect?userId=${userProfile.uid}`);
+    if (!userProfile || !firebaseUser) return;
+    const token = await firebaseUser.getIdToken();
+    const res = await fetch('/api/stripe/connect', {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    });
     const { url } = await res.json();
     if (url) window.location.href = url;
   }

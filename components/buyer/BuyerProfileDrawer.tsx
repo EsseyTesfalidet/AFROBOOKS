@@ -194,7 +194,7 @@ export default function BuyerProfileDrawer() {
         socialLinks: { twitter: '', instagram: '', linkedin: '', goodreads: '' },
         stripeAccountId: null, stripeAccountStatus: 'not_connected',
         isVerified: false,
-        verificationStatus: { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false },
+        verificationStatus: { emailVerified: true, bioAdded: userProfile.bio.trim().length >= 50, firstBookPublished: false, idVerified: false, tenSalesReached: false },
         taxFormType: null, taxFormStatus: 'not_submitted',
         pendingBalance: 0, totalEarnings: 0, payoutSchedule: 'monthly',
         followersCount: 0, totalSales: 0, averageRating: 0,

@@ -8,8 +8,11 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['firebasestorage.googleapis.com'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+    ],
   },
+  turbopack: {},
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

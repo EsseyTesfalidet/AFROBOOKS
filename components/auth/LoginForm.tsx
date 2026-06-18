@@ -39,8 +39,13 @@ export default function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  function setSessionCookie(token: string) {
-    document.cookie = `__session=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  async function setSessionCookie(token: string) {
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ idToken: token }),
+    });
   }
 
   async function onSubmit({ email, password }: FormData) {
@@ -48,7 +53,7 @@ export default function LoginForm() {
     try {
       const fbUser = await logIn(email, password);
       const token = await fbUser.getIdToken();
-      setSessionCookie(token);
+      await setSessionCookie(token);
       const profile = await getUserProfile(fbUser.uid);
       if (profile?.role === 'admin') {
         router.replace('/admin');
@@ -77,7 +82,7 @@ export default function LoginForm() {
     try {
       const user = await signInWithGoogle();
       const token = await user.getIdToken();
-      setSessionCookie(token);
+      await setSessionCookie(token);
       const profile = await getUserProfile(user.uid);
       if (profile?.role === 'admin') router.replace('/admin');
       else if (profile?.activeRole === 'seller') router.replace('/dashboard');

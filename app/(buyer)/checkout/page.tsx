@@ -27,8 +27,9 @@ function CheckoutForm() {
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
-  const { items, promoCode, discountAmount, getTotal, clearCart } = useCartStore();
+  const { items, promoCode, promoBookId, discountAmount, getTotal, clearCart } = useCartStore();
   const userProfile = useAuthStore((s) => s.userProfile);
+  const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const [cardName, setCardName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,19 +37,22 @@ function CheckoutForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!stripe || !elements || !userProfile) return;
+    if (!stripe || !elements || !userProfile || !firebaseUser) return;
     setError('');
     setLoading(true);
 
     try {
+      const token = await firebaseUser.getIdToken();
       const res = await fetch('/api/stripe/create-payment-intent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           items: items.map((i) => ({ bookId: i.bookId })),
-          userId: userProfile.uid,
-          userEmail: userProfile.email,
           promoCode,
+          promoBookId,
           discountAmount,
         }),
       });
