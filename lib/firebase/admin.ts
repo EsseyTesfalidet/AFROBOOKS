@@ -1,6 +1,6 @@
-type FirebaseAdminModule = typeof import('../../functions/node_modules/firebase-admin');
-
-let adminModulePromise: Promise<FirebaseAdminModule> | null = null;
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 
 function getServiceAccount() {
   const projectId =
@@ -16,50 +16,42 @@ function getServiceAccount() {
   return { projectId, clientEmail, privateKey };
 }
 
-async function getAdminModule() {
-  if (!adminModulePromise) {
-    adminModulePromise = import('../../functions/node_modules/firebase-admin');
+function ensureAdminApp() {
+  if (getApps().length) {
+    return getApps()[0];
   }
 
-  const admin = await adminModulePromise;
+  const serviceAccount = getServiceAccount();
+  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
-  if (!admin.apps.length) {
-    const serviceAccount = getServiceAccount();
-    const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
-    if (serviceAccount) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: serviceAccount.projectId,
-        storageBucket,
-      });
-    } else {
-      admin.initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket,
-      });
-    }
+  if (serviceAccount) {
+    return initializeApp({
+      credential: cert(serviceAccount),
+      projectId: serviceAccount.projectId,
+      storageBucket,
+    });
   }
 
-  return admin;
+  return initializeApp({
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket,
+  });
 }
 
 export async function getAdminAuth() {
-  const admin = await getAdminModule();
-  return admin.auth();
+  return getAuth(ensureAdminApp());
 }
 
 export async function getAdminDb() {
-  const admin = await getAdminModule();
-  return admin.firestore();
+  return getFirestore(ensureAdminApp());
 }
 
 export async function getAdminFieldValue() {
-  const admin = await getAdminModule();
-  return admin.firestore.FieldValue;
+  ensureAdminApp();
+  return FieldValue;
 }
 
 export async function getAdminTimestamp() {
-  const admin = await getAdminModule();
-  return admin.firestore.Timestamp;
+  ensureAdminApp();
+  return Timestamp;
 }

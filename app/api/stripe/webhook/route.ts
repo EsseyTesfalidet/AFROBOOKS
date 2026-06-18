@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { getStripeServer } from '@/lib/stripe/server';
 import { getAdminDb, getAdminFieldValue } from '@/lib/firebase/admin';
 import { sendPurchaseReceiptEmail, sendSubscriptionConfirmation } from '@/lib/server/email';
-
-export const config = { api: { bodyParser: false } };
 
 export async function POST(req: NextRequest) {
   const stripe = getStripeServer();
@@ -157,7 +156,7 @@ export async function POST(req: NextRequest) {
 
       if (sent) {
         await Promise.all(
-          ordersSnap.docs.map((orderDoc) =>
+          ordersSnap.docs.map((orderDoc: QueryDocumentSnapshot) =>
             orderDoc.ref.update({ receiptEmailSent: true })
           )
         );
