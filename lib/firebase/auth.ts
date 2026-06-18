@@ -19,20 +19,6 @@ import type { User as UserProfile } from '@/types/user';
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-function shouldUseRedirectFlow() {
-  if (typeof window === 'undefined') return false;
-  const userAgent = window.navigator.userAgent.toLowerCase();
-  const isMobile =
-    /android|iphone|ipad|ipod|mobile/i.test(userAgent) ||
-    window.matchMedia?.('(max-width: 768px)').matches;
-  const isSafari =
-    userAgent.includes('safari') &&
-    !userAgent.includes('chrome') &&
-    !userAgent.includes('android');
-
-  return isMobile || isSafari;
-}
-
 function generateReferralCode(firstName: string): string {
   const adj = ['AFRO', 'BOLD', 'EPIC', 'WISE', 'COOL'];
   const randomAdj = adj[Math.floor(Math.random() * adj.length)];
@@ -108,11 +94,6 @@ export async function logIn(email: string, password: string): Promise<User> {
 
 export async function signInWithGoogle(): Promise<User | null> {
   let user: User | null = null;
-
-  if (shouldUseRedirectFlow()) {
-    await signInWithRedirect(auth, googleProvider, browserPopupRedirectResolver);
-    return null;
-  }
 
   try {
     const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);

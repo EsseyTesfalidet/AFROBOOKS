@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { signUp } from '@/lib/firebase/auth';
+import { syncAuthSession } from '@/lib/firebase/session';
 import Logo from '@/components/shared/Logo';
 import RoleSelector from './RoleSelector';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -51,15 +52,6 @@ export default function SignupForm() {
       .catch(() => undefined);
   }, []);
 
-  async function setSessionCookie(token: string) {
-    await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ idToken: token }),
-    });
-  }
-
   async function onSubmit({ email, password, firstName, lastName }: FormData) {
     setError('');
     if (signupsOpen.maintenanceMode) {
@@ -77,7 +69,7 @@ export default function SignupForm() {
     try {
       const fbUser = await signUp(email, password, firstName, lastName, role);
       const token = await fbUser.getIdToken();
-      await setSessionCookie(token);
+      await syncAuthSession(token, fbUser.uid);
       fetch('/api/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

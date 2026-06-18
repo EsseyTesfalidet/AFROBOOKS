@@ -18,6 +18,7 @@ export function middleware(request: NextRequest) {
 
   // Let Next.js internals, API routes, and static files pass through
   if (
+    pathname.startsWith('/__') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/icons') ||
