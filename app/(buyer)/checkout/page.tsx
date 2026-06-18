@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { ShieldCheck } from 'lucide-react';
@@ -121,9 +121,12 @@ function CheckoutForm() {
 export default function CheckoutPage() {
   const { items, getSubtotal, getBundleDiscount, promoCode, discountAmount, getTotal } = useCartStore();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const sub = getSubtotal();
   const bundle = getBundleDiscount();
   const tot = getTotal();
+
+  useEffect(() => { setMounted(true); }, []);
 
   if (items.length === 0) { router.replace('/cart'); return null; }
 
@@ -174,9 +177,11 @@ export default function CheckoutPage() {
           {/* Payment */}
           <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <h2 className="font-display text-display-sm text-white mb-4">Payment</h2>
-            <Elements stripe={getStripe()}>
-              <CheckoutForm />
-            </Elements>
+            {mounted && (
+              <Elements stripe={getStripe()}>
+                <CheckoutForm />
+              </Elements>
+            )}
           </div>
         </div>
       </main>
