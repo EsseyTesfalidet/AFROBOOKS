@@ -125,6 +125,11 @@ export default function PublishPage() {
     setPublishing(true);
     try {
       const settings = await getPlatformSettings();
+      const shouldCreatePublicListing = publishMode !== 'draft';
+      const nextBookStatus =
+        shouldCreatePublicListing
+          ? (settings.autoApproveBooks ? 'live' : 'in_review')
+          : 'draft';
 
       // Create book document
       const bookRef = await addDoc(collection(db, 'books'), {
@@ -143,7 +148,7 @@ export default function PublishPage() {
         targetAgeGroup: ageGroup,
         isbn: isbn || null,
         price,
-        status: publishMode === 'now' ? (settings.autoApproveBooks ? 'live' : 'in_review') : 'draft',
+        status: nextBookStatus,
         isFeatured: false,
         inSubscription: subscriptionType !== 'sell_only',
         subscriptionTiers: subTiers,
@@ -154,7 +159,7 @@ export default function PublishPage() {
         totalBorrows: 0,
         averageRating: 0,
         reviewCount: 0,
-        publishedAt: publishMode === 'now' ? serverTimestamp() : null,
+        publishedAt: shouldCreatePublicListing ? serverTimestamp() : null,
         isPreorder: publishMode === 'preorder',
         releaseDate: publishMode === 'preorder' && releaseDate ? new Date(releaseDate) : null,
         flagReason: null,
@@ -213,6 +218,12 @@ export default function PublishPage() {
       router.push('/listings');
     } catch (err) {
       console.error('Publish error:', err);
+      setPublishError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'We could not publish this book. Please try again.'
+      );
+    } finally {
       setPublishing(false);
     }
   }

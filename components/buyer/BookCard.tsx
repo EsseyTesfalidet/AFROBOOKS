@@ -11,6 +11,9 @@ interface BookCardProps {
 }
 
 export default function BookCard({ book, rank, badge }: BookCardProps) {
+  const releaseDate = book.releaseDate?.toDate?.() ?? null;
+  const isPreorder = book.isPreorder && releaseDate && releaseDate > new Date();
+
   return (
     <Link
       href={`/book/${book.id}`}
@@ -47,6 +50,15 @@ export default function BookCard({ book, rank, badge }: BookCardProps) {
             style={{ background: '#7c3aed', color: '#fff', fontSize: 8 }}
           >
             SUB
+          </span>
+        )}
+
+        {isPreorder && (
+          <span
+            className="absolute top-7 left-2 px-1.5 py-0.5 rounded text-xs font-bold"
+            style={{ background: '#0ea5e9', color: '#fff', fontSize: 8 }}
+          >
+            PRE-ORDER
           </span>
         )}
 

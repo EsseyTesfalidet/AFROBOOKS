@@ -37,6 +37,25 @@ export default function AdminBooksPage() {
     setBooks((prev) => prev.map((b) => b.id === bookId ? { ...b, isFeatured: !current } : b));
   }
 
+  async function approveBook(book: Book) {
+    await updateDoc(doc(db, 'books', book.id), {
+      status: 'live',
+      publishedAt: book.publishedAt ?? serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    setBooks((prev) => prev.map((item) => item.id === book.id ? { ...item, status: 'live' } : item));
+    await addDoc(collection(db, 'notifications'), {
+      userId: book.sellerId,
+      type: 'system',
+      title: 'Book Approved',
+      message: `Your book "${book.title}" is now live in the buyer catalog.`,
+      isRead: false,
+      actionUrl: '/listings',
+      relatedBookId: book.id,
+      createdAt: serverTimestamp(),
+    });
+  }
+
   async function removeBook(bookId: string, sellerId: string, title: string) {
     await updateDoc(doc(db, 'books', bookId), { status: 'removed', updatedAt: serverTimestamp() });
     setBooks((prev) => prev.map((b) => b.id === bookId ? { ...b, status: 'removed' } : b));
@@ -86,6 +105,16 @@ export default function AdminBooksPage() {
                     <td className="px-4 py-3"><StatusPill status={book.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
+                        {book.status === 'in_review' && (
+                          <button
+                            type="button"
+                            onClick={() => approveBook(book)}
+                            className="text-xs px-2.5 py-1 rounded-lg border"
+                            style={{ borderColor: '#4ade80', color: '#4ade80' }}
+                          >
+                            Approve
+                          </button>
+                        )}
                         <button type="button" onClick={() => toggleFeatured(book.id, book.isFeatured)}
                           className="text-xs px-2.5 py-1 rounded-lg border"
                           style={{ borderColor: book.isFeatured ? '#f5b800' : '#333', color: book.isFeatured ? '#f5b800' : '#888' }}>
