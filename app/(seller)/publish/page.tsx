@@ -215,7 +215,11 @@ export default function PublishPage() {
         );
       }
 
-      router.push('/listings');
+      const resultParams = new URLSearchParams({
+        published: nextBookStatus,
+        mode: publishMode,
+      });
+      router.push(`/listings?${resultParams.toString()}`);
     } catch (err) {
       console.error('Publish error:', err);
       setPublishError(

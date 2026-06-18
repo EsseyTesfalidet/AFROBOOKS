@@ -81,6 +81,7 @@ export default function SellerProfilePage() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState(false);
+  const [authorProfileUrl, setAuthorProfileUrl] = useState('');
   // Notifications
   const [notifPrefs, setNotifPrefs] = useState(userProfile?.notificationPreferences ?? {
     purchaseConfirmations: true, readingReminders: true, newChapterAlerts: true,
@@ -120,6 +121,12 @@ export default function SellerProfilePage() {
       active = false;
     };
   }, [authLoading, userProfile?.uid]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && userProfile?.uid) {
+      setAuthorProfileUrl(`${window.location.origin}/author/${userProfile.uid}`);
+    }
+  }, [userProfile?.uid]);
 
   useEffect(() => {
     if (section !== 'coauthor' || !userProfile) return;
@@ -635,10 +642,10 @@ export default function SellerProfilePage() {
               {userProfile && (
                 <div className="flex items-center gap-2 mb-5 p-3 rounded-lg border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                   <span className="text-xs text-[#555] flex-1 truncate">
-                    {typeof window !== 'undefined' ? window.location.origin : ''}/author/{userProfile.uid}
+                    {authorProfileUrl || `/author/${userProfile.uid}`}
                   </span>
                   <button type="button" title="Copy link"
-                    onClick={() => navigator.clipboard.writeText(`${window.location.origin}/author/${userProfile.uid}`)}
+                    onClick={() => authorProfileUrl && navigator.clipboard.writeText(authorProfileUrl)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border flex-shrink-0"
                     style={{ borderColor: '#333', color: '#aaa' }}>
                     <Copy size={12} /> Copy link

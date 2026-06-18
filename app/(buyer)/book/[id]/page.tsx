@@ -15,6 +15,7 @@ import FollowButton from '@/components/shared/FollowButton';
 import { getBook, getBookReviews, isBookInLibrary, createReport, getSimilarBooks } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
+import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 import type { Review } from '@/types/review';
@@ -32,6 +33,7 @@ export default function BookDetailPage() {
   const router = useRouter();
   const userProfile = useAuthStore((s) => s.userProfile);
   const { addItem, isInCart, applyPromo, removePromo, promoCode, promoBookId } = useCartStore();
+  const addRecentlyViewedBook = useRecentlyViewedStore((state) => state.addBook);
 
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -43,6 +45,7 @@ export default function BookDetailPage() {
   const [selectedOption, setSelectedOption] = useState<'buy' | 'subscribe'>('buy');
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
 
   // Report modal
   const [reportOpen, setReportOpen] = useState(false);
@@ -73,6 +76,18 @@ export default function BookDetailPage() {
       setDiscount(0);
     }
   }, [id, promoBookId, promoCode]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setShareUrl(window.location.href);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (book?.id) {
+      addRecentlyViewedBook(book.id);
+    }
+  }, [addRecentlyViewedBook, book?.id]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
   if (!book) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] text-[#444]">Book not found.</div>;
@@ -272,19 +287,19 @@ export default function BookDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs flex items-center gap-1" style={{ color: '#555' }}><Share2 size={11} /> Share:</span>
           <button type="button"
-            onClick={() => { navigator.clipboard.writeText(window.location.href); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
+            onClick={() => { if (!shareUrl) return; navigator.clipboard.writeText(shareUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-colors"
             style={{ borderColor: '#2a2a2a', color: linkCopied ? '#4ade80' : '#666', background: '#111' }}>
             {linkCopied ? <Check size={11} /> : <Copy size={11} />}
             {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
-          <a href={`https://wa.me/?text=${encodeURIComponent(`"${book.title}" by ${book.authorName} on AfroBooks — ${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+          <a href={`https://wa.me/?text=${encodeURIComponent(`"${book.title}" by ${book.authorName} on AfroBooks — ${shareUrl}`)}`}
             target="_blank" rel="noopener noreferrer"
             className="px-2.5 py-1 rounded-lg text-xs border transition-colors hover:text-white"
             style={{ borderColor: '#2a2a2a', color: '#666', background: '#111' }}>
             WhatsApp
           </a>
-          <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`"${book.title}" by ${book.authorName}`)}&url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+          <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`"${book.title}" by ${book.authorName}`)}&url=${encodeURIComponent(shareUrl)}`}
             target="_blank" rel="noopener noreferrer"
             className="px-2.5 py-1 rounded-lg text-xs border transition-colors hover:text-white"
             style={{ borderColor: '#2a2a2a', color: '#666', background: '#111' }}>

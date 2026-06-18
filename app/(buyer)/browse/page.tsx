@@ -18,12 +18,14 @@ import {
 } from '@/lib/firebase/firestore';
 import { orderBy, limit } from 'firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
+import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import type { Book } from '@/types/book';
 
 const GENRES = ['All', 'Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 
 export default function BrowsePage() {
   const userProfile = useAuthStore((state) => state.userProfile);
+  const recentBookIds = useRecentlyViewedStore((state) => state.bookIds);
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [trendingBooks, setTrendingBooks] = useState<Book[]>([]);
   const [favoriteGenreBooks, setFavoriteGenreBooks] = useState<Book[]>([]);
@@ -96,6 +98,13 @@ export default function BrowsePage() {
   );
 
   const newArrivals = useMemo(() => allBooks.slice(0, 10), [allBooks]);
+  const recentlyViewedBooks = useMemo(
+    () => recentBookIds
+      .map((bookId) => allBooks.find((book) => book.id === bookId))
+      .filter((book): book is Book => Boolean(book))
+      .slice(0, 10),
+    [allBooks, recentBookIds]
+  );
 
   const firstName = userProfile?.firstName || 'Reader';
   const favoriteGenre = userProfile?.favoriteGenre || 'Fiction';
@@ -252,6 +261,15 @@ export default function BrowsePage() {
                 badge="Followed"
                 actionHref="/notifications"
                 books={followedAuthorBooks}
+              />
+            ) : null}
+
+            {recentlyViewedBooks.length > 0 ? (
+              <BookRail
+                title="Recently viewed"
+                subtitle="Jump back into titles you checked out recently."
+                badge="Resume"
+                books={recentlyViewedBooks}
               />
             ) : null}
 

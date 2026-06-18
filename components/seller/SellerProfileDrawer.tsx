@@ -81,6 +81,7 @@ export default function SellerProfileDrawer() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState(false);
+  const [authorProfileUrl, setAuthorProfileUrl] = useState('');
 
   const [notifPrefs, setNotifPrefs] = useState(userProfile?.notificationPreferences ?? {
     purchaseConfirmations: true, readingReminders: true, newChapterAlerts: true,
@@ -129,6 +130,12 @@ export default function SellerProfileDrawer() {
       active = false;
     };
   }, [isOpen, userProfile?.uid]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && userProfile?.uid) {
+      setAuthorProfileUrl(`${window.location.origin}/author/${userProfile.uid}`);
+    }
+  }, [userProfile?.uid]);
 
   useEffect(() => {
     if (!isOpen || section !== 'coauthor' || !userProfile) return;
@@ -678,7 +685,7 @@ export default function SellerProfileDrawer() {
               {userProfile && (
                 <div className="flex items-center gap-2 p-3 rounded-lg border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                   <span className="text-xs text-[#555] flex-1 truncate">/author/{userProfile.uid.slice(0, 12)}...</span>
-                  <button type="button" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/author/${userProfile.uid}`)}
+                  <button type="button" onClick={() => authorProfileUrl && navigator.clipboard.writeText(authorProfileUrl)}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border" style={{ borderColor: '#333', color: '#aaa' }}>
                     <Copy size={11} /> Copy
                   </button>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { PlusCircle, Trash2, Pause, Play } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
 import StatusPill from '@/components/shared/StatusPill';
@@ -17,6 +18,7 @@ import type { PromoCode } from '@/types/review';
 import { Timestamp } from 'firebase/firestore';
 
 export default function ListingsPage() {
+  const searchParams = useSearchParams();
   const userProfile = useAuthStore((s) => s.userProfile);
   const [books, setBooks] = useState<Book[]>([]);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
@@ -70,6 +72,43 @@ export default function ListingsPage() {
     setPromoCodes(snap.docs.map((d) => ({ id: d.id, ...d.data() } as PromoCode)));
   }
 
+  const liveBooksCount = books.filter((book) => book.status === 'live').length;
+  const inReviewBooksCount = books.filter((book) => book.status === 'in_review').length;
+  const draftBooksCount = books.filter((book) => book.status === 'draft').length;
+  const publishedStatus = searchParams.get('published');
+  const publishMode = searchParams.get('mode');
+
+  const publishNotice = useMemo(() => {
+    if (publishedStatus === 'live') {
+      return {
+        title: publishMode === 'preorder' ? 'Pre-order is live.' : 'Book is live.',
+        message:
+          publishMode === 'preorder'
+            ? 'Buyers can now discover this title and place pre-orders.'
+            : 'Buyers can now discover this book in browse and search.',
+        styles: { background: '#0f2e1a', borderColor: '#1a4a2a', color: '#4ade80' },
+      };
+    }
+
+    if (publishedStatus === 'in_review') {
+      return {
+        title: 'Book sent to review.',
+        message: 'It is saved correctly and will appear to buyers after approval in Admin > Books.',
+        styles: { background: '#102033', borderColor: '#1e3a5f', color: '#7dd3fc' },
+      };
+    }
+
+    if (publishedStatus === 'draft') {
+      return {
+        title: 'Draft saved.',
+        message: 'Drafts stay private until you publish them.',
+        styles: { background: '#161616', borderColor: '#2a2a2a', color: '#aaa' },
+      };
+    }
+
+    return null;
+  }, [publishMode, publishedStatus]);
+
   if (loading) return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <SellerHeader />
@@ -88,11 +127,28 @@ export default function ListingsPage() {
           </Link>
         </div>
 
+        {publishNotice && (
+          <div className="mb-6 rounded-xl border px-4 py-3" style={publishNotice.styles}>
+            <p className="text-sm font-medium">{publishNotice.title}</p>
+            <p className="mt-1 text-xs opacity-90">{publishNotice.message}</p>
+          </div>
+        )}
+
+        {inReviewBooksCount > 0 && (
+          <div className="mb-6 rounded-xl border px-4 py-3" style={{ background: '#16120a', borderColor: '#3d2f14', color: '#f5b800' }}>
+            <p className="text-sm font-medium">Review queue active</p>
+            <p className="mt-1 text-xs opacity-90">
+              {inReviewBooksCount} book{inReviewBooksCount === 1 ? '' : 's'} waiting for approval. Use Admin &gt; Books to make them visible to buyers.
+            </p>
+          </div>
+        )}
+
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-4">
           {[
-            { label: 'Live', value: books.filter((b) => b.status === 'live').length },
-            { label: 'Drafts', value: books.filter((b) => b.status === 'draft').length },
+            { label: 'Live', value: liveBooksCount },
+            { label: 'In Review', value: inReviewBooksCount },
+            { label: 'Drafts', value: draftBooksCount },
             { label: 'Total Sales', value: books.reduce((s, b) => s + b.totalSales, 0) },
           ].map(({ label, value }) => (
             <div key={label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
@@ -133,7 +189,12 @@ export default function ListingsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-7 h-9 rounded flex-shrink-0" style={{ background: book.coverBgColor }} />
-                          <p className="font-medium text-white truncate max-w-[160px]">{book.title}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium text-white truncate max-w-[160px]">{book.title}</p>
+                            {book.isPreorder && (
+                              <p className="text-[10px] uppercase tracking-[0.18em] text-[#0ea5e9]">Pre-order</p>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(book.price)}</td>
