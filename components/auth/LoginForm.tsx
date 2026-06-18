@@ -81,15 +81,29 @@ export default function LoginForm() {
     setError('');
     try {
       const user = await signInWithGoogle();
+      if (!user) return;
       const token = await user.getIdToken();
       await setSessionCookie(token);
       const profile = await getUserProfile(user.uid);
       if (profile?.role === 'admin') router.replace('/admin');
       else if (profile?.activeRole === 'seller') router.replace('/dashboard');
       else router.replace('/browse');
-    } catch {
+    } catch (e: unknown) {
       setGoogleLoading(false);
-      setError('Google sign-in failed. Try again.');
+      const code =
+        typeof e === 'object' && e && 'code' in e
+          ? String((e as { code?: string }).code)
+          : '';
+
+      if (code === 'auth/unauthorized-domain') {
+        setError('Google sign-in is blocked for this domain. Add this site to Firebase Auth authorized domains.');
+      } else if (code === 'auth/operation-not-allowed') {
+        setError('Google sign-in is not enabled in Firebase Authentication.');
+      } else if (code === 'auth/popup-blocked') {
+        setError('The sign-in popup was blocked by the browser.');
+      } else {
+        setError('Google sign-in failed. Check Firebase Auth provider and authorized domains.');
+      }
     }
   }
 
