@@ -7,9 +7,17 @@ import { X, LogOut, ExternalLink, CheckCircle, Circle, Upload, Clock, Plus, Tras
 import { useSellerDrawerStore } from '@/store/profileDrawerStore';
 import { useAuthStore } from '@/store/authStore';
 import { updateUserProfile, logOut, changePassword } from '@/lib/firebase/auth';
+import { getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
 import { db, storage } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import {
+  DEFAULT_SELLER_VERIFICATION_STATUS,
+  SELLER_BOOKS_BEFORE_ID_VERIFICATION,
+  canSubmitSellerIdVerification,
+  getRemainingGraceBooksBeforeIdVerification,
+  hasCompletedSellerVerification,
+} from '@/lib/sellerVerification';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import Toggle from '@/components/shared/Toggle';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -46,6 +54,7 @@ export default function SellerProfileDrawer() {
 
   const [seller, setSeller] = useState<Seller | null>(null);
   const [loadingSeller, setLoadingSeller] = useState(false);
+  const [publishedBooksCount, setPublishedBooksCount] = useState(0);
   const [form, setForm] = useState({ penName: '', website: '', bio: '', twitter: '', instagram: '', linkedin: '', goodreads: '' });
   const [saving, setSaving] = useState(false);
   const [savedProfile, setSavedProfile] = useState(false);
@@ -91,9 +100,15 @@ export default function SellerProfileDrawer() {
   useEffect(() => {
     if (!isOpen || !userProfile) return;
     setLoadingSeller(true);
-    getDoc(doc(db, 'sellers', userProfile.uid)).then((snap) => {
-      if (snap.exists()) {
-        const s = snap.data() as Seller;
+    let active = true;
+    Promise.all([
+      getDoc(doc(db, 'sellers', userProfile.uid)),
+      getDocs(query(collection(db, 'verificationRequests'), where('sellerId', '==', userProfile.uid))),
+      getSellerPublishedBooksCount(userProfile.uid),
+    ]).then(([sellerSnap, requestSnap, bookCount]) => {
+      if (!active) return;
+      if (sellerSnap.exists()) {
+        const s = sellerSnap.data() as Seller;
         setSeller(s);
         setForm({
           penName: s.penName ?? '',
@@ -105,11 +120,13 @@ export default function SellerProfileDrawer() {
           goodreads: s.socialLinks?.goodreads ?? '',
         });
       }
+      if (!requestSnap.empty) setIdRequest(requestSnap.docs[0].data() as { status: string });
+      setPublishedBooksCount(bookCount);
       setLoadingSeller(false);
     });
-    getDocs(query(collection(db, 'verificationRequests'), where('sellerId', '==', userProfile.uid))).then((snap) => {
-      if (!snap.empty) setIdRequest(snap.docs[0].data() as { status: string });
-    });
+    return () => {
+      active = false;
+    };
   }, [isOpen, userProfile?.uid]);
 
   useEffect(() => {
@@ -129,6 +146,13 @@ export default function SellerProfileDrawer() {
   async function saveProfile() {
     if (!userProfile) return;
     const bioAdded = form.bio.trim().length >= 50;
+    const nextVerificationStatus = {
+      ...DEFAULT_SELLER_VERIFICATION_STATUS,
+      ...(seller?.verificationStatus ?? {}),
+      emailVerified: seller?.verificationStatus?.emailVerified ?? true,
+      bioAdded,
+      tenSalesReached: (seller?.totalSales ?? 0) >= 10,
+    };
     setSaving(true);
     await Promise.all([
       updateUserProfile(userProfile.uid, { bio: form.bio }),
@@ -139,17 +163,14 @@ export default function SellerProfileDrawer() {
         socialLinks: { twitter: form.twitter, instagram: form.instagram, linkedin: form.linkedin, goodreads: form.goodreads },
         stripeAccountId: seller?.stripeAccountId ?? null,
         stripeAccountStatus: seller?.stripeAccountStatus ?? 'not_connected',
-        isVerified: seller?.isVerified ?? false,
-        verificationStatus: {
-          ...(seller?.verificationStatus ?? { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false }),
-          emailVerified: true,
-          bioAdded,
-        },
+        isVerified: hasCompletedSellerVerification(nextVerificationStatus),
+        verificationStatus: nextVerificationStatus,
         taxFormType: seller?.taxFormType ?? null,
         taxFormStatus: seller?.taxFormStatus ?? 'not_submitted',
         pendingBalance: seller?.pendingBalance ?? 0,
         totalEarnings: seller?.totalEarnings ?? 0,
         payoutSchedule: 'monthly',
+        nextPayoutDate: seller?.nextPayoutDate ?? serverTimestamp(),
         followersCount: seller?.followersCount ?? 0,
         totalSales: seller?.totalSales ?? 0,
         averageRating: seller?.averageRating ?? 0,
@@ -164,7 +185,7 @@ export default function SellerProfileDrawer() {
   }
 
   async function submitIdVerification() {
-    if (!userProfile || !idFile) return;
+    if (!userProfile || !idFile || !canUploadIdVerification) return;
     setIdUploading(true);
     try {
       const storageRef = ref(storage, `verification/${userProfile.uid}/id_${Date.now()}_${idFile.name}`);
@@ -256,6 +277,8 @@ export default function SellerProfileDrawer() {
     { label: '10 sales reached', done: (seller?.totalSales ?? 0) >= 10 },
   ];
   const verificationDone = verificationSteps.filter((s) => s.done).length;
+  const booksRemainingBeforeVerification = getRemainingGraceBooksBeforeIdVerification(publishedBooksCount);
+  const canUploadIdVerification = canSubmitSellerIdVerification(publishedBooksCount);
 
   const [isMobile, setIsMobile] = useState(false);
   const [dragY, setDragY] = useState(0);
@@ -640,8 +663,24 @@ export default function SellerProfileDrawer() {
               <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 <div className="p-3 rounded-xl" style={{ background: '#2e1a0f', border: '1px solid #3a2a0a' }}>
                   <p className="text-sm font-medium" style={{ color: '#f5b800' }}>Verified Author Program</p>
-                  <p className="text-xs text-[#888] mt-0.5">Complete all steps to earn your verified badge.</p>
+                  <p className="text-xs text-[#888] mt-0.5">
+                    Publish your first {SELLER_BOOKS_BEFORE_ID_VERIFICATION} books before ID verification is required.
+                  </p>
                 </div>
+                {!seller?.verificationStatus?.idVerified && (
+                  <div className="p-3 rounded-xl border" style={{ background: '#0f172a', borderColor: '#1e293b' }}>
+                    <p className="text-xs font-medium" style={{ color: '#dbeafe' }}>
+                      {canUploadIdVerification
+                        ? 'ID verification unlocked'
+                        : `Publish ${booksRemainingBeforeVerification} more ${booksRemainingBeforeVerification === 1 ? 'book' : 'books'} first`}
+                    </p>
+                    <p className="text-xs text-[#94a3b8] mt-1">
+                      {canUploadIdVerification
+                        ? 'Submit your government-issued ID to keep publishing new titles.'
+                        : `You currently have ${publishedBooksCount} published ${publishedBooksCount === 1 ? 'book' : 'books'}.`}
+                    </p>
+                  </div>
+                )}
                 <ProgressBar value={verificationDone} max={5} color="#f5b800" height={6} showLabel />
                 <div className="space-y-3">
                   {verificationSteps.map(({ label, done }) => (
@@ -649,20 +688,32 @@ export default function SellerProfileDrawer() {
                       <div className="flex items-center gap-3">
                         {done ? <CheckCircle size={15} style={{ color: '#4ade80' }} /> : <Circle size={15} style={{ color: '#333' }} />}
                         <span className="text-sm flex-1" style={{ color: done ? '#f5f2eb' : '#555' }}>{label}</span>
-                        {!done && label === 'ID verified' && !idRequest && (
+                        {!done && label === 'ID verified' && !canUploadIdVerification && (
+                          <span className="text-[11px]" style={{ color: '#666' }}>
+                            {booksRemainingBeforeVerification} more to unlock
+                          </span>
+                        )}
+                        {!done && label === 'ID verified' && canUploadIdVerification && !idRequest && (
                           <button type="button" onClick={() => idInputRef.current?.click()}
                             className="text-xs px-2 py-1 rounded-lg flex items-center gap-1"
                             style={{ background: '#e8442a', color: '#fff' }}>
                             <Upload size={10} /> Upload
                           </button>
                         )}
-                        {!done && label === 'ID verified' && idRequest?.status === 'pending' && (
+                        {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'pending' && (
                           <span className="flex items-center gap-1 text-xs" style={{ color: '#f5b800' }}>
                             <Clock size={11} /> Under Review
                           </span>
                         )}
+                        {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'rejected' && (
+                          <button type="button" onClick={() => idInputRef.current?.click()}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{ background: '#e8442a', color: '#fff' }}>
+                            Resubmit
+                          </button>
+                        )}
                       </div>
-                      {!done && label === 'ID verified' && !idRequest && idFile && (
+                      {!done && label === 'ID verified' && canUploadIdVerification && !idRequest && idFile && (
                         <div className="ml-6 mt-2 p-2 rounded-lg border" style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}>
                           <p className="text-xs text-[#aaa] mb-2">{idFile.name}</p>
                           <button type="button" onClick={submitIdVerification} disabled={idUploading}

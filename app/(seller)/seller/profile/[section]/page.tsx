@@ -8,10 +8,18 @@ import SellerHeader from '@/components/seller/SellerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import { useAuthStore } from '@/store/authStore';
+import { getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
 import { db, storage } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateUserProfile, changePassword, logOut } from '@/lib/firebase/auth';
+import {
+  DEFAULT_SELLER_VERIFICATION_STATUS,
+  SELLER_BOOKS_BEFORE_ID_VERIFICATION,
+  canSubmitSellerIdVerification,
+  getRemainingGraceBooksBeforeIdVerification,
+  hasCompletedSellerVerification,
+} from '@/lib/sellerVerification';
 import type { Seller } from '@/types/user';
 import type { Book } from '@/types/book';
 import ProgressBar from '@/components/shared/ProgressBar';
@@ -46,6 +54,7 @@ export default function SellerProfilePage() {
   const { userProfile, firebaseUser, setUserProfile, loading: authLoading } = useAuthStore();
   const [seller, setSeller] = useState<Seller | null>(null);
   const [loading, setLoading] = useState(true);
+  const [publishedBooksCount, setPublishedBooksCount] = useState(0);
   const [form, setForm] = useState({
     penName: '', website: '', bio: '',
     twitter: '', instagram: '', linkedin: '', goodreads: '',
@@ -82,9 +91,15 @@ export default function SellerProfilePage() {
   useEffect(() => {
     if (authLoading) return;
     if (!userProfile) { setLoading(false); return; }
-    getDoc(doc(db, 'sellers', userProfile.uid)).then((snap) => {
-      if (snap.exists()) {
-        const s = snap.data() as Seller;
+    let active = true;
+    Promise.all([
+      getDoc(doc(db, 'sellers', userProfile.uid)),
+      getDocs(query(collection(db, 'verificationRequests'), where('sellerId', '==', userProfile.uid), orderBy('submittedAt', 'desc'), limit(1))),
+      getSellerPublishedBooksCount(userProfile.uid),
+    ]).then(([sellerSnap, requestSnap, bookCount]) => {
+      if (!active) return;
+      if (sellerSnap.exists()) {
+        const s = sellerSnap.data() as Seller;
         setSeller(s);
         setForm({
           penName: s.penName ?? '',
@@ -96,11 +111,13 @@ export default function SellerProfilePage() {
           goodreads: s.socialLinks?.goodreads ?? '',
         });
       }
+      if (!requestSnap.empty) setIdRequest(requestSnap.docs[0].data() as { status: string });
+      setPublishedBooksCount(bookCount);
       setLoading(false);
     });
-    getDocs(query(collection(db, 'verificationRequests'), where('sellerId', '==', userProfile.uid), orderBy('submittedAt', 'desc'), limit(1))).then((snap) => {
-      if (!snap.empty) setIdRequest(snap.docs[0].data() as { status: string });
-    });
+    return () => {
+      active = false;
+    };
   }, [authLoading, userProfile?.uid]);
 
   useEffect(() => {
@@ -195,6 +212,13 @@ export default function SellerProfilePage() {
   async function saveProfile() {
     if (!userProfile) return;
     const bioAdded = form.bio.trim().length >= 50;
+    const nextVerificationStatus = {
+      ...DEFAULT_SELLER_VERIFICATION_STATUS,
+      ...(seller?.verificationStatus ?? {}),
+      emailVerified: seller?.verificationStatus?.emailVerified ?? true,
+      bioAdded,
+      tenSalesReached: (seller?.totalSales ?? 0) >= 10,
+    };
     setSaving(true);
     await Promise.all([
       updateUserProfile(userProfile.uid, { bio: form.bio }),
@@ -205,12 +229,8 @@ export default function SellerProfilePage() {
         socialLinks: { twitter: form.twitter, instagram: form.instagram, linkedin: form.linkedin, goodreads: form.goodreads },
         stripeAccountId: seller?.stripeAccountId ?? null,
         stripeAccountStatus: seller?.stripeAccountStatus ?? 'not_connected',
-        isVerified: seller?.isVerified ?? false,
-        verificationStatus: {
-          ...(seller?.verificationStatus ?? { emailVerified: true, bioAdded: false, firstBookPublished: false, idVerified: false, tenSalesReached: false }),
-          emailVerified: true,
-          bioAdded,
-        },
+        isVerified: hasCompletedSellerVerification(nextVerificationStatus),
+        verificationStatus: nextVerificationStatus,
         taxFormType: seller?.taxFormType ?? null,
         taxFormStatus: seller?.taxFormStatus ?? 'not_submitted',
         pendingBalance: seller?.pendingBalance ?? 0,
@@ -228,7 +248,7 @@ export default function SellerProfilePage() {
   }
 
   async function submitIdVerification() {
-    if (!userProfile || !idFile) return;
+    if (!userProfile || !idFile || !canUploadIdVerification) return;
     setIdUploading(true);
     try {
       const storageRef = ref(storage, `verification/${userProfile.uid}/id_${Date.now()}_${idFile.name}`);
@@ -259,6 +279,8 @@ export default function SellerProfilePage() {
     { label: '10 sales reached', done: (seller?.totalSales ?? 0) >= 10 },
   ];
   const verificationDone = verificationSteps.filter((s) => s.done).length;
+  const booksRemainingBeforeVerification = getRemainingGraceBooksBeforeIdVerification(publishedBooksCount);
+  const canUploadIdVerification = canSubmitSellerIdVerification(publishedBooksCount);
 
   if (loading) return (
     <div className="min-h-screen bg-[#0e0e0e]"><SellerHeader />
@@ -400,8 +422,35 @@ export default function SellerProfilePage() {
               <div className="p-6 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 <div className="p-4 rounded-xl" style={{ background: '#2e1a0f', border: '1px solid #3a2a0a' }}>
                   <p className="text-sm font-medium" style={{ color: '#f5b800' }}>Verified Author Program</p>
-                  <p className="text-xs text-[#888] mt-1">Complete all steps to earn your verified badge.</p>
+                  <p className="text-xs text-[#888] mt-1">
+                    Publish your first {SELLER_BOOKS_BEFORE_ID_VERIFICATION} books before we ask for ID verification. The verified badge still requires all steps below.
+                  </p>
                 </div>
+                {!seller?.verificationStatus?.idVerified && (
+                  <div className="p-4 rounded-xl border flex items-center justify-between gap-3" style={{ background: '#0f172a', borderColor: '#1e293b' }}>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: '#dbeafe' }}>
+                        {canUploadIdVerification
+                          ? 'ID verification unlocked'
+                          : `Publish ${booksRemainingBeforeVerification} more ${booksRemainingBeforeVerification === 1 ? 'book' : 'books'} first`}
+                      </p>
+                      <p className="text-xs text-[#94a3b8] mt-1">
+                        {canUploadIdVerification
+                          ? 'You have published enough books. Submit your government-issued ID to keep publishing new titles.'
+                          : `You currently have ${publishedBooksCount} published ${publishedBooksCount === 1 ? 'book' : 'books'}.`}
+                      </p>
+                    </div>
+                    {!canUploadIdVerification && (
+                      <Link
+                        href="/publish"
+                        className="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap"
+                        style={{ background: '#e8442a', color: '#fff' }}
+                      >
+                        Publish
+                      </Link>
+                    )}
+                  </div>
+                )}
                 <ProgressBar value={verificationDone} max={5} color="#f5b800" height={6} showLabel />
                 <div className="space-y-3">
                   {verificationSteps.map(({ label, done }) => (
@@ -409,19 +458,24 @@ export default function SellerProfilePage() {
                       <div className="flex items-center gap-3">
                         {done ? <CheckCircle size={16} style={{ color: '#4ade80' }} /> : <Circle size={16} style={{ color: '#333' }} />}
                         <span className="text-sm" style={{ color: done ? '#f5f2eb' : '#555' }}>{label}</span>
-                        {!done && label === 'ID verified' && !idRequest && (
+                        {!done && label === 'ID verified' && !canUploadIdVerification && (
+                          <span className="ml-auto text-xs" style={{ color: '#666' }}>
+                            Unlock after {booksRemainingBeforeVerification} more {booksRemainingBeforeVerification === 1 ? 'book' : 'books'}
+                          </span>
+                        )}
+                        {!done && label === 'ID verified' && canUploadIdVerification && !idRequest && (
                           <button type="button" onClick={() => idInputRef.current?.click()}
                             className="ml-auto text-xs px-2.5 py-1 rounded-lg flex items-center gap-1"
                             style={{ background: '#e8442a', color: '#fff' }}>
                             <Upload size={10} /> Upload ID
                           </button>
                         )}
-                        {!done && label === 'ID verified' && idRequest?.status === 'pending' && (
+                        {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'pending' && (
                           <span className="ml-auto flex items-center gap-1 text-xs" style={{ color: '#f5b800' }}>
                             <Clock size={12} /> Under Review
                           </span>
                         )}
-                        {!done && label === 'ID verified' && idRequest?.status === 'rejected' && (
+                        {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'rejected' && (
                           <button type="button" onClick={() => idInputRef.current?.click()}
                             className="ml-auto text-xs px-2.5 py-1 rounded-lg"
                             style={{ background: '#e8442a', color: '#fff' }}>
@@ -429,7 +483,7 @@ export default function SellerProfilePage() {
                           </button>
                         )}
                       </div>
-                      {!done && label === 'ID verified' && !idRequest && idFile && (
+                      {!done && label === 'ID verified' && canUploadIdVerification && !idRequest && idFile && (
                         <div className="ml-7 p-3 rounded-lg border space-y-2" style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}>
                           <p className="text-xs text-[#aaa]">Selected: <span className="text-white">{idFile.name}</span></p>
                           <button type="button" onClick={submitIdVerification} disabled={idUploading}

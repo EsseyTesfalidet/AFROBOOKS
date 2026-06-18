@@ -3,6 +3,7 @@ import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { getStripeServer } from '@/lib/stripe/server';
 import { getAdminDb, getAdminFieldValue } from '@/lib/firebase/admin';
 import { sendPurchaseReceiptEmail, sendSubscriptionConfirmation } from '@/lib/server/email';
+import { DEFAULT_SELLER_VERIFICATION_STATUS, hasCompletedSellerVerification } from '@/lib/sellerVerification';
 
 export async function POST(req: NextRequest) {
   const stripe = getStripeServer();
@@ -66,17 +67,24 @@ export async function POST(req: NextRequest) {
       const sellerRef = adminDb.collection('sellers').doc(order.sellerId);
       const sellerSnap = await sellerRef.get();
       const sellerData = sellerSnap.data() ?? {};
+      const sellerUserSnap = await adminDb.collection('users').doc(order.sellerId).get();
+      const sellerBioLength = (((sellerUserSnap.data() as { bio?: string } | undefined)?.bio ?? '').trim().length);
       const nextTotalSales = (sellerData.totalSales ?? 0) + 1;
+      const nextVerificationStatus = {
+        ...DEFAULT_SELLER_VERIFICATION_STATUS,
+        ...(sellerData.verificationStatus ?? {}),
+        emailVerified: sellerData.verificationStatus?.emailVerified ?? true,
+        bioAdded: sellerBioLength >= 50,
+        firstBookPublished: true,
+        tenSalesReached: nextTotalSales >= 10,
+      };
       await sellerRef.set(
         {
           pendingBalance: FieldValue.increment(order.sellerEarnings),
           totalEarnings: FieldValue.increment(order.sellerEarnings),
           totalSales: FieldValue.increment(1),
-          verificationStatus: {
-            ...(sellerData.verificationStatus ?? {}),
-            firstBookPublished: true,
-            tenSalesReached: nextTotalSales >= 10,
-          },
+          verificationStatus: nextVerificationStatus,
+          isVerified: hasCompletedSellerVerification(nextVerificationStatus),
           updatedAt: new Date(),
         },
         { merge: true }

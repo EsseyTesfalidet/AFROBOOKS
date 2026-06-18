@@ -23,6 +23,7 @@ import type { Book } from '@/types/book';
 import type { Order, LibraryItem, WishlistItem, ReadingProgress } from '@/types/order';
 import type { Review, Notification, Report } from '@/types/review';
 import type { PlatformSettings } from '@/types/subscription';
+import { countsTowardSellerVerificationBookLimit } from '@/lib/sellerVerification';
 
 // ── Books ──────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,11 @@ export async function getSellerBooks(sellerId: string): Promise<Book[]> {
   const q = query(collection(db, 'books'), where('sellerId', '==', sellerId));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Book));
+}
+
+export async function getSellerPublishedBooksCount(sellerId: string): Promise<number> {
+  const books = await getSellerBooks(sellerId);
+  return books.filter(countsTowardSellerVerificationBookLimit).length;
 }
 
 export async function getSimilarBooks(genre: string, excludeId: string, max = 6): Promise<Book[]> {

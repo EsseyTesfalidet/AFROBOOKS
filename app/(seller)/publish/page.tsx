@@ -11,11 +11,18 @@ import { uploadCoverImage } from '@/lib/firebase/storage';
 import { db } from '@/lib/firebase/config';
 import { collection, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { calculateEarnings } from '@/lib/utils/calculateEarnings';
-import { getPlatformSettings } from '@/lib/firebase/firestore';
+import { getPlatformSettings, getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
+import {
+  DEFAULT_SELLER_VERIFICATION_STATUS,
+  SELLER_BOOKS_BEFORE_ID_VERIFICATION,
+  getRemainingGraceBooksBeforeIdVerification,
+  hasCompletedSellerVerification,
+  requiresSellerIdVerificationForPublishing,
+} from '@/lib/sellerVerification';
 import type { Chapter } from '@/types/book';
 import type { Seller } from '@/types/user';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { CheckCircle, Circle, ShieldAlert } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 
 const STEPS = ['Details', 'Cover', 'Chapters', 'Pricing', 'Publish'];
 const GENRES = ['Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
@@ -36,8 +43,10 @@ export default function PublishPage() {
   const userProfile = useAuthStore((s) => s.userProfile);
   const [seller, setSeller] = useState<Seller | null>(null);
   const [sellerLoading, setSellerLoading] = useState(true);
+  const [publishedBooksCount, setPublishedBooksCount] = useState(0);
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
   const [editingChapter, setEditingChapter] = useState<number | null>(null);
 
   // Form state
@@ -61,11 +70,23 @@ export default function PublishPage() {
   const [releaseDate, setReleaseDate] = useState('');
 
   useEffect(() => {
-    if (!userProfile?.uid) return;
-    getDoc(doc(db, 'sellers', userProfile.uid)).then((snap) => {
+    if (!userProfile?.uid) {
+      setSellerLoading(false);
+      return;
+    }
+    let active = true;
+    Promise.all([
+      getDoc(doc(db, 'sellers', userProfile.uid)),
+      getSellerPublishedBooksCount(userProfile.uid),
+    ]).then(([snap, bookCount]) => {
+      if (!active) return;
       if (snap.exists()) setSeller(snap.data() as Seller);
+      setPublishedBooksCount(bookCount);
       setSellerLoading(false);
     });
+    return () => {
+      active = false;
+    };
   }, [userProfile?.uid]);
 
   const earnings = calculateEarnings(price);
@@ -94,6 +115,13 @@ export default function PublishPage() {
 
   async function handlePublish() {
     if (!userProfile) return;
+    setPublishError('');
+    if (publishMode !== 'draft' && requiresIdVerificationForPublishingNow) {
+      setPublishError(
+        `You have reached the ${SELLER_BOOKS_BEFORE_ID_VERIFICATION}-book grace limit. Submit ID verification before publishing another live title or pre-order.`
+      );
+      return;
+    }
     setPublishing(true);
     try {
       const settings = await getPlatformSettings();
@@ -103,7 +131,7 @@ export default function PublishPage() {
         sellerId: userProfile.uid,
         sellerName: `${userProfile.firstName} ${userProfile.lastName}`,
         sellerHandle: userProfile.username,
-        sellerVerified: false,
+        sellerVerified: seller?.isVerified ?? false,
         title,
         authorName,
         description,
@@ -161,18 +189,26 @@ export default function PublishPage() {
         });
       }
 
-      const { setDoc } = await import('firebase/firestore');
-      await setDoc(
-        doc(db, 'sellers', userProfile.uid),
-        {
-          verificationStatus: {
-            ...(seller?.verificationStatus ?? {}),
-            firstBookPublished: true,
+      if (publishMode !== 'draft') {
+        const { setDoc } = await import('firebase/firestore');
+        const nextVerificationStatus = {
+          ...DEFAULT_SELLER_VERIFICATION_STATUS,
+          ...(seller?.verificationStatus ?? {}),
+          emailVerified: seller?.verificationStatus?.emailVerified ?? true,
+          bioAdded: (userProfile.bio?.trim().length ?? 0) >= 50,
+          firstBookPublished: true,
+          tenSalesReached: (seller?.totalSales ?? 0) >= 10,
+        };
+        await setDoc(
+          doc(db, 'sellers', userProfile.uid),
+          {
+            verificationStatus: nextVerificationStatus,
+            isVerified: hasCompletedSellerVerification(nextVerificationStatus),
+            updatedAt: serverTimestamp(),
           },
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+          { merge: true }
+        );
+      }
 
       router.push('/listings');
     } catch (err) {
@@ -190,53 +226,19 @@ export default function PublishPage() {
     { label: 'Price set', done: price > 0 },
     { label: 'Author name set', done: !!authorName },
   ];
+  const idVerified = seller?.verificationStatus?.idVerified ?? false;
+  const booksRemainingBeforeVerification = getRemainingGraceBooksBeforeIdVerification(publishedBooksCount);
+  const requiresIdVerificationForPublishingNow = requiresSellerIdVerificationForPublishing(
+    publishedBooksCount,
+    idVerified
+  );
+  const publishActionBlocked = publishMode !== 'draft' && requiresIdVerificationForPublishingNow;
 
   if (sellerLoading) return (
     <div className="min-h-screen bg-[#0e0e0e]"><SellerHeader />
       <div className="flex justify-center pt-16"><LoadingSpinner size={32} /></div>
     </div>
   );
-
-  if (!seller?.isVerified) {
-    const steps = [
-      { label: 'Email verified', done: seller?.verificationStatus?.emailVerified ?? false },
-      { label: 'Bio added (50+ chars)', done: (userProfile?.bio?.length ?? 0) >= 50 },
-      { label: 'First book published', done: seller?.verificationStatus?.firstBookPublished ?? false },
-      { label: 'ID verified', done: seller?.verificationStatus?.idVerified ?? false },
-      { label: '10 sales reached', done: (seller?.totalSales ?? 0) >= 10 },
-    ];
-    const done = steps.filter((s) => s.done).length;
-    return (
-      <div className="min-h-screen bg-[#0e0e0e]"><SellerHeader />
-        <div className="max-w-lg mx-auto px-4 py-16 text-center">
-          <div className="p-8 rounded-2xl border space-y-5" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <ShieldAlert size={40} className="mx-auto" style={{ color: '#f5b800' }} />
-            <h1 className="font-display text-display-sm text-white">Verification Required</h1>
-            <p className="text-sm text-[#888]">You must be a Verified Author before publishing books. Complete the steps below to get verified.</p>
-            <div className="text-left space-y-3">
-              {steps.map(({ label, done: stepDone }) => (
-                <div key={label} className="flex items-center gap-3">
-                  {stepDone
-                    ? <CheckCircle size={16} style={{ color: '#4ade80' }} />
-                    : <Circle size={16} style={{ color: '#333' }} />}
-                  <span className="text-sm" style={{ color: stepDone ? '#f5f2eb' : '#555' }}>{label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="w-full rounded-full overflow-hidden" style={{ background: '#1a1a1a', height: 6 }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${(done / 5) * 100}%`, background: '#f5b800' }} />
-            </div>
-            <p className="text-xs text-[#555]">{done}/5 steps completed</p>
-            <Link href="/seller/profile/verification"
-              className="inline-block px-6 py-2.5 rounded-xl text-sm font-medium"
-              style={{ background: '#e8442a', color: '#fff' }}>
-              View Verification Steps
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -268,6 +270,47 @@ export default function PublishPage() {
               );
             })}
           </div>
+
+          {!idVerified && (
+            <div
+              className="p-4 rounded-xl border flex items-start justify-between gap-4"
+              style={{
+                background: requiresIdVerificationForPublishingNow ? '#2e1a0f' : '#0f172a',
+                borderColor: requiresIdVerificationForPublishingNow ? '#5b3a0a' : '#1e293b',
+              }}
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert
+                    size={16}
+                    style={{ color: requiresIdVerificationForPublishingNow ? '#f5b800' : '#93c5fd' }}
+                  />
+                  <p
+                    className="text-sm font-medium"
+                    style={{ color: requiresIdVerificationForPublishingNow ? '#f5b800' : '#dbeafe' }}
+                  >
+                    {requiresIdVerificationForPublishingNow
+                      ? 'ID verification is now required'
+                      : booksRemainingBeforeVerification === 1
+                        ? 'You can publish 1 more book before ID verification'
+                        : 'New seller grace period'}
+                  </p>
+                </div>
+                <p className="text-xs text-[#94a3b8]">
+                  {requiresIdVerificationForPublishingNow
+                    ? `You have already published ${SELLER_BOOKS_BEFORE_ID_VERIFICATION} books. Submit ID verification before publishing another live title or pre-order. Drafts still work.`
+                    : `You can publish your first ${SELLER_BOOKS_BEFORE_ID_VERIFICATION} books before we ask for ID verification.`}
+                </p>
+              </div>
+              <Link
+                href="/seller/profile/verification"
+                className="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap"
+                style={{ background: '#e8442a', color: '#fff' }}
+              >
+                Verification
+              </Link>
+            </div>
+          )}
 
           {/* Step content */}
           <div className="p-6 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
@@ -511,12 +554,17 @@ export default function PublishPage() {
                 </div>
 
                 <button type="button" onClick={handlePublish}
-                  disabled={publishing || (publishMode === 'preorder' && !releaseDate)}
+                  disabled={publishing || (publishMode === 'preorder' && !releaseDate) || publishActionBlocked}
                   className="w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40"
                   style={{ background: '#4ade80', color: '#000' }}>
                   {publishing ? <LoadingSpinner size={16} color="#000" /> : <Check size={16} />}
                   {publishMode === 'now' ? 'Publish Ebook Now' : publishMode === 'preorder' ? 'Set Pre-order' : 'Save as Draft'}
                 </button>
+                {(publishActionBlocked || publishError) && (
+                  <p className="text-xs text-center" style={{ color: '#f5b800' }}>
+                    {publishError || 'ID verification is required before publishing another live title or pre-order. You can still save drafts.'}
+                  </p>
+                )}
               </div>
             )}
 

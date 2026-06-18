@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, Clock, ExternalLink } from 'lucide-react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { db } from '@/lib/firebase/config';
+import { DEFAULT_SELLER_VERIFICATION_STATUS, hasCompletedSellerVerification } from '@/lib/sellerVerification';
 import {
   collection, getDocs, getDoc, doc, updateDoc, addDoc, serverTimestamp, query, orderBy,
 } from 'firebase/firestore';
@@ -49,26 +50,23 @@ export default function AdminVerificationsPage() {
       });
 
       if (action === 'approved') {
-        // Read current seller state to decide if all 5 steps are now complete
         const sellerSnap = await getDoc(doc(db, 'sellers', req.sellerId));
         const sellerData = sellerSnap.data() ?? {};
         const vs = sellerData.verificationStatus ?? {};
         const userSnap = await getDoc(doc(db, 'users', req.sellerId));
         const bioLength: number = (userSnap.data()?.bio ?? '').length;
-        const allDone =
-          (vs.emailVerified ?? false) &&
-          bioLength >= 50 &&
-          (vs.firstBookPublished ?? false) &&
-          (sellerData.totalSales ?? 0) >= 10;
+        const nextVerificationStatus = {
+          ...DEFAULT_SELLER_VERIFICATION_STATUS,
+          ...vs,
+          emailVerified: vs.emailVerified ?? true,
+          bioAdded: bioLength >= 50,
+          idVerified: true,
+          tenSalesReached: (sellerData.totalSales ?? 0) >= 10,
+        };
 
         await updateDoc(doc(db, 'sellers', req.sellerId), {
-          verificationStatus: {
-            ...vs,
-            idVerified: true,
-            bioAdded: bioLength >= 50,
-            tenSalesReached: (sellerData.totalSales ?? 0) >= 10,
-          },
-          isVerified: allDone,
+          verificationStatus: nextVerificationStatus,
+          isVerified: hasCompletedSellerVerification(nextVerificationStatus),
         });
       }
 
