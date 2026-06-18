@@ -409,10 +409,10 @@ function SellerProfilePageContent() {
                     )}
                   </div>
                   <p className="text-sm text-[#94a3b8]">
-                    {userProfile?.username ? `@${userProfile.username}` : 'Add a handle so readers can recognize you'}
+                    {userProfile?.username ? `@${userProfile.username}` : 'Add a public handle so readers can recognize you'}
                   </p>
                   <p className="text-sm leading-relaxed" style={{ color: userProfile?.bio ? '#d1d5db' : '#6b7280' }}>
-                    {userProfile?.bio || 'Add a stronger author bio to build trust with readers and unlock verification faster.'}
+                    {userProfile?.bio || 'Add a complete author bio to build trust with readers and support verification.'}
                   </p>
                 </div>
               </div>
@@ -565,7 +565,7 @@ function SellerProfilePageContent() {
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'pending' && (
                           <span className="ml-auto flex items-center gap-1 text-xs" style={{ color: '#f5b800' }}>
-                            <Clock size={12} /> Under review
+                            <Clock size={12} /> In review
                           </span>
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'rejected' && (
@@ -645,7 +645,7 @@ function SellerProfilePageContent() {
           {section === 'preview' && (
             <div>
               <h1 className="font-display text-display-sm text-white mb-2">Public Page Preview</h1>
-              <p className="text-sm text-[#555] mb-5">This is how readers see your author profile.</p>
+              <p className="text-sm text-[#555] mb-5">This is how readers see your public author profile.</p>
 
               {/* Share link */}
               {userProfile && (
@@ -686,7 +686,7 @@ function SellerProfilePageContent() {
                     <p className="text-xs text-[#555] mt-0.5">{coBooks.length} books published</p>
                     {userProfile?.bio
                       ? <p className="text-sm text-[#888] mt-2 leading-relaxed">{userProfile.bio}</p>
-                      : <p className="text-xs text-[#444] mt-2 italic">No bio added yet — update your Author Profile.</p>}
+                      : <p className="text-xs text-[#444] mt-2 italic">No author bio has been added yet. Update your Author Profile.</p>}
                     {seller?.website && (
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-[#555]">
                         <Globe size={12} /> {seller.website}
@@ -796,7 +796,7 @@ function SellerProfilePageContent() {
                 ))}
               </div>
               {payouts.length === 0 ? (
-                <p className="text-center py-12 text-[#444] text-sm">No payouts yet.</p>
+                <p className="text-center py-12 text-[#444] text-sm">No payout history is available yet.</p>
               ) : (
                 <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                   <table className="w-full text-sm">
@@ -854,10 +854,10 @@ function SellerProfilePageContent() {
                 <div>
                   <p className="text-sm text-[#aaa] mb-2">Upload Completed Form</p>
                   {seller?.taxFormStatus === 'submitted' || seller?.taxFormStatus === 'approved' ? (
-                    <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: '#0f2e1a' }}>
-                      <CheckCircle size={16} style={{ color: '#4ade80' }} />
-                      <p className="text-sm" style={{ color: '#4ade80' }}>
-                        {seller.taxFormStatus === 'approved' ? 'Tax form approved' : 'Tax form submitted — under review'}
+                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: '#0f2e1a' }}>
+                    <CheckCircle size={16} style={{ color: '#4ade80' }} />
+                    <p className="text-sm" style={{ color: '#4ade80' }}>
+                        {seller.taxFormStatus === 'approved' ? 'Tax form approved' : 'Tax form submitted and under review'}
                       </p>
                     </div>
                   ) : (

@@ -470,10 +470,10 @@ export default function BuyerProfileDrawer() {
                   )}
                 </div>
                 <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
-                  {userProfile.username ? `@${userProfile.username}` : 'Add a username to personalize your profile'}
+                  {userProfile.username ? `@${userProfile.username}` : 'Add a username to complete your profile'}
                 </p>
                 <p className="text-xs mt-2 leading-relaxed" style={{ color: userProfile.bio ? '#d1d5db' : '#6b7280' }}>
-                  {userProfile.bio || 'Add a short bio to complete your reader profile.'}
+                  {userProfile.bio || 'Add a short bio to complete your profile.'}
                 </p>
               </div>
             </div>
@@ -525,18 +525,18 @@ export default function BuyerProfileDrawer() {
                     <p className="text-base font-medium text-white leading-tight">
                       {userProfile.firstName || userProfile.lastName
                         ? `${userProfile.firstName} ${userProfile.lastName}`.trim()
-                        : <span className="text-[#444] italic text-sm">No name set</span>}
+                        : <span className="text-[#444] italic text-sm">Name not added</span>}
                     </p>
                     {userProfile.username
                       ? <p className="text-xs mt-0.5" style={{ color: '#555' }}>@{userProfile.username}</p>
-                      : <p className="text-xs mt-0.5 italic" style={{ color: '#333' }}>No username</p>}
+                      : <p className="text-xs mt-0.5 italic" style={{ color: '#333' }}>Username not added</p>}
                   </div>
                 </div>
 
                 {/* Bio */}
                 {userProfile.bio
                   ? <p className="text-sm leading-relaxed" style={{ color: '#888' }}>{userProfile.bio}</p>
-                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio added yet.</p>}
+                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio has been added yet.</p>}
 
                 {/* Other fields */}
                 <div className="space-y-2 pt-1" style={{ borderTop: '1px solid #1a1a1a', paddingTop: '12px' }}>
@@ -767,7 +767,7 @@ export default function BuyerProfileDrawer() {
             <div className="space-y-4">
               <h2 className="font-display text-display-sm text-white">My Library</h2>
               {sectionLoading ? <div className="flex justify-center py-12"><LoadingSpinner size={28} /></div>
-                : libraryEntries.length === 0 ? <p className="text-center py-10 text-[#444] text-sm">No books yet. <Link href="/browse" onClick={close} className="underline" style={{ color: '#e8442a' }}>Browse</Link></p>
+                : libraryEntries.length === 0 ? <p className="text-center py-10 text-[#444] text-sm">Your library is empty. <Link href="/browse" onClick={close} className="underline" style={{ color: '#e8442a' }}>Browse books</Link></p>
                 : (
                   <div className="grid grid-cols-2 gap-3">
                     {libraryEntries.map((e) => e.book && (
@@ -828,7 +828,7 @@ export default function BuyerProfileDrawer() {
             <div className="space-y-4">
               <h2 className="font-display text-display-sm text-white">My Reviews</h2>
               {sectionLoading ? <div className="flex justify-center py-12"><LoadingSpinner size={28} /></div>
-                : myReviews.length === 0 ? <p className="text-center py-10 text-[#444] text-sm">No reviews yet.</p>
+                : myReviews.length === 0 ? <p className="text-center py-10 text-[#444] text-sm">You have not written any reviews yet.</p>
                 : (
                   <div className="space-y-3">
                     {myReviews.map((r) => (

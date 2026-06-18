@@ -145,9 +145,9 @@ function ListingsPageContent() {
 
         {inReviewBooksCount > 0 && (
           <div className="mb-6 rounded-xl border px-4 py-3" style={{ background: '#16120a', borderColor: '#3d2f14', color: '#f5b800' }}>
-            <p className="text-sm font-medium">Review queue active</p>
+            <p className="text-sm font-medium">Review queue open</p>
             <p className="mt-1 text-xs opacity-90">
-              {inReviewBooksCount} book{inReviewBooksCount === 1 ? '' : 's'} waiting for approval. Use Admin &gt; Books to make them visible to readers.
+              {inReviewBooksCount} book{inReviewBooksCount === 1 ? '' : 's'} awaiting approval. Approve them in Admin &gt; Books to make them visible to readers.
             </p>
           </div>
         )}
@@ -182,7 +182,7 @@ function ListingsPageContent() {
         {tab === 'books' && (
           <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             {books.length === 0 ? (
-              <p className="text-center text-[#444] py-12 text-sm">No books yet.</p>
+              <p className="text-center text-[#444] py-12 text-sm">No books have been published yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">

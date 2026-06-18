@@ -187,7 +187,7 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
         <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: '#666' }}>
           Momentum
         </p>
-        <h2 className="font-display text-display-sm text-white">Keep the reading loop alive</h2>
+        <h2 className="font-display text-display-sm text-white">Keep your reading momentum going</h2>
       </div>
       {content}
     </section>

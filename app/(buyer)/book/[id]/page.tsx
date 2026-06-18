@@ -354,7 +354,7 @@ export default function BookDetailPage() {
               <ReviewCard key={r.id} review={r} isSeller={userProfile?.uid === book.sellerId} currentUserId={userProfile?.uid} />
             ))}
             {reviews.length === 0 && reviewsLoaded && (
-              <p className="text-sm text-[#444] text-center py-6">No reviews yet. Be the first!</p>
+              <p className="text-sm text-[#444] text-center py-6">No reviews yet. Be the first to leave one.</p>
             )}
           </div>
         </div>

@@ -529,10 +529,10 @@ export default function SellerProfileDrawer() {
                   )}
                 </div>
                 <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
-                  {userProfile.username ? `@${userProfile.username}` : 'Add a handle so readers can find you'}
+                  {userProfile.username ? `@${userProfile.username}` : 'Add a public handle so readers can find you'}
                 </p>
                 <p className="text-xs mt-2 leading-relaxed" style={{ color: userProfile.bio ? '#d1d5db' : '#6b7280' }}>
-                  {userProfile.bio || 'Add a stronger author bio to improve trust and discovery.'}
+                  {userProfile.bio || 'Add a complete author bio to strengthen trust and discovery.'}
                 </p>
               </div>
             </div>
@@ -581,7 +581,7 @@ export default function SellerProfileDrawer() {
                   </div>
                   <div>
                     <p className="text-base font-medium text-white leading-tight">
-                      {form.penName || `${userProfile.firstName} ${userProfile.lastName}`.trim() || <span className="text-[#444] italic text-sm">No name set</span>}
+                      {form.penName || `${userProfile.firstName} ${userProfile.lastName}`.trim() || <span className="text-[#444] italic text-sm">Name not added</span>}
                     </p>
                     {seller?.isVerified && (
                       <span className="text-xs px-1.5 py-0.5 rounded mt-0.5 inline-block" style={{ background: '#2e1a0f', color: '#f5b800' }}>Verified Author</span>
@@ -590,7 +590,7 @@ export default function SellerProfileDrawer() {
                 </div>
                 {form.bio
                   ? <p className="text-sm leading-relaxed" style={{ color: '#888' }}>{form.bio}</p>
-                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio added yet.</p>}
+                  : <p className="text-sm italic" style={{ color: '#333' }}>No author bio added yet.</p>}
                 <div className="space-y-2 pt-1" style={{ borderTop: '1px solid #1a1a1a', paddingTop: '12px' }}>
                   {form.website && (
                     <div className="flex items-center justify-between">
@@ -605,7 +605,7 @@ export default function SellerProfileDrawer() {
                     </div>
                   ))}
                   {!form.website && !form.twitter && !form.instagram && !form.linkedin && !form.goodreads && (
-                    <p className="text-xs italic" style={{ color: '#333' }}>No links added</p>
+                    <p className="text-xs italic" style={{ color: '#333' }}>No profile links added yet.</p>
                   )}
                 </div>
               </div>
@@ -708,7 +708,7 @@ export default function SellerProfileDrawer() {
                     </div>
                     {userProfile.bio
                       ? <p className="text-xs text-[#888] mt-1 leading-relaxed">{userProfile.bio}</p>
-                      : <p className="text-xs text-[#444] mt-1 italic">No bio added yet.</p>}
+                      : <p className="text-xs text-[#444] mt-1 italic">No author bio added yet.</p>}
                     {seller?.website && (
                       <div className="flex items-center gap-1 mt-1 text-xs text-[#555]">
                         <Globe size={11} /> {seller.website}
@@ -766,7 +766,7 @@ export default function SellerProfileDrawer() {
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'pending' && (
                           <span className="flex items-center gap-1 text-xs" style={{ color: '#f5b800' }}>
-                            <Clock size={11} /> Under review
+                            <Clock size={11} /> In review
                           </span>
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'rejected' && (
@@ -950,7 +950,7 @@ export default function SellerProfileDrawer() {
                 {seller?.taxFormStatus === 'submitted' || seller?.taxFormStatus === 'approved' ? (
                   <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: '#0f2e1a' }}>
                     <CheckCircle size={14} style={{ color: '#4ade80' }} />
-                    <p className="text-xs" style={{ color: '#4ade80' }}>{seller.taxFormStatus === 'approved' ? 'Form approved' : 'Under review'}</p>
+                    <p className="text-xs" style={{ color: '#4ade80' }}>{seller.taxFormStatus === 'approved' ? 'Tax form approved' : 'Submitted and under review'}</p>
                   </div>
                 ) : (
                   <div>

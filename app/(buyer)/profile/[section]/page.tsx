@@ -327,10 +327,10 @@ export default function BuyerProfilePage() {
                     )}
                   </div>
                   <p className="text-sm text-[#94a3b8]">
-                    {userProfile.username ? `@${userProfile.username}` : 'Add a username to personalize your reader profile'}
+                    {userProfile.username ? `@${userProfile.username}` : 'Add a username to complete your reader profile'}
                   </p>
                   <p className="text-sm leading-relaxed" style={{ color: userProfile.bio ? '#d1d5db' : '#6b7280' }}>
-                    {userProfile.bio || 'Add a short bio so authors and recommendations feel more personal.'}
+                    {userProfile.bio || 'Add a short bio to personalize your profile and recommendations.'}
                   </p>
                 </div>
               </div>
@@ -645,7 +645,7 @@ export default function BuyerProfilePage() {
             <div className="space-y-4">
               <h1 className="font-display text-display-sm text-white">My Library</h1>
               {sectionLoading ? <div className="flex justify-center py-16"><LoadingSpinner size={28} /></div>
-                : libraryEntries.length === 0 ? <p className="text-center py-12 text-[#444] text-sm">No books yet. <Link href="/browse" className="underline" style={{ color: '#e8442a' }}>Browse books</Link></p>
+                : libraryEntries.length === 0 ? <p className="text-center py-12 text-[#444] text-sm">Your library is empty. <Link href="/browse" className="underline" style={{ color: '#e8442a' }}>Browse books</Link></p>
                 : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {libraryEntries.map((e) => e.book && (
@@ -737,7 +737,7 @@ export default function BuyerProfilePage() {
             <div className="space-y-4">
               <h1 className="font-display text-display-sm text-white">Purchase History</h1>
               {sectionLoading ? <div className="flex justify-center py-16"><LoadingSpinner size={28} /></div>
-                : orders.length === 0 ? <p className="text-center py-12 text-[#444] text-sm">No purchases yet.</p>
+                : orders.length === 0 ? <p className="text-center py-12 text-[#444] text-sm">No purchase history is available yet.</p>
                 : (
                   <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                     <table className="w-full text-sm min-w-[420px]">

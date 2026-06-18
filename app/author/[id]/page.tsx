@@ -125,7 +125,7 @@ export default function AuthorPage() {
         <div>
           <h2 className="text-sm font-medium text-white mb-4">Books by {displayName}</h2>
           {books.length === 0 ? (
-            <p className="text-sm text-[#444] py-8 text-center">No published books yet.</p>
+            <p className="text-sm text-[#444] py-8 text-center">No published books are available yet.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {books.map((book) => (

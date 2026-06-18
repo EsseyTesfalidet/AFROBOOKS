@@ -257,7 +257,7 @@ export default function NotificationsPage() {
           ) : feed.length === 0 ? (
             <div className="rounded-3xl border px-4 py-14 text-center" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <p className="text-sm" style={{ color: '#666' }}>
-                No notifications here yet.
+                You have no notifications yet.
               </p>
             </div>
           ) : (

@@ -126,7 +126,7 @@ export default function BrowsePage() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl">
               <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: '#777' }}>
-                Personalized home
+                Personalized experience
               </p>
               <h1 className="mt-2 font-display text-5xl leading-none text-white sm:text-6xl">
                 Welcome back,
@@ -134,7 +134,7 @@ export default function BrowsePage() {
                 <span style={{ color: '#f5b800' }}>{firstName}.</span>
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: '#888' }}>
-                Your reader experience now centers around momentum: resume reading, new drops from authors you follow, and faster discovery in {favoriteGenre}.
+                Continue where you left off, discover new releases from authors you follow, and explore more titles in {favoriteGenre}.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link
@@ -199,9 +199,9 @@ export default function BrowsePage() {
                 <Sparkles size={18} />
               </div>
               <div>
-                <p className="text-sm font-medium text-white">Search, filter, or browse all</p>
+                <p className="text-sm font-medium text-white">Search, filter, and explore</p>
                 <p className="text-xs" style={{ color: '#666' }}>
-                  Quick refinement without leaving the home feed.
+                  Refine the catalog without leaving your home feed.
                 </p>
               </div>
             </div>

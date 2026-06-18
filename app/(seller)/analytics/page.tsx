@@ -183,7 +183,7 @@ export default function AnalyticsPage() {
             </div>
 
             {payouts.length === 0 ? (
-              <p className="text-center text-[#444] py-8 text-sm">No payouts yet.</p>
+              <p className="text-center text-[#444] py-8 text-sm">No payout history is available yet.</p>
             ) : (
               <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 <table className="w-full text-sm">
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
                     <td className="px-4 py-3 text-[#f5b800]">{b.averageRating.toFixed(1)}</td>
                   </tr>
                 ))}
-                {books.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-[#444]">No books yet.</td></tr>}
+                {books.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-[#444]">No books have been published yet.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
               </div>
             )}
             {genreData.length === 0 && (
-              <div className="col-span-2 text-center py-16 text-[#444] text-sm">No genre data yet.</div>
+              <div className="col-span-2 text-center py-16 text-[#444] text-sm">Genre insights will appear once enough sales data is available.</div>
             )}
           </div>
         )}
