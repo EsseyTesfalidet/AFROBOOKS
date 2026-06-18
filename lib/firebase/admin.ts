@@ -3,6 +3,26 @@ import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 
 function getServiceAccount() {
+  const rawServiceAccount = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT;
+  if (rawServiceAccount) {
+    try {
+      const parsed = JSON.parse(rawServiceAccount) as {
+        project_id?: string;
+        client_email?: string;
+        private_key?: string;
+      };
+      if (parsed.project_id && parsed.client_email && parsed.private_key) {
+        return {
+          projectId: parsed.project_id,
+          clientEmail: parsed.client_email,
+          privateKey: parsed.private_key.replace(/\\n/g, '\n'),
+        };
+      }
+    } catch {
+      // Fall through to split env vars.
+    }
+  }
+
   const projectId =
     process.env.FIREBASE_ADMIN_PROJECT_ID ??
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
