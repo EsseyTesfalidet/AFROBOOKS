@@ -24,7 +24,11 @@ export default function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { userProfile, loading } = useAuthStore();
+  const { userProfile, loading, setFirebaseUser, setUserProfile, setLoading } = useAuthStore();
+
+  function finishAuthNavigation(destination: string) {
+    window.location.replace(destination);
+  }
 
   useEffect(() => {
     if (!loading && userProfile) {
@@ -47,13 +51,16 @@ export default function LoginForm() {
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
       const profile = await getUserProfile(fbUser.uid);
+      setFirebaseUser(fbUser);
+      setUserProfile(profile);
+      setLoading(false);
       setClientAuthHints(fbUser.uid, profile?.role ?? 'buyer');
       if (profile?.role === 'admin') {
-        router.replace('/admin');
+        finishAuthNavigation('/admin');
       } else if (profile?.activeRole === 'seller') {
-        router.replace('/dashboard');
+        finishAuthNavigation('/dashboard');
       } else {
-        router.replace('/browse');
+        finishAuthNavigation('/browse');
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
@@ -78,10 +85,13 @@ export default function LoginForm() {
       const token = await user.getIdToken();
       await syncAuthSession(token, user.uid);
       const profile = await getUserProfile(user.uid);
+      setFirebaseUser(user);
+      setUserProfile(profile);
+      setLoading(false);
       setClientAuthHints(user.uid, profile?.role ?? 'buyer');
-      if (profile?.role === 'admin') router.replace('/admin');
-      else if (profile?.activeRole === 'seller') router.replace('/dashboard');
-      else router.replace('/browse');
+      if (profile?.role === 'admin') finishAuthNavigation('/admin');
+      else if (profile?.activeRole === 'seller') finishAuthNavigation('/dashboard');
+      else finishAuthNavigation('/browse');
     } catch (e: unknown) {
       setGoogleLoading(false);
       const code =

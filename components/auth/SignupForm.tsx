@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { signUp } from '@/lib/firebase/auth';
 import { setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
+import { useAuthStore } from '@/store/authStore';
 import Logo from '@/components/shared/Logo';
 import RoleSelector from './RoleSelector';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -27,11 +28,16 @@ export default function SignupForm() {
   const router = useRouter();
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const [error, setError] = useState('');
+  const { setFirebaseUser, setLoading } = useAuthStore();
   const [signupsOpen, setSignupsOpen] = useState({
     buyer: true,
     seller: true,
     maintenanceMode: false,
   });
+
+  function finishAuthNavigation(destination: string) {
+    window.location.replace(destination);
+  }
 
   const {
     register,
@@ -70,6 +76,8 @@ export default function SignupForm() {
       const fbUser = await signUp(email, password, firstName, lastName, role);
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
+      setFirebaseUser(fbUser);
+      setLoading(false);
       setClientAuthHints(fbUser.uid, role);
       fetch('/api/email', {
         method: 'POST',
@@ -77,9 +85,9 @@ export default function SignupForm() {
         body: JSON.stringify({ type: 'welcome', to: email, data: { firstName } }),
       }).catch(() => undefined);
       if (role === 'seller') {
-        router.replace('/dashboard');
+        finishAuthNavigation('/dashboard');
       } else {
-        router.replace('/browse');
+        finishAuthNavigation('/browse');
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
