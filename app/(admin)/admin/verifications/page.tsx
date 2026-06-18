@@ -6,7 +6,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { db } from '@/lib/firebase/config';
 import {
-  collection, getDocs, doc, updateDoc, serverTimestamp, query, orderBy,
+  collection, getDocs, getDoc, doc, updateDoc, addDoc, serverTimestamp, query, orderBy,
 } from 'firebase/firestore';
 
 interface VerificationRequest {
@@ -23,6 +23,7 @@ interface VerificationRequest {
 export default function AdminVerificationsPage() {
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [acting, setActing] = useState<string | null>(null);
 
@@ -30,6 +31,11 @@ export default function AdminVerificationsPage() {
     getDocs(query(collection(db, 'verificationRequests'), orderBy('submittedAt', 'desc')))
       .then((snap) => {
         setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() } as VerificationRequest)));
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Failed to load verification requests:', err);
+        setError('Failed to load requests. Check your admin permissions.');
         setLoading(false);
       });
   }, []);
@@ -43,14 +49,36 @@ export default function AdminVerificationsPage() {
       });
 
       if (action === 'approved') {
+        // Read current seller state to decide if all 5 steps are now complete
+        const sellerSnap = await getDoc(doc(db, 'sellers', req.sellerId));
+        const sellerData = sellerSnap.data() ?? {};
+        const vs = sellerData.verificationStatus ?? {};
+        const userSnap = await getDoc(doc(db, 'users', req.sellerId));
+        const bioLength: number = (userSnap.data()?.bio ?? '').length;
+        const allDone =
+          (vs.emailVerified ?? false) &&
+          bioLength >= 50 &&
+          (vs.firstBookPublished ?? false) &&
+          (sellerData.totalSales ?? 0) >= 10;
+
         await updateDoc(doc(db, 'sellers', req.sellerId), {
-          isVerified: true,
           'verificationStatus.idVerified': true,
-        });
-        await updateDoc(doc(db, 'users', req.sellerId), {
-          updatedAt: serverTimestamp(),
+          isVerified: allDone,
         });
       }
+
+      // Notify the seller
+      await addDoc(collection(db, 'notifications'), {
+        userId: req.sellerId,
+        type: 'verification',
+        title: action === 'approved' ? 'ID Verification Approved' : 'ID Verification Rejected',
+        message: action === 'approved'
+          ? 'Your identity document has been approved. Your ID verification step is now complete.'
+          : 'Your identity document was not accepted. Please resubmit a clear photo of your government-issued ID.',
+        actionUrl: '/seller/profile/verification',
+        read: false,
+        createdAt: serverTimestamp(),
+      });
 
       setRequests((prev) =>
         prev.map((r) => r.id === req.id ? { ...r, status: action } : r)
@@ -95,6 +123,8 @@ export default function AdminVerificationsPage() {
 
         {loading ? (
           <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div>
+        ) : error ? (
+          <div className="text-center py-16 text-[#e8442a] text-sm">{error}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-[#444]">No {filter === 'all' ? '' : filter} requests.</div>
         ) : (

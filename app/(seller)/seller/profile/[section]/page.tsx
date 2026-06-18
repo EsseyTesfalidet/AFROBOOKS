@@ -9,7 +9,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import { useAuthStore } from '@/store/authStore';
 import { db, storage } from '@/lib/firebase/config';
-import { doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateUserProfile, changePassword, logOut } from '@/lib/firebase/auth';
 import type { Seller } from '@/types/user';
@@ -98,7 +98,7 @@ export default function SellerProfilePage() {
       }
       setLoading(false);
     });
-    getDocs(query(collection(db, 'verificationRequests'), where('sellerId', '==', userProfile.uid))).then((snap) => {
+    getDocs(query(collection(db, 'verificationRequests'), where('sellerId', '==', userProfile.uid), orderBy('submittedAt', 'desc'), limit(1))).then((snap) => {
       if (!snap.empty) setIdRequest(snap.docs[0].data() as { status: string });
     });
   }, [authLoading, userProfile?.uid]);
