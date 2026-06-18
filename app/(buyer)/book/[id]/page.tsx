@@ -149,11 +149,11 @@ export default function BookDetailPage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
-      <main className="max-w-2xl mx-auto px-4 py-8 pb-36 sm:pb-8 space-y-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-36 sm:py-8 sm:pb-8 space-y-6">
 
         {/* Book Header */}
-        <div className="flex gap-5">
-          <div className="flex-shrink-0 rounded-xl overflow-hidden relative" style={{ width: 140, height: 200, background: book.coverBgColor }}>
+        <div className="flex flex-col gap-5 sm:flex-row">
+          <div className="relative mx-auto overflow-hidden rounded-xl sm:mx-0 sm:flex-shrink-0" style={{ width: 140, height: 200, background: book.coverBgColor }}>
             <div className="absolute top-0 left-0 right-0 h-1.5" style={{ background: book.coverAccentColor }} />
             <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85))' }} />
             {book.inSubscription && (
@@ -223,7 +223,7 @@ export default function BookDetailPage() {
         {!owned && !canSubRead && (
           <div className="space-y-3">
             {!isPreorder && showBothOptions && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button type="button" onClick={() => setSelectedOption('subscribe')}
                   className="p-4 rounded-xl border text-left transition-all"
                   style={{ border: selectedOption === 'subscribe' ? '1.5px solid #7c3aed' : '1.5px solid #2a2a2a', background: selectedOption === 'subscribe' ? '#1a0f2e' : '#111' }}>
@@ -321,7 +321,7 @@ export default function BookDetailPage() {
         <div>
           <h2 className="font-display text-display-sm text-white mb-4">Reviews</h2>
           {reviews.length > 0 && (
-            <div className="p-4 rounded-xl border mb-4 flex gap-6 items-center" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <div className="mb-4 flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center sm:gap-6" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <div className="text-center">
                 <p className="font-display text-5xl text-white">{book.averageRating.toFixed(1)}</p>
                 <StarRating value={book.averageRating} size={14} />

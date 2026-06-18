@@ -258,17 +258,17 @@ export default function PublishPage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <SellerHeader />
-      <div className="max-w-6xl mx-auto px-4 py-8 flex gap-8">
+      <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-6 xl:flex-row xl:gap-8">
 
         {/* Main form */}
         <div className="flex-1 min-w-0 space-y-6">
           {/* Steps bar */}
-          <div className="flex items-center gap-0">
+          <div className="-mx-1 flex items-center gap-0 overflow-x-auto px-1 pb-1">
             {STEPS.map((s, i) => {
               const done = i < step;
               const active = i === step;
               return (
-                <div key={s} className="flex items-center">
+                <div key={s} className="flex flex-shrink-0 items-center">
                   <div className="flex items-center gap-1.5">
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
@@ -328,7 +328,7 @@ export default function PublishPage() {
           )}
 
           {/* Step content */}
-          <div className="p-6 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <div className="p-4 rounded-xl border sm:p-6" style={{ background: '#111', borderColor: '#1a1a1a' }}>
 
             {/* Step 1: Details */}
             {step === 0 && (
@@ -358,7 +358,7 @@ export default function PublishPage() {
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm text-[#aaa] mb-1.5">Language</label>
                     <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
@@ -459,7 +459,7 @@ export default function PublishPage() {
             {step === 3 && (
               <div className="space-y-5">
                 <h2 className="font-display text-display-sm text-white">Pricing</h2>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {PRICE_TIERS.map((p) => (
                     <button key={p} type="button" onClick={() => setPrice(p)}
                       className="p-3 rounded-xl border text-center transition-all"
@@ -602,8 +602,8 @@ export default function PublishPage() {
         </div>
 
         {/* Live Preview */}
-        <div className="w-72 flex-shrink-0">
-          <div className="sticky top-20 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+        <div className="w-full xl:w-72 xl:flex-shrink-0">
+          <div className="rounded-xl border p-4 xl:sticky xl:top-20" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <p className="text-xs text-[#555] uppercase tracking-wider mb-3">Live Preview</p>
 
             {/* Mini cover */}

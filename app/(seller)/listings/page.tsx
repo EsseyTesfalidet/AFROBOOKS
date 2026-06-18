@@ -120,7 +120,7 @@ export default function ListingsPage() {
     <div className="min-h-screen bg-[#0e0e0e]">
       <SellerHeader />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="font-display text-display-lg text-white">Listings</h1>
           <Link href="/publish" className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
             <PlusCircle size={15} /> Add new ebook
@@ -175,42 +175,44 @@ export default function ListingsPage() {
             {books.length === 0 ? (
               <p className="text-center text-[#444] py-12 text-sm">No books yet.</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                    {['Book', 'Price', 'Sales', 'Rating', 'Status', 'Actions'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {books.map((book) => (
-                    <tr key={book.id} style={{ borderBottom: '1px solid #111' }}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-7 h-9 rounded flex-shrink-0" style={{ background: book.coverBgColor }} />
-                          <div className="min-w-0">
-                            <p className="font-medium text-white truncate max-w-[160px]">{book.title}</p>
-                            {book.isPreorder && (
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-[#0ea5e9]">Pre-order</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(book.price)}</td>
-                      <td className="px-4 py-3 text-[#aaa]">{book.totalSales}</td>
-                      <td className="px-4 py-3 text-[#aaa]">{book.averageRating.toFixed(1)}</td>
-                      <td className="px-4 py-3"><StatusPill status={book.status} /></td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <Link href={`/publish?edit=${book.id}`} className="text-xs text-[#e8442a] hover:underline">Edit</Link>
-                          <button type="button" title="Remove book" onClick={() => removeBook(book.id)} className="text-[#555] hover:text-[#e8442a]"><Trash2 size={13} /></button>
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
+                      {['Book', 'Price', 'Sales', 'Rating', 'Status', 'Actions'].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {books.map((book) => (
+                      <tr key={book.id} style={{ borderBottom: '1px solid #111' }}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-9 rounded flex-shrink-0" style={{ background: book.coverBgColor }} />
+                            <div className="min-w-0">
+                              <p className="font-medium text-white truncate max-w-[160px]">{book.title}</p>
+                              {book.isPreorder && (
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-[#0ea5e9]">Pre-order</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(book.price)}</td>
+                        <td className="px-4 py-3 text-[#aaa]">{book.totalSales}</td>
+                        <td className="px-4 py-3 text-[#aaa]">{book.averageRating.toFixed(1)}</td>
+                        <td className="px-4 py-3"><StatusPill status={book.status} /></td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Link href={`/publish?edit=${book.id}`} className="text-xs text-[#e8442a] hover:underline">Edit</Link>
+                            <button type="button" title="Remove book" onClick={() => removeBook(book.id)} className="text-[#555] hover:text-[#e8442a]"><Trash2 size={13} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
