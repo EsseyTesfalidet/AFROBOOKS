@@ -54,10 +54,11 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE() {
   const response = NextResponse.json({ ok: true });
+  const secure = process.env.NODE_ENV === 'production';
 
-  response.cookies.set('__session', '', { httpOnly: true, path: '/', maxAge: 0 });
-  response.cookies.set('ab_uid', '', { httpOnly: true, path: '/', maxAge: 0 });
-  response.cookies.set('ab_role', '', { httpOnly: true, path: '/', maxAge: 0 });
+  response.cookies.set('__session', '', { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 0 });
+  response.cookies.set('ab_uid', '', { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 0 });
+  response.cookies.set('ab_role', '', { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: 0 });
 
   return response;
 }

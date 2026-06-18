@@ -26,11 +26,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const sessionCookie =
-    request.cookies.get('__session')?.value ||
-    request.cookies.get('ab_uid')?.value;
-
+  const sessionCookie = request.cookies.get('__session')?.value;
+  const roleCookie = request.cookies.get('ab_role')?.value ?? 'buyer';
   const isAuthed = !!sessionCookie;
+  const canAccessSeller = roleCookie === 'seller' || roleCookie === 'both' || roleCookie === 'admin';
+  const canAccessAdmin = roleCookie === 'admin';
 
   if (pathStartsWith(pathname, AUTH_PATHS) && isAuthed) {
     return NextResponse.redirect(new URL('/browse', request.url));
@@ -43,6 +43,14 @@ export function proxy(request: NextRequest) {
     !isAuthed
   ) {
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  if (pathStartsWith(pathname, SELLER_PATHS) && !canAccessSeller) {
+    return NextResponse.redirect(new URL('/browse', request.url));
+  }
+
+  if (pathStartsWith(pathname, ADMIN_PATHS) && !canAccessAdmin) {
+    return NextResponse.redirect(new URL('/browse', request.url));
   }
 
   return NextResponse.next();
