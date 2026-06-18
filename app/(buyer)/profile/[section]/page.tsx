@@ -207,8 +207,14 @@ export default function BuyerProfilePage() {
     }
   }, [loading, userProfile, firebaseUser]);
 
+  useEffect(() => {
+    if (!loading && !firebaseUser && !userProfile) {
+      router.replace('/browse');
+    }
+  }, [loading, firebaseUser, userProfile, router]);
+
   if (loading || (!userProfile && firebaseUser)) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={32} /></div>;
-  if (!userProfile) { router.replace('/browse'); return null; }
+  if (!userProfile) return null;
 
   const initials = `${userProfile.firstName[0] ?? ''}${userProfile.lastName[0] ?? ''}`.toUpperCase();
   const buyerProfileCompletion = [

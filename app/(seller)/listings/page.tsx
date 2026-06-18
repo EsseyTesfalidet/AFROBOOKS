@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { PlusCircle, Trash2, Pause, Play } from 'lucide-react';
@@ -17,7 +17,16 @@ import type { Book } from '@/types/book';
 import type { PromoCode } from '@/types/review';
 import { Timestamp } from 'firebase/firestore';
 
-export default function ListingsPage() {
+function ListingsPageFallback() {
+  return (
+    <div className="min-h-screen bg-[#0e0e0e]">
+      <SellerHeader />
+      <div className="flex justify-center pt-16"><LoadingSpinner size={36} /></div>
+    </div>
+  );
+}
+
+function ListingsPageContent() {
   const searchParams = useSearchParams();
   const userProfile = useAuthStore((s) => s.userProfile);
   const [books, setBooks] = useState<Book[]>([]);
@@ -296,5 +305,13 @@ export default function ListingsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ListingsPage() {
+  return (
+    <Suspense fallback={<ListingsPageFallback />}>
+      <ListingsPageContent />
+    </Suspense>
   );
 }

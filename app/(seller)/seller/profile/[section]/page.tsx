@@ -2,7 +2,7 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { ExternalLink, CheckCircle, Circle, Upload, Clock, Plus, Trash2, UserPlus, Copy, BadgeCheck, Globe } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -46,7 +46,16 @@ const SIDEBAR_GROUPS = [
   ]},
 ];
 
-export default function SellerProfilePage() {
+function SellerProfilePageFallback() {
+  return (
+    <div className="min-h-screen bg-[#0e0e0e]">
+      <SellerHeader />
+      <div className="flex justify-center pt-16"><LoadingSpinner size={32} /></div>
+    </div>
+  );
+}
+
+function SellerProfilePageContent() {
   const { section } = useParams<{ section: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -957,5 +966,13 @@ export default function SellerProfilePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function SellerProfilePage() {
+  return (
+    <Suspense fallback={<SellerProfilePageFallback />}>
+      <SellerProfilePageContent />
+    </Suspense>
   );
 }
