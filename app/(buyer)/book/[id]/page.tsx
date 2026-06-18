@@ -91,6 +91,23 @@ export default function BookDetailPage() {
     count: reviews.filter((r) => r.stars === s).length,
   }));
 
+  const primaryCtaLabel = isPreorder
+    ? `Pre-order — ${centsToDisplay(book.price)}`
+    : selectedOption === 'subscribe'
+      ? 'Subscribe to Read'
+      : isInCart(book.id)
+        ? 'View Cart'
+        : `Buy Now — ${centsToDisplay(effectivePrice)}`;
+
+  const mobilePriceLabel =
+    owned
+      ? 'Owned forever'
+      : canSubRead
+        ? 'Included in your plan'
+        : selectedOption === 'subscribe'
+          ? '$9.99/mo'
+          : centsToDisplay(isPreorder ? book.price : effectivePrice);
+
   function handleBuy() {
     if (selectedOption === 'subscribe') { router.push('/subscription'); return; }
     if (!book) return;
@@ -117,7 +134,7 @@ export default function BookDetailPage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-2xl mx-auto px-4 py-8 pb-36 sm:pb-8 space-y-6">
 
         {/* Book Header */}
         <div className="flex gap-5">
@@ -210,15 +227,9 @@ export default function BookDetailPage() {
             )}
 
             <button type="button" onClick={handleBuy}
-              className="w-full py-3.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
+              className="hidden w-full py-3.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-90 sm:block"
               style={{ background: isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a', color: '#fff' }}>
-              {isPreorder
-                ? `Pre-order — ${centsToDisplay(book.price)}`
-                : selectedOption === 'subscribe'
-                  ? 'Subscribe to Read'
-                  : isInCart(book.id)
-                    ? 'View Cart'
-                    : `Buy Now — ${centsToDisplay(effectivePrice)}`}
+              {primaryCtaLabel}
             </button>
 
             {isPreorder && releaseDate && (
@@ -251,7 +262,7 @@ export default function BookDetailPage() {
         {/* Already owned / subscriber */}
         {(owned || canSubRead) && (
           <button type="button" onClick={() => router.push(`/read/${book.id}`)}
-            className="w-full py-3.5 rounded-xl text-sm font-medium"
+            className="hidden w-full py-3.5 rounded-xl text-sm font-medium sm:block"
             style={{ background: owned ? '#e8442a' : '#7c3aed', color: '#fff' }}>
             {canSubRead && !owned ? 'Read Now (Included in your plan)' : 'Read Now'}
           </button>
@@ -368,6 +379,61 @@ export default function BookDetailPage() {
           </div>
         )}
       </main>
+
+      <div
+        className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3"
+        style={{ background: 'rgba(14,14,14,0.96)', borderColor: '#1f1f1f', backdropFilter: 'blur(18px)' }}
+      >
+        <div className="mx-auto max-w-2xl">
+          <div
+            className="rounded-[24px] border p-3"
+            style={{ background: '#121212', borderColor: 'rgba(255,255,255,0.08)' }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-white">{book.title}</p>
+                <p className="mt-0.5 text-xs" style={{ color: selectedOption === 'subscribe' ? '#b794f4' : '#777' }}>
+                  {mobilePriceLabel}
+                </p>
+              </div>
+
+              {owned || canSubRead ? (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/read/${book.id}`)}
+                  className="rounded-2xl px-4 py-3 text-sm font-medium"
+                  style={{ background: owned ? '#e8442a' : '#7c3aed', color: '#fff' }}
+                >
+                  Read now
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleBuy}
+                  className="rounded-2xl px-4 py-3 text-sm font-medium"
+                  style={{
+                    background: isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a',
+                    color: '#fff',
+                  }}
+                >
+                  {selectedOption === 'subscribe' ? 'Subscribe' : isInCart(book.id) ? 'View cart' : 'Buy now'}
+                </button>
+              )}
+            </div>
+
+            {!owned && !canSubRead && !isPreorder ? (
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <Link href={`/sample/${book.id}`} className="text-xs" style={{ color: '#888' }}>
+                  Read sample
+                </Link>
+                <span className="text-xs" style={{ color: '#555' }}>
+                  {selectedOption === 'subscribe' ? 'Unlimited access option selected' : 'Own this title forever'}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
 
       {/* Report Modal */}
       {reportOpen && (

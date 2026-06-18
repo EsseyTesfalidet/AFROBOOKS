@@ -106,6 +106,7 @@ const ROUTE_STATE_RULES: Array<{
       eyebrow: 'Book',
       title: 'Book Details',
       subtitle: 'Preview the story, check reviews, and choose how to read.',
+      showBottomNav: false,
       showSwipe: false,
     },
   },

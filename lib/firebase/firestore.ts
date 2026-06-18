@@ -82,7 +82,64 @@ export async function getActiveReadingProgress(userId: string): Promise<ReadingP
   return snap.docs.map((d) => d.data() as ReadingProgress);
 }
 
+export async function getRecentlyFinishedReading(userId: string): Promise<ReadingProgress[]> {
+  const q = query(
+    collection(db, 'readingProgress'),
+    where('userId', '==', userId),
+    where('isFinished', '==', true),
+    orderBy('finishedAt', 'desc'),
+    limit(6)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as ReadingProgress);
+}
+
 // ── Follows ────────────────────────────────────────────────────────────────
+
+export async function getFollowedSellerIds(userId: string, max = 12): Promise<string[]> {
+  const q = query(
+    collection(db, 'follows'),
+    where('followerId', '==', userId),
+    limit(max)
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => d.data().sellerId as string | undefined)
+    .filter((sellerId): sellerId is string => !!sellerId);
+}
+
+export async function getBooksBySellerIds(sellerIds: string[], max = 12): Promise<Book[]> {
+  const uniqueSellerIds = Array.from(new Set(sellerIds)).filter(Boolean);
+  if (!uniqueSellerIds.length) return [];
+
+  const batches: string[][] = [];
+  for (let index = 0; index < uniqueSellerIds.length; index += 10) {
+    batches.push(uniqueSellerIds.slice(index, index + 10));
+  }
+
+  const snaps = await Promise.all(
+    batches.map((sellerBatch) =>
+      getDocs(
+        query(
+          collection(db, 'books'),
+          where('status', '==', 'live'),
+          where('sellerId', 'in', sellerBatch)
+        )
+      )
+    )
+  );
+
+  const books = snaps.flatMap((snap) =>
+    snap.docs.map((d) => ({ id: d.id, ...d.data() } as Book))
+  );
+
+  return books
+    .sort(
+      (left, right) =>
+        (right.publishedAt?.toMillis?.() ?? 0) - (left.publishedAt?.toMillis?.() ?? 0)
+    )
+    .slice(0, max);
+}
 
 export async function followAuthor(userId: string, sellerId: string): Promise<void> {
   const batch = writeBatch(db);
