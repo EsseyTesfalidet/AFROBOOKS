@@ -32,16 +32,27 @@ export default function RoleSelector({ selected, onChange }: RoleSelectorProps) 
             key={id}
             type="button"
             onClick={() => onChange(id)}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-left"
+            className="surface-panel-muted flex flex-col items-start gap-3 rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
             style={{
-              border: active ? '1.5px solid #e8442a' : '1.5px solid #2a2a2a',
-              background: active ? '#1f0e0c' : '#161616',
+              borderColor: active ? 'rgba(232,68,42,0.72)' : 'rgba(255,255,255,0.08)',
+              background: active
+                ? 'radial-gradient(circle at top, rgba(232,68,42,0.16), transparent 55%), linear-gradient(180deg, rgba(42,18,15,0.95) 0%, rgba(24,15,14,0.96) 100%)'
+                : undefined,
+              boxShadow: active ? '0 18px 34px rgba(232,68,42,0.16)' : undefined,
             }}
           >
-            <Icon size={22} style={{ color: active ? '#e8442a' : '#888' }} />
+            <div
+              className="flex h-11 w-11 items-center justify-center rounded-2xl"
+              style={{
+                background: active ? 'rgba(232,68,42,0.14)' : 'rgba(255,255,255,0.04)',
+                color: active ? '#ff7c68' : '#8b8b94',
+              }}
+            >
+              <Icon size={20} />
+            </div>
             <div>
-              <p className="text-sm font-medium text-[#f5f2eb]">{label}</p>
-              <p className="text-xs text-[#666] mt-0.5">{description}</p>
+              <p className="text-sm font-semibold text-[#f5f2eb]">{label}</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#7a7a84]">{description}</p>
             </div>
           </button>
         );

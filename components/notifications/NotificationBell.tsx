@@ -45,8 +45,7 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() => setPanelOpen(!panelOpen)}
-        className="relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-        style={{ color: '#aaa' }}
+        className="icon-button relative flex h-8 w-8 items-center justify-center rounded-lg"
       >
         <Bell size={18} />
         {count > 0 && (

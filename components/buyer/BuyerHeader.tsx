@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Search, ShoppingCart } from 'lucide-react';
@@ -7,9 +8,12 @@ import { Search, ShoppingCart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import InstallPWA from '@/components/shared/InstallPWA';
+import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
+import { updateUserProfile } from '@/lib/firebase/auth';
+import { getWorkspaceDestination, hasAuthorWorkspace, type WorkspaceRole } from '@/lib/utils/workspace';
 import {
   BUYER_DESKTOP_LINKS,
   getBuyerRouteState,
@@ -17,11 +21,13 @@ import {
 } from '@/components/buyer/buyerNavigation';
 
 export default function BuyerHeader() {
+  const router = useRouter();
   const pathname = usePathname();
   const cartCount = useCartStore((s) => s.items.length);
-  const userProfile = useAuthStore((s) => s.userProfile);
+  const { userProfile, setUserProfile } = useAuthStore();
   const openDrawer = useBuyerDrawerStore((s) => s.open);
   const routeState = getBuyerRouteState(pathname);
+  const canAccessAuthorWorkspace = hasAuthorWorkspace(userProfile);
 
   const initials = userProfile
     ? `${userProfile.firstName[0] ?? ''}${userProfile.lastName[0] ?? ''}`.toUpperCase()
@@ -29,14 +35,16 @@ export default function BuyerHeader() {
 
   const isProfileActive = pathname.startsWith('/profile');
 
+  async function handleWorkspaceChange(nextRole: WorkspaceRole) {
+    if (!userProfile || userProfile.activeRole === nextRole) return;
+    await updateUserProfile(userProfile.uid, { activeRole: nextRole });
+    setUserProfile({ ...userProfile, activeRole: nextRole });
+    router.push(getWorkspaceDestination(nextRole));
+  }
+
   return (
     <header
-      className="sticky top-0 z-40 border-b"
-      style={{
-        background: 'rgba(14,14,14,0.88)',
-        borderColor: 'rgba(255,255,255,0.06)',
-        backdropFilter: 'blur(18px)',
-      }}
+      className="surface-glass sticky top-0 z-40 border-b border-white/5"
     >
       <div className="mx-auto max-w-5xl px-4 py-3 sm:px-5">
         <div className="flex items-center justify-between gap-3">
@@ -68,19 +76,26 @@ export default function BuyerHeader() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {userProfile && canAccessAuthorWorkspace ? (
+              <div className="hidden lg:block">
+                <WorkspaceSwitcher
+                  activeRole={userProfile.activeRole}
+                  onChange={handleWorkspaceChange}
+                  size="sm"
+                />
+              </div>
+            ) : null}
             <InstallPWA />
             <Link
               href="/search"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors"
-              style={{ borderColor: '#2a2a2a', color: '#9a9a9a', background: '#151515' }}
+              className="icon-button flex h-9 w-9 items-center justify-center rounded-xl"
               title="Search"
             >
               <Search size={16} />
             </Link>
             <Link
               href="/cart"
-              className="relative hidden h-9 w-9 items-center justify-center rounded-xl border transition-colors sm:flex"
-              style={{ borderColor: '#2a2a2a', color: '#9a9a9a', background: '#151515' }}
+              className="icon-button relative hidden h-9 w-9 items-center justify-center rounded-xl sm:flex"
               title="Cart"
             >
               <ShoppingCart size={16} />
@@ -97,11 +112,12 @@ export default function BuyerHeader() {
             <button
               type="button"
               onClick={() => openDrawer('account')}
-              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border font-display text-sm"
+              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border font-display text-sm shadow-lg transition-all"
               style={{
-                background: isProfileActive ? '#e8442a' : '#151515',
+                background: isProfileActive ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'rgba(255,255,255,0.05)',
                 color: '#fff',
-                borderColor: isProfileActive ? '#e8442a' : '#2a2a2a',
+                borderColor: isProfileActive ? '#e8442a' : 'rgba(255,255,255,0.1)',
+                boxShadow: isProfileActive ? '0 14px 28px rgba(232,68,42,0.24)' : undefined,
               }}
             >
               {userProfile?.avatarUrl ? (
@@ -123,9 +139,10 @@ export default function BuyerHeader() {
                 href={href!}
                 className="relative inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-medium transition-all"
                 style={{
-                  background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : '#151515',
+                  background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'rgba(255,255,255,0.04)',
                   color: active ? '#fff' : '#999',
-                  border: `1px solid ${active ? '#e8442a' : '#242424'}`,
+                  border: `1px solid ${active ? '#e8442a' : 'rgba(255,255,255,0.08)'}`,
+                  boxShadow: active ? '0 14px 28px rgba(232,68,42,0.22)' : '0 10px 20px rgba(0,0,0,0.12)',
                 }}
               >
                 <Icon size={15} />
@@ -144,18 +161,19 @@ export default function BuyerHeader() {
               </Link>
             );
           })}
-          <button
-            type="button"
-            onClick={() => openDrawer('account')}
-            className="inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-medium transition-all"
-            style={{
-              background: isProfileActive ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : '#151515',
-              color: isProfileActive ? '#fff' : '#999',
-              border: `1px solid ${isProfileActive ? '#e8442a' : '#242424'}`,
-            }}
-          >
-            <span>Profile</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => openDrawer('account')}
+              className="inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-medium transition-all"
+              style={{
+                background: isProfileActive ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'rgba(255,255,255,0.04)',
+                color: isProfileActive ? '#fff' : '#999',
+                border: `1px solid ${isProfileActive ? '#e8442a' : 'rgba(255,255,255,0.08)'}`,
+                boxShadow: isProfileActive ? '0 14px 28px rgba(232,68,42,0.22)' : '0 10px 20px rgba(0,0,0,0.12)',
+              }}
+            >
+              <span>Profile</span>
+            </button>
         </nav>
       </div>
     </header>

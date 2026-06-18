@@ -95,10 +95,12 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
         <div
           className="fixed left-0 right-0 top-0 z-50 rounded-b-2xl flex flex-col"
           style={{
-            background: '#111',
-            borderBottom: '1px solid #222',
+            background: 'linear-gradient(180deg, rgba(21,21,24,0.98) 0%, rgba(12,12,14,0.98) 100%)',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
             maxHeight: '80vh',
             paddingTop: 'env(safe-area-inset-top)',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.42)',
+            backdropFilter: 'blur(18px)',
             transform: dragging.current ? `translateY(${dragY}px)` : visible ? 'translateY(0)' : 'translateY(-100%)',
             transition: dragging.current ? 'none' : 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
           }}
@@ -110,23 +112,26 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ paddingTop: '16px' }}>
             <h3 className="font-display text-lg text-white">Notifications</h3>
             <div className="flex items-center gap-3">
-              <button type="button" onClick={handleMarkAll} className="text-xs" style={{ color: '#f5b800' }}>
+              <button type="button" onClick={handleMarkAll} className="text-xs font-medium" style={{ color: '#f5b800' }}>
                 Mark all read
               </button>
               <button type="button" title="Close" onClick={onClose}
-                className="w-7 h-7 flex items-center justify-center rounded-lg"
-                style={{ color: '#666' }}>
+                className="icon-button flex h-7 w-7 items-center justify-center rounded-lg text-[#8b8b94]">
                 <X size={16} />
               </button>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex px-5 gap-4 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a' }}>
+          <div className="flex px-5 gap-3 flex-shrink-0 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             {(['all', 'unread'] as const).map((t) => (
               <button key={t} type="button" onClick={() => setTab(t)}
-                className="text-sm pb-2.5 capitalize transition-colors"
-                style={{ color: tab === t ? '#f5f2eb' : '#666', borderBottom: tab === t ? '2px solid #e8442a' : '2px solid transparent' }}>
+                className="rounded-full px-3 py-2 text-sm capitalize transition-colors"
+                style={{
+                  color: tab === t ? '#0e0e0e' : '#8d8d96',
+                  background: tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.08)'}`,
+                }}>
                 {t}
               </button>
             ))}
@@ -144,13 +149,13 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
             }}
           >
             {recent.length === 0
-              ? <p className="text-center text-sm text-[#444] py-10">No notifications</p>
+              ? <p className="py-10 text-center text-sm text-[#666]">No notifications</p>
               : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} />)}
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid #1a1a1a' }}>
-            <Link href="/notifications" onClick={onClose} className="text-xs" style={{ color: '#aaa' }}>
+          <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <Link href="/notifications" onClick={onClose} className="text-xs font-medium" style={{ color: '#b8b8c0' }}>
               View all notifications →
             </Link>
           </div>
@@ -167,21 +172,24 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
   // Desktop dropdown
   return (
     <div
-      className="absolute right-0 top-10 w-80 rounded-xl border shadow-2xl z-50"
-      style={{ background: '#111', borderColor: '#222' }}
+      className="surface-panel absolute right-0 top-10 z-50 w-80 rounded-[24px]"
     >
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <h3 className="font-display text-lg text-white">Notifications</h3>
-        <button type="button" onClick={handleMarkAll} className="text-xs" style={{ color: '#f5b800' }}>
+        <button type="button" onClick={handleMarkAll} className="text-xs font-medium" style={{ color: '#f5b800' }}>
           Mark all read
         </button>
       </div>
 
-      <div className="flex px-4 gap-3 mb-2">
+      <div className="mb-3 flex gap-2 px-4">
         {(['all', 'unread'] as const).map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)}
-            className="text-sm pb-1 capitalize transition-colors"
-            style={{ color: tab === t ? '#f5f2eb' : '#666', borderBottom: tab === t ? '2px solid #e8442a' : '2px solid transparent' }}>
+            className="rounded-full px-3 py-1.5 text-sm capitalize transition-colors"
+            style={{
+              color: tab === t ? '#0e0e0e' : '#8d8d96',
+              background: tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.08)'}`,
+            }}>
             {t}
           </button>
         ))}
@@ -189,11 +197,11 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
 
       <div className="max-h-72 overflow-y-auto">
         {recent.length === 0
-          ? <p className="text-center text-sm text-[#444] py-8">No notifications</p>
+          ? <p className="py-8 text-center text-sm text-[#666]">No notifications</p>
           : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} />)}
       </div>
 
-      <div className="px-4 py-3 border-t" style={{ borderColor: '#1a1a1a' }}>
+      <div className="border-t px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <Link href="/notifications" onClick={onClose} className="text-xs text-[#aaa] hover:text-white transition-colors">
           View all notifications
         </Link>

@@ -17,16 +17,13 @@ export default function BookCard({ book, rank, badge }: BookCardProps) {
   return (
     <Link
       href={`/book/${book.id}`}
-      className="block rounded-xl overflow-hidden border transition-all hover:-translate-y-0.5 group"
-      style={{ border: '1px solid #222', background: '#111' }}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = '#444')}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = '#222')}
+      className="surface-panel-muted group block overflow-hidden rounded-[24px] transition-all hover:-translate-y-1"
     >
       {/* Cover */}
       <div
         className="relative"
         style={{
-          height: 160,
+          height: 168,
           background: book.coverBgColor || '#1a1040',
           overflow: 'hidden',
         }}
@@ -111,13 +108,13 @@ export default function BookCard({ book, rank, badge }: BookCardProps) {
       </div>
 
       {/* Info */}
-      <div className="px-2.5 pb-2.5 pt-2">
+      <div className="px-3 pb-3 pt-2.5">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium" style={{ color: '#f5b800' }}>
             {centsToDisplay(book.price)}
           </span>
           {book.averageRating > 0 && (
-            <span className="text-xs" style={{ color: '#888' }}>
+            <span className="text-xs" style={{ color: '#9a9aa3' }}>
               <span style={{ color: '#f5b800' }}>★</span> {book.averageRating.toFixed(1)}
             </span>
           )}

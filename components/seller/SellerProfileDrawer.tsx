@@ -23,6 +23,8 @@ import AvatarUpload from '@/components/shared/AvatarUpload';
 import Toggle from '@/components/shared/Toggle';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ProgressBar from '@/components/shared/ProgressBar';
+import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
+import { getWorkspaceDestination, type WorkspaceRole } from '@/lib/utils/workspace';
 import type { Seller } from '@/types/user';
 import type { Book } from '@/types/book';
 
@@ -277,6 +279,14 @@ export default function SellerProfileDrawer() {
     router.replace('/login');
   }
 
+  async function handleWorkspaceChange(nextRole: WorkspaceRole) {
+    if (!userProfile || userProfile.activeRole === nextRole) return;
+    await updateUserProfile(userProfile.uid, { activeRole: nextRole });
+    setUserProfile({ ...userProfile, activeRole: nextRole });
+    close();
+    router.push(getWorkspaceDestination(nextRole));
+  }
+
   const verificationSteps = [
     { label: 'Email verified', done: seller?.verificationStatus?.emailVerified ?? false },
     { label: 'Bio added (50+ chars)', done: (userProfile?.bio?.length ?? 0) >= 50 },
@@ -489,15 +499,12 @@ export default function SellerProfileDrawer() {
         {/* Scrollable content */}
         <div ref={contentRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
-          {/* Switch to buyer */}
-          {userProfile.role === 'both' && (
-            <button type="button"
-              onClick={async () => { await updateUserProfile(userProfile.uid, { activeRole: 'buyer' }); setUserProfile({ ...userProfile, activeRole: 'buyer' }); close(); router.push('/browse'); }}
-              className="w-full py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2"
-              style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-              Switch to Reader Mode
-            </button>
-          )}
+          <WorkspaceSwitcher
+            activeRole={userProfile.activeRole}
+            onChange={handleWorkspaceChange}
+            fullWidth
+            showLabel
+          />
 
           <div
             className="p-4 rounded-2xl border space-y-4"

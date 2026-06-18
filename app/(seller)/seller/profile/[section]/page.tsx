@@ -7,6 +7,7 @@ import { ExternalLink, CheckCircle, Circle, Upload, Clock, Plus, Trash2, UserPlu
 import SellerHeader from '@/components/seller/SellerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AvatarUpload from '@/components/shared/AvatarUpload';
+import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { useAuthStore } from '@/store/authStore';
 import { getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
 import { db, storage } from '@/lib/firebase/config';
@@ -21,6 +22,7 @@ import {
   hasCompletedSellerVerification,
 } from '@/lib/sellerVerification';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import { getWorkspaceDestination, type WorkspaceRole } from '@/lib/utils/workspace';
 import type { Seller } from '@/types/user';
 import type { Book } from '@/types/book';
 import ProgressBar from '@/components/shared/ProgressBar';
@@ -226,6 +228,13 @@ function SellerProfilePageContent() {
     if (url) window.location.href = url;
   }
 
+  async function handleWorkspaceChange(nextRole: WorkspaceRole) {
+    if (!userProfile || userProfile.activeRole === nextRole) return;
+    await updateUserProfile(userProfile.uid, { activeRole: nextRole });
+    setUserProfile({ ...userProfile, activeRole: nextRole });
+    router.push(getWorkspaceDestination(nextRole));
+  }
+
   async function saveProfile() {
     if (!userProfile) return;
     const bioAdded = form.bio.trim().length >= 50;
@@ -358,21 +367,18 @@ function SellerProfilePageContent() {
         <div className="flex-1 min-w-0 space-y-5">
 
           {/* Mobile-only action buttons */}
-          <div className="sm:hidden flex gap-3">
-            {userProfile?.role === 'both' && (
-              <button type="button"
-                onClick={async () => {
-                  await updateUserProfile(userProfile.uid, { activeRole: 'buyer' });
-                  router.push('/browse');
-                }}
-                className="flex-1 py-2.5 rounded-xl text-xs font-medium border"
-                style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-                Switch to Reader
-              </button>
-            )}
+          <div className="sm:hidden space-y-3">
+            {userProfile ? (
+              <WorkspaceSwitcher
+                activeRole={userProfile.activeRole}
+                onChange={handleWorkspaceChange}
+                fullWidth
+                showLabel
+              />
+            ) : null}
             <button type="button"
               onClick={async () => { await logOut(); router.replace('/login'); }}
-              className="flex-1 py-2.5 rounded-xl text-xs font-medium border"
+              className="w-full py-2.5 rounded-xl text-xs font-medium border"
               style={{ borderColor: '#333', color: '#888' }}>
               Sign out
             </button>

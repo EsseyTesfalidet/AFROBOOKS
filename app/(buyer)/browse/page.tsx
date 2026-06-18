@@ -116,11 +116,10 @@ export default function BrowsePage() {
 
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-8">
         <section
-          className="overflow-hidden rounded-[28px] border p-6 sm:p-7"
+          className="surface-panel overflow-hidden rounded-[28px] p-6 sm:p-7"
           style={{
             background:
               'radial-gradient(circle at top right, rgba(124,58,237,0.22), transparent 34%), linear-gradient(180deg, #151515 0%, #101010 100%)',
-            borderColor: 'rgba(255,255,255,0.08)',
           }}
         >
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -139,16 +138,14 @@ export default function BrowsePage() {
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link
                   href="/search"
-                  className="inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium"
-                  style={{ background: '#e8442a', color: '#fff' }}
+                  className="button-primary inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium"
                 >
                   <Search size={16} />
                   Search the catalog
                 </Link>
                 <Link
                   href="/library"
-                  className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium"
-                  style={{ borderColor: '#2a2a2a', color: '#ddd', background: '#141414' }}
+                  className="button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium"
                 >
                   <BookOpen size={16} />
                   Open library
@@ -164,8 +161,7 @@ export default function BrowsePage() {
               ].map(({ label, value, icon: Icon, accent }) => (
                 <div
                   key={label}
-                  className="rounded-2xl border p-3"
-                  style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.08)' }}
+                  className="surface-panel-muted rounded-2xl p-3"
                 >
                   <Icon size={16} style={{ color: accent }} />
                   <p className="mt-3 text-lg font-semibold text-white">{value}</p>
@@ -190,7 +186,7 @@ export default function BrowsePage() {
         ) : null}
 
         <section className="space-y-4">
-          <div className="flex flex-col gap-3 rounded-3xl border p-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <div className="surface-panel-muted flex flex-col gap-3 rounded-3xl p-4">
             <div className="flex items-center gap-2">
               <div
                 className="flex h-10 w-10 items-center justify-center rounded-2xl"
@@ -214,8 +210,7 @@ export default function BrowsePage() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by title, author, or genre..."
-                  className="w-full rounded-2xl border py-3 pl-10 pr-4 text-sm"
-                  style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+                  className="field-input w-full rounded-2xl py-3 pl-10 pr-4 text-sm"
                 />
               </div>
 
@@ -229,9 +224,9 @@ export default function BrowsePage() {
                       onClick={() => setGenre(item)}
                       className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm font-medium transition-all"
                       style={{
-                        background: active ? '#f5f2eb' : '#171717',
+                        background: active ? '#f5f2eb' : 'rgba(255,255,255,0.04)',
                         color: active ? '#000' : '#aaa',
-                        border: `1px solid ${active ? '#f5f2eb' : '#2a2a2a'}`,
+                        border: `1px solid ${active ? '#f5f2eb' : 'rgba(255,255,255,0.08)'}`,
                       }}
                     >
                       {item}
@@ -320,8 +315,7 @@ export default function BrowsePage() {
             </div>
           ) : filteredBooks.length === 0 ? (
             <div
-              className="rounded-3xl border px-4 py-14 text-center"
-              style={{ background: '#111', borderColor: '#1a1a1a' }}
+              className="empty-state-card rounded-3xl px-4 py-14 text-center"
             >
               <p className="text-sm" style={{ color: '#666' }}>
                 No books match that filter. Try another genre or use the search page.

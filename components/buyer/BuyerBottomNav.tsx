@@ -24,13 +24,7 @@ export default function BuyerBottomNav() {
   return (
     <nav className="sm:hidden fixed inset-x-0 bottom-3 z-50 px-3">
       <div
-        className="mx-auto max-w-md rounded-[26px] border p-2 shadow-2xl"
-        style={{
-          background: 'rgba(17,17,17,0.94)',
-          borderColor: 'rgba(255,255,255,0.08)',
-          backdropFilter: 'blur(18px)',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.42)',
-        }}
+        className="surface-glass mx-auto max-w-md rounded-[26px] p-2 shadow-2xl"
       >
         <div className="grid grid-cols-5 gap-1">
           {BUYER_MOBILE_TABS.map((item) => {
@@ -45,8 +39,9 @@ export default function BuyerBottomNav() {
                 <div
                   className="relative flex h-10 w-10 items-center justify-center rounded-2xl transition-all"
                   style={{
-                    background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'transparent',
+                    background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'rgba(255,255,255,0.02)',
                     color: active ? '#fff' : '#7b7b7b',
+                    boxShadow: active ? '0 12px 24px rgba(232,68,42,0.24)' : 'none',
                   }}
                 >
                   <Icon size={18} />
@@ -61,7 +56,7 @@ export default function BuyerBottomNav() {
                 </div>
                 <span
                   className="text-[10px] font-medium transition-colors"
-                  style={{ color: active ? '#f5f2eb' : '#666' }}
+                  style={{ color: active ? '#f5f2eb' : '#70707a' }}
                 >
                   {label}
                 </span>

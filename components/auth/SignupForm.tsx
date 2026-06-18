@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { BookOpen, PenLine, ShieldCheck } from 'lucide-react';
 import { signUp } from '@/lib/firebase/auth';
 import { setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import { useAuthStore } from '@/store/authStore';
@@ -100,140 +101,160 @@ export default function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0e0e0e' }}>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
       <div
-        className="w-full max-w-[420px] p-8 rounded-2xl border"
-        style={{ background: '#111', borderColor: '#222' }}
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at top right, rgba(245,184,0,0.14), transparent 24%), radial-gradient(circle at bottom left, rgba(124,58,237,0.12), transparent 18%)',
+        }}
+      />
+      <div
+        className="surface-panel relative w-full max-w-[520px] overflow-hidden rounded-[28px] p-8 sm:p-10"
       >
-        <div className="text-center mb-6">
-          <Logo size="lg" href="/" />
-          <p className="mt-2 text-sm" style={{ color: '#888' }}>
-            Africa's boldest ebook marketplace
-          </p>
-        </div>
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-32"
+          style={{ background: 'linear-gradient(180deg, rgba(232,68,42,0.08) 0%, transparent 100%)' }}
+        />
+        <div className="relative">
+          <span className="eyebrow-chip">Create Account</span>
+          <div className="mt-5 text-center">
+            <Logo size="lg" href="/" />
+            <h1 className="mt-6 font-display text-5xl leading-none text-white">Join AfroBooks</h1>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#9a9aa3]">
+              Create one polished account for discovering books, building your audience, and publishing when you are ready.
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="mt-6 grid gap-2 sm:grid-cols-3">
+            {[
+              { label: 'Reader-ready library', icon: BookOpen },
+              { label: 'Author tools included', icon: PenLine },
+              { label: 'Protected account', icon: ShieldCheck },
+            ].map(({ label, icon: Icon }) => (
+              <div key={label} className="surface-panel-muted rounded-2xl px-3 py-3 text-center">
+                <Icon size={15} className="mx-auto text-[#f5b800]" />
+                <p className="mt-2 text-[11px] font-medium text-[#d4d4d8]">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="firstName" className="field-label mb-1.5 block text-sm">
+                  First name
+                </label>
+                <input
+                  id="firstName"
+                  type="text"
+                  {...register('firstName')}
+                  placeholder="Alex"
+                  className="field-input w-full rounded-xl px-3.5 py-3 text-sm"
+                  style={{
+                    borderColor: errors.firstName ? '#e8442a' : '#333',
+                  }}
+                />
+                {errors.firstName && (
+                  <p className="mt-1 text-xs text-[#e8442a]">{errors.firstName.message}</p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="lastName" className="field-label mb-1.5 block text-sm">
+                  Last name
+                </label>
+                <input
+                  id="lastName"
+                  type="text"
+                  {...register('lastName')}
+                  placeholder="Mensah"
+                  className="field-input w-full rounded-xl px-3.5 py-3 text-sm"
+                  style={{
+                    borderColor: errors.lastName ? '#e8442a' : '#333',
+                  }}
+                />
+              </div>
+            </div>
+
             <div>
-              <label htmlFor="firstName" className="block text-sm text-[#aaa] mb-1.5">
-                First name
+              <label htmlFor="email" className="field-label mb-1.5 block text-sm">
+                Email
               </label>
               <input
-                id="firstName"
-                type="text"
-                {...register('firstName')}
-                placeholder="Alex"
-                className="w-full px-3.5 py-3 rounded-lg border text-sm"
+                id="email"
+                type="email"
+                {...register('email')}
+                placeholder="you@example.com"
+                className="field-input w-full rounded-xl px-3.5 py-3 text-sm"
                 style={{
-                  background: '#1a1a1a',
-                  borderColor: errors.firstName ? '#e8442a' : '#333',
-                  color: '#f5f2eb',
+                  borderColor: errors.email ? '#e8442a' : '#333',
                 }}
               />
-              {errors.firstName && (
-                <p className="mt-1 text-xs text-[#e8442a]">{errors.firstName.message}</p>
+              {errors.email && (
+                <p className="mt-1 text-xs text-[#e8442a]">{errors.email.message}</p>
               )}
             </div>
+
             <div>
-              <label htmlFor="lastName" className="block text-sm text-[#aaa] mb-1.5">
-                Last name
+              <label htmlFor="password" className="field-label mb-1.5 block text-sm">
+                Password
               </label>
-              <input
-                id="lastName"
-                type="text"
-                {...register('lastName')}
-                placeholder="Mensah"
-                className="w-full px-3.5 py-3 rounded-lg border text-sm"
-                style={{
-                  background: '#1a1a1a',
-                  borderColor: errors.lastName ? '#e8442a' : '#333',
-                  color: '#f5f2eb',
-                }}
+              <PasswordInput
+                id="password"
+                {...register('password')}
+                placeholder="Min 8 characters"
+                hasError={!!errors.password}
               />
+              {errors.password && (
+                <p className="mt-1 text-xs text-[#e8442a]">{errors.password.message}</p>
+              )}
             </div>
-          </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm text-[#aaa] mb-1.5">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              {...register('email')}
-              placeholder="you@example.com"
-              className="w-full px-3.5 py-3 rounded-lg border text-sm"
-              style={{
-                background: '#1a1a1a',
-                borderColor: errors.email ? '#e8442a' : '#333',
-                color: '#f5f2eb',
-              }}
-            />
-            {errors.email && (
-              <p className="mt-1 text-xs text-[#e8442a]">{errors.email.message}</p>
+            <div>
+              <p className="field-label mb-2 text-sm">I want to join as a...</p>
+              <RoleSelector selected={role} onChange={setRole} />
+            </div>
+
+            <div>
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  {...register('terms')}
+                  className="mt-0.5 accent-[#e8442a]"
+                />
+                <span className="text-sm text-[#8d8d96]">
+                  I agree to the{' '}
+                  <Link href="/terms" target="_blank" className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
+                    Terms of Service
+                  </Link>
+                </span>
+              </label>
+              {errors.terms && (
+                <p className="mt-1 text-xs text-[#e8442a]">{errors.terms.message}</p>
+              )}
+            </div>
+
+            {error && (
+              <p className="text-center text-sm text-[#e8442a]">{error}</p>
             )}
-          </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm text-[#aaa] mb-1.5">
-              Password
-            </label>
-            <PasswordInput
-              id="password"
-              {...register('password')}
-              placeholder="Min 8 characters"
-              hasError={!!errors.password}
-            />
-            {errors.password && (
-              <p className="mt-1 text-xs text-[#e8442a]">{errors.password.message}</p>
-            )}
-          </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="button-primary flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? <LoadingSpinner size={16} color="#000" /> : null}
+              Create account
+            </button>
+          </form>
 
-          <div>
-            <p className="text-sm text-[#aaa] mb-2">I want to join as a...</p>
-            <RoleSelector selected={role} onChange={setRole} />
-          </div>
-
-          <div>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                {...register('terms')}
-                className="mt-0.5 accent-[#e8442a]"
-              />
-              <span className="text-sm" style={{ color: '#888' }}>
-                I agree to the{' '}
-                <Link href="/terms" target="_blank" className="hover:underline" style={{ color: '#f5b800' }}>
-                  Terms of Service
-                </Link>
-              </span>
-            </label>
-            {errors.terms && (
-              <p className="mt-1 text-xs text-[#e8442a]">{errors.terms.message}</p>
-            )}
-          </div>
-
-          {error && (
-            <p className="text-sm text-[#e8442a] text-center">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
-            style={{ background: '#fff', color: '#000' }}
-          >
-            {isSubmitting ? <LoadingSpinner size={16} color="#000" /> : null}
-            Create account
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-[#666]">
-          Already have an account?{' '}
-          <Link href="/login" className="text-[#f5b800] hover:underline">
-            Sign in
-          </Link>
-        </p>
+          <p className="mt-6 text-center text-sm text-[#7b7b84]">
+            Already have an account?{' '}
+            <Link href="/login" className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -91,11 +91,10 @@ export default function NotificationsPage() {
       <BuyerHeader />
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-8">
         <section
-          className="rounded-[28px] border p-5 sm:p-6"
+          className="surface-panel rounded-[28px] p-5 sm:p-6"
           style={{
             background:
               'radial-gradient(circle at top right, rgba(14,165,233,0.18), transparent 34%), linear-gradient(180deg, #151515 0%, #101010 100%)',
-            borderColor: 'rgba(255,255,255,0.08)',
           }}
         >
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -117,8 +116,7 @@ export default function NotificationsPage() {
               ].map(({ label, value, icon: Icon, accent }) => (
                 <div
                   key={label}
-                  className="rounded-2xl border p-3"
-                  style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.08)' }}
+                  className="surface-panel-muted rounded-2xl p-3"
                 >
                   <Icon size={16} style={{ color: accent }} />
                   <p className="mt-3 text-lg font-semibold text-white">{value}</p>
@@ -158,9 +156,9 @@ export default function NotificationsPage() {
                     onClick={() => setTab(item.id)}
                     className="rounded-full px-4 py-2 text-sm font-medium"
                     style={{
-                      background: active ? '#f5f2eb' : '#171717',
+                      background: active ? '#f5f2eb' : 'rgba(255,255,255,0.04)',
                       color: active ? '#000' : '#aaa',
-                      border: `1px solid ${active ? '#f5f2eb' : '#2a2a2a'}`,
+                      border: `1px solid ${active ? '#f5f2eb' : 'rgba(255,255,255,0.08)'}`,
                     }}
                   >
                     {item.label}
@@ -174,8 +172,7 @@ export default function NotificationsPage() {
                 <button
                   type="button"
                   onClick={handleMarkAll}
-                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
-                  style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+                  className="button-secondary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium"
                 >
                   <CheckCheck size={16} />
                   Mark all read
@@ -219,8 +216,7 @@ export default function NotificationsPage() {
                 <Link
                   key={card.title}
                   href={card.href}
-                  className="rounded-2xl border p-4 transition-transform hover:-translate-y-0.5"
-                  style={{ background: '#111', borderColor: '#1a1a1a' }}
+                  className="surface-panel-muted rounded-2xl p-4 transition-transform hover:-translate-y-0.5"
                 >
                   <span
                     className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
@@ -255,7 +251,7 @@ export default function NotificationsPage() {
               <LoadingSpinner size={36} />
             </div>
           ) : feed.length === 0 ? (
-            <div className="rounded-3xl border px-4 py-14 text-center" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <div className="empty-state-card rounded-3xl px-4 py-14 text-center">
               <p className="text-sm" style={{ color: '#666' }}>
                 You have no notifications yet.
               </p>
@@ -276,8 +272,11 @@ export default function NotificationsPage() {
                   }}
                   className="w-full rounded-2xl border p-4 text-left transition-colors"
                   style={{
-                    background: notification.isRead ? '#101010' : '#111',
-                    borderColor: notification.isRead ? '#171717' : '#1f1f1f',
+                    background: notification.isRead
+                      ? 'linear-gradient(180deg, rgba(18,18,20,0.94) 0%, rgba(13,13,15,0.98) 100%)'
+                      : 'radial-gradient(circle at top right, rgba(232,68,42,0.12), transparent 40%), linear-gradient(180deg, rgba(22,18,18,0.98) 0%, rgba(13,13,15,0.98) 100%)',
+                    borderColor: notification.isRead ? 'rgba(255,255,255,0.06)' : 'rgba(232,68,42,0.16)',
+                    boxShadow: notification.isRead ? '0 14px 28px rgba(0,0,0,0.16)' : '0 16px 32px rgba(232,68,42,0.08)',
                   }}
                 >
                   <div className="flex gap-3">

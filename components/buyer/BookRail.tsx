@@ -58,8 +58,8 @@ export default function BookRail({
 
       {books.length === 0 ? (
         <div
-          className="rounded-2xl border px-4 py-6 text-sm"
-          style={{ background: '#111', borderColor: '#1a1a1a', color: '#555' }}
+          className="empty-state-card rounded-2xl px-4 py-6 text-sm"
+          style={{ color: '#7a7a84' }}
         >
           {emptyMessage}
         </div>

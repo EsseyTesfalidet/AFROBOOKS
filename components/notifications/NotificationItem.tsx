@@ -80,13 +80,16 @@ export default function NotificationItem({ notification, onRead }: Props) {
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[#161616]"
+      className="mx-3 my-2 flex w-[calc(100%-1.5rem)] items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-colors"
       style={{
-        background: notification.isRead ? 'transparent' : '#14110a',
-        borderLeft: notification.isRead ? 'none' : '3px solid #e8442a',
+        background: notification.isRead
+          ? 'linear-gradient(180deg, rgba(20,20,22,0.84) 0%, rgba(14,14,16,0.9) 100%)'
+          : 'radial-gradient(circle at top right, rgba(232,68,42,0.12), transparent 40%), linear-gradient(180deg, rgba(30,22,18,0.96) 0%, rgba(16,14,14,0.98) 100%)',
+        borderColor: notification.isRead ? 'rgba(255,255,255,0.06)' : 'rgba(232,68,42,0.28)',
         transform: `translateX(${dragX}px)`,
         opacity: Math.abs(dragX) > 40 ? Math.max(0, 1 - (Math.abs(dragX) - 40) / 80) : 1,
         transition: dragging.current ? 'none' : 'transform 0.25s ease, opacity 0.25s ease',
+        boxShadow: notification.isRead ? '0 10px 22px rgba(0,0,0,0.14)' : '0 14px 28px rgba(232,68,42,0.08)',
       }}
     >
       <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -94,8 +97,8 @@ export default function NotificationItem({ notification, onRead }: Props) {
         <Icon size={13} style={{ color }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-[#f5f2eb] leading-snug">{notification.message}</p>
-        <p className="text-xs text-[#555] mt-0.5">{timeAgo(date)}</p>
+        <p className="text-sm leading-snug text-[#f5f2eb]">{notification.message}</p>
+        <p className="mt-1 text-xs text-[#6f6f78]">{timeAgo(date)}</p>
       </div>
       {!notification.isRead && (
         <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: '#e8442a' }} />

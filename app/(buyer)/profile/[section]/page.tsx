@@ -12,9 +12,11 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import PasswordInput from '@/components/shared/PasswordInput';
 import ProgressBar from '@/components/shared/ProgressBar';
+import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { DEFAULT_SELLER_VERIFICATION_STATUS } from '@/lib/sellerVerification';
 import { useState, useEffect } from 'react';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import { getWorkspaceDestination, getWorkspaceLabel, hasAuthorWorkspace, type WorkspaceRole } from '@/lib/utils/workspace';
 import { LogOut, Copy, Check, Star, BookOpen, Trash2, ShoppingBag, BadgeCheck } from 'lucide-react';
 import { getUserLibrary, getBook, getReadingProgress, getUserWishlist, toggleWishlist, getUserOrders } from '@/lib/firebase/firestore';
 import type { Book } from '@/types/book';
@@ -165,7 +167,7 @@ export default function BuyerProfilePage() {
   async function handleBecomeSeller() {
     if (!userProfile) return;
     await Promise.all([
-      updateUserProfile(userProfile.uid, { role: 'both', activeRole: 'seller' }),
+      updateUserProfile(userProfile.uid, { role: 'both', activeRole: 'buyer' }),
       setDoc(doc(db, 'sellers', userProfile.uid), {
         uid: userProfile.uid,
         penName: null,
@@ -190,8 +192,14 @@ export default function BuyerProfilePage() {
         createdAt: serverTimestamp(),
       }, { merge: true }),
     ]);
-    setUserProfile({ ...userProfile, role: 'both', activeRole: 'seller' });
-    router.push('/dashboard');
+    setUserProfile({ ...userProfile, role: 'both', activeRole: 'buyer' });
+  }
+
+  async function handleWorkspaceChange(nextRole: WorkspaceRole) {
+    if (!userProfile || userProfile.activeRole === nextRole) return;
+    await updateUserProfile(userProfile.uid, { activeRole: nextRole });
+    setUserProfile({ ...userProfile, activeRole: nextRole });
+    router.push(getWorkspaceDestination(nextRole));
   }
 
   async function toggleNotif(key: string, value: boolean) {
@@ -223,6 +231,7 @@ export default function BuyerProfilePage() {
     userProfile.bio.trim().length >= 20,
     !!userProfile.country.trim(),
   ].filter(Boolean).length;
+  const canAccessAuthorWorkspace = hasAuthorWorkspace(userProfile);
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -278,19 +287,26 @@ export default function BuyerProfilePage() {
             <LogOut size={14} /> Sign out
           </button>
 
-          {(userProfile.role === 'seller' || userProfile.role === 'both') ? (
-            <button type="button" onClick={() => updateUserProfile(userProfile.uid, { activeRole: 'seller' }).then(() => router.push('/dashboard'))}
-              className="mt-2 w-full py-2 rounded-lg text-xs font-medium border"
-              style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-              Open Author Studio
-            </button>
-          ) : (
-            <button type="button" onClick={handleBecomeSeller}
-              className="mt-2 w-full py-2 rounded-lg text-xs font-medium border"
-              style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-              Become an Author
-            </button>
-          )}
+          <div className="mt-2 space-y-2">
+            {canAccessAuthorWorkspace ? (
+              <WorkspaceSwitcher
+                activeRole={userProfile.activeRole}
+                onChange={handleWorkspaceChange}
+                fullWidth
+                showLabel
+                size="sm"
+              />
+            ) : (
+              <>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#666]">Workspace</p>
+                <button type="button" onClick={handleBecomeSeller}
+                  className="w-full py-2 rounded-lg text-xs font-medium border"
+                  style={{ borderColor: '#f5b800', color: '#f5b800' }}>
+                  Create Author Workspace
+                </button>
+              </>
+            )}
+          </div>
         </aside>
 
         {/* Content */}
@@ -336,15 +352,11 @@ export default function BuyerProfilePage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2">
-                {(userProfile.role === 'seller' || userProfile.role === 'both') ? (
-                  <button
-                    type="button"
-                    onClick={() => updateUserProfile(userProfile.uid, { activeRole: 'seller' }).then(() => router.push('/dashboard'))}
-                    className="px-4 py-2.5 rounded-xl text-sm font-medium border"
-                    style={{ borderColor: '#f5b800', color: '#f5b800' }}
-                  >
-                    Open Author Studio
-                  </button>
+                {canAccessAuthorWorkspace ? (
+                  <WorkspaceSwitcher
+                    activeRole={userProfile.activeRole}
+                    onChange={handleWorkspaceChange}
+                  />
                 ) : (
                   <button
                     type="button"
@@ -352,7 +364,7 @@ export default function BuyerProfilePage() {
                     className="px-4 py-2.5 rounded-xl text-sm font-medium border"
                     style={{ borderColor: '#f5b800', color: '#f5b800' }}
                   >
-                    Become an Author
+                    Create Author Workspace
                   </button>
                 )}
                 <Link
@@ -370,7 +382,7 @@ export default function BuyerProfilePage() {
                 { label: 'Profile Completion', value: `${buyerProfileCompletion}/4`, hint: 'Reader setup' },
                 { label: 'Subscription', value: userProfile.subscriptionStatus === 'active' ? userProfile.subscriptionPlan : 'Free', hint: 'Current plan' },
                 { label: 'Referral Credits', value: centsToDisplay(userProfile.referralCredits), hint: 'Wallet bonus' },
-                { label: 'Reader Mode', value: userProfile.activeRole === 'seller' ? 'Author' : 'Reader', hint: 'Active experience' },
+                { label: 'Workspace', value: getWorkspaceLabel(userProfile.activeRole), hint: 'Active experience' },
               ].map(({ label, value, hint }) => (
                 <div key={label} className="p-3 rounded-xl border" style={{ background: 'rgba(17,17,17,0.86)', borderColor: '#1f2937' }}>
                   <p className="text-xs text-[#6b7280]">{label}</p>
@@ -385,15 +397,13 @@ export default function BuyerProfilePage() {
 
           {/* Mobile seller switch — desktop has this in the sidebar */}
           <div className="sm:hidden mb-5">
-            {(userProfile.role === 'seller' || userProfile.role === 'both') ? (
-              <button
-                type="button"
-                onClick={() => updateUserProfile(userProfile.uid, { activeRole: 'seller' }).then(() => router.push('/dashboard'))}
-                className="w-full py-3 rounded-xl text-sm font-medium border flex items-center justify-center gap-2"
-                style={{ borderColor: '#f5b800', color: '#f5b800' }}
-              >
-                <ShoppingBag size={15} /> Open Author Studio
-              </button>
+            {canAccessAuthorWorkspace ? (
+              <WorkspaceSwitcher
+                activeRole={userProfile.activeRole}
+                onChange={handleWorkspaceChange}
+                fullWidth
+                showLabel
+              />
             ) : (
               <button
                 type="button"
@@ -401,7 +411,7 @@ export default function BuyerProfilePage() {
                 className="w-full py-3 rounded-xl text-sm font-medium border flex items-center justify-center gap-2"
                 style={{ borderColor: '#f5b800', color: '#f5b800' }}
               >
-                <ShoppingBag size={15} /> Become an Author
+                <ShoppingBag size={15} /> Create Author Workspace
               </button>
             )}
           </div>

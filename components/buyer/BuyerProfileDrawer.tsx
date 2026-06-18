@@ -15,7 +15,9 @@ import Toggle from '@/components/shared/Toggle';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
 import ProgressBar from '@/components/shared/ProgressBar';
+import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import { getWorkspaceDestination, getWorkspaceLabel, hasAuthorWorkspace, type WorkspaceRole } from '@/lib/utils/workspace';
 import { getUserLibrary, getBook, getReadingProgress, getUserWishlist, toggleWishlist, getUserOrders } from '@/lib/firebase/firestore';
 import type { Book } from '@/types/book';
 import type { Order } from '@/types/order';
@@ -189,7 +191,7 @@ export default function BuyerProfileDrawer() {
   async function handleBecomeSeller() {
     if (!userProfile) return;
     await Promise.all([
-      updateUserProfile(userProfile.uid, { role: 'both', activeRole: 'seller' }),
+      updateUserProfile(userProfile.uid, { role: 'both', activeRole: 'buyer' }),
       setDoc(doc(db, 'sellers', userProfile.uid), {
         uid: userProfile.uid, penName: null, website: '',
         socialLinks: { twitter: '', instagram: '', linkedin: '', goodreads: '' },
@@ -205,9 +207,15 @@ export default function BuyerProfileDrawer() {
         createdAt: serverTimestamp(),
       }, { merge: true }),
     ]);
-    setUserProfile({ ...userProfile, role: 'both', activeRole: 'seller' });
+    setUserProfile({ ...userProfile, role: 'both', activeRole: 'buyer' });
+  }
+
+  async function handleWorkspaceChange(nextRole: WorkspaceRole) {
+    if (!userProfile || userProfile.activeRole === nextRole) return;
+    await updateUserProfile(userProfile.uid, { activeRole: nextRole });
+    setUserProfile({ ...userProfile, activeRole: nextRole });
     close();
-    router.push('/dashboard');
+    router.push(getWorkspaceDestination(nextRole));
   }
 
   async function toggleNotif(key: string, value: boolean) {
@@ -369,6 +377,7 @@ export default function BuyerProfileDrawer() {
   };
 
   if (!userProfile) return null;
+  const canAccessAuthorWorkspace = hasAuthorWorkspace(userProfile);
   const buyerProfileCompletion = [
     !!userProfile.firstName.trim(),
     !!userProfile.username.trim(),
@@ -423,21 +432,24 @@ export default function BuyerProfileDrawer() {
         {/* Scrollable content */}
         <div ref={contentRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
-          {/* Switch to Seller / Become a Seller */}
-          <div>
-            {(userProfile.role === 'seller' || userProfile.role === 'both') ? (
-              <button type="button"
-                onClick={async () => { await updateUserProfile(userProfile.uid, { activeRole: 'seller' }); setUserProfile({ ...userProfile, activeRole: 'seller' }); close(); router.push('/dashboard'); }}
-                className="w-full py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2"
-                style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-                <ShoppingBag size={13} /> Open Author Studio
-              </button>
+          {/* Workspace */}
+          <div className="space-y-2">
+            {canAccessAuthorWorkspace ? (
+              <WorkspaceSwitcher
+                activeRole={userProfile.activeRole}
+                onChange={handleWorkspaceChange}
+                fullWidth
+                showLabel
+              />
             ) : (
-              <button type="button" onClick={handleBecomeSeller}
-                className="w-full py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2"
-                style={{ borderColor: '#f5b800', color: '#f5b800' }}>
-                <ShoppingBag size={13} /> Become an Author
-              </button>
+              <>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#666]">Workspace</p>
+                <button type="button" onClick={handleBecomeSeller}
+                  className="w-full py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2"
+                  style={{ borderColor: '#f5b800', color: '#f5b800' }}>
+                  <ShoppingBag size={13} /> Create Author Workspace
+                </button>
+              </>
             )}
           </div>
 
@@ -483,7 +495,7 @@ export default function BuyerProfileDrawer() {
                 { label: 'Completion', value: `${buyerProfileCompletion}/4` },
                 { label: 'Credits', value: centsToDisplay(userProfile.referralCredits) },
                 { label: 'Plan', value: userProfile.subscriptionStatus === 'active' ? userProfile.subscriptionPlan : 'Free' },
-                { label: 'Mode', value: userProfile.activeRole === 'seller' ? 'Author' : 'Reader' },
+                { label: 'Workspace', value: getWorkspaceLabel(userProfile.activeRole) },
               ].map(({ label, value }) => (
                 <div key={label} className="p-2.5 rounded-xl border" style={{ background: 'rgba(17,17,17,0.86)', borderColor: '#1f2937' }}>
                   <p className="text-[11px] text-[#6b7280]">{label}</p>
