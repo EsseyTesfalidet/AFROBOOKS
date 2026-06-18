@@ -12,9 +12,10 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import PasswordInput from '@/components/shared/PasswordInput';
 import ProgressBar from '@/components/shared/ProgressBar';
+import { DEFAULT_SELLER_VERIFICATION_STATUS } from '@/lib/sellerVerification';
 import { useState, useEffect } from 'react';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
-import { LogOut, Copy, Check, Star, BookOpen, Trash2, ShoppingBag } from 'lucide-react';
+import { LogOut, Copy, Check, Star, BookOpen, Trash2, ShoppingBag, BadgeCheck } from 'lucide-react';
 import { getUserLibrary, getBook, getReadingProgress, getUserWishlist, toggleWishlist, getUserOrders } from '@/lib/firebase/firestore';
 import type { Book } from '@/types/book';
 import type { Order } from '@/types/order';
@@ -173,12 +174,16 @@ export default function BuyerProfilePage() {
         stripeAccountId: null,
         stripeAccountStatus: 'not_connected',
         isVerified: false,
-        verificationStatus: { emailVerified: true, bioAdded: userProfile.bio.trim().length >= 50, firstBookPublished: false, idVerified: false, tenSalesReached: false },
+        verificationStatus: {
+          ...DEFAULT_SELLER_VERIFICATION_STATUS,
+          bioAdded: userProfile.bio.trim().length >= 50,
+        },
         taxFormType: null,
         taxFormStatus: 'not_submitted',
         pendingBalance: 0,
         totalEarnings: 0,
         payoutSchedule: 'monthly',
+        nextPayoutDate: serverTimestamp(),
         followersCount: 0,
         totalSales: 0,
         averageRating: 0,
@@ -206,6 +211,12 @@ export default function BuyerProfilePage() {
   if (!userProfile) { router.replace('/browse'); return null; }
 
   const initials = `${userProfile.firstName[0] ?? ''}${userProfile.lastName[0] ?? ''}`.toUpperCase();
+  const buyerProfileCompletion = [
+    !!userProfile.firstName.trim(),
+    !!userProfile.username.trim(),
+    userProfile.bio.trim().length >= 20,
+    !!userProfile.country.trim(),
+  ].filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -278,6 +289,93 @@ export default function BuyerProfilePage() {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
+          <div
+            className="mb-5 p-5 sm:p-6 rounded-2xl border space-y-5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(232,68,42,0.16) 0%, rgba(17,17,17,0.96) 38%, rgba(14,165,233,0.12) 100%)',
+              borderColor: '#1f2937',
+            }}
+          >
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-bold flex-shrink-0"
+                  style={{ background: '#141414', color: '#f5b800', border: '1px solid #2a2a2a' }}
+                >
+                  {userProfile.avatarUrl
+                    ? <img src={userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    : initials || '?'}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="font-display text-display-sm text-white">
+                      {userProfile.firstName} {userProfile.lastName}
+                    </h1>
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ background: '#1a1a2e', color: '#7dd3fc' }}>
+                      Reader
+                    </span>
+                    {userProfile.subscriptionStatus === 'active' && (
+                      <span className="text-xs px-2 py-1 rounded-full flex items-center gap-1" style={{ background: '#2e1a0f', color: '#f5b800' }}>
+                        <BadgeCheck size={12} /> {userProfile.subscriptionPlan}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#94a3b8]">
+                    {userProfile.username ? `@${userProfile.username}` : 'Add a username to personalize your reader profile'}
+                  </p>
+                  <p className="text-sm leading-relaxed" style={{ color: userProfile.bio ? '#d1d5db' : '#6b7280' }}>
+                    {userProfile.bio || 'Add a short bio so authors and recommendations feel more personal.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                {(userProfile.role === 'seller' || userProfile.role === 'both') ? (
+                  <button
+                    type="button"
+                    onClick={() => updateUserProfile(userProfile.uid, { activeRole: 'seller' }).then(() => router.push('/dashboard'))}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium border"
+                    style={{ borderColor: '#f5b800', color: '#f5b800' }}
+                  >
+                    Switch to Seller
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleBecomeSeller}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium border"
+                    style={{ borderColor: '#f5b800', color: '#f5b800' }}
+                  >
+                    Become a Seller
+                  </button>
+                )}
+                <Link
+                  href="/profile/preferences"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium border text-center"
+                  style={{ borderColor: '#333', color: '#aaa' }}
+                >
+                  Personalize
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+              {[
+                { label: 'Profile Completion', value: `${buyerProfileCompletion}/4`, hint: 'Reader setup' },
+                { label: 'Subscription', value: userProfile.subscriptionStatus === 'active' ? userProfile.subscriptionPlan : 'Free', hint: 'Current plan' },
+                { label: 'Referral Credits', value: centsToDisplay(userProfile.referralCredits), hint: 'Wallet bonus' },
+                { label: 'Reader Mode', value: userProfile.activeRole === 'seller' ? 'Seller' : 'Buyer', hint: 'Active experience' },
+              ].map(({ label, value, hint }) => (
+                <div key={label} className="p-3 rounded-xl border" style={{ background: 'rgba(17,17,17,0.86)', borderColor: '#1f2937' }}>
+                  <p className="text-xs text-[#6b7280]">{label}</p>
+                  <p className="font-display text-xl text-white mt-1">{value}</p>
+                  <p className="text-xs text-[#4b5563] mt-1">{hint}</p>
+                </div>
+              ))}
+            </div>
+
+            <ProgressBar value={buyerProfileCompletion} max={4} color="#f5b800" height={6} showLabel />
+          </div>
 
           {/* Mobile seller switch — desktop has this in the sidebar */}
           <div className="sm:hidden mb-5">

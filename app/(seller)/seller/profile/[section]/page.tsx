@@ -20,6 +20,7 @@ import {
   getRemainingGraceBooksBeforeIdVerification,
   hasCompletedSellerVerification,
 } from '@/lib/sellerVerification';
+import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Seller } from '@/types/user';
 import type { Book } from '@/types/book';
 import ProgressBar from '@/components/shared/ProgressBar';
@@ -281,6 +282,7 @@ export default function SellerProfilePage() {
   const verificationDone = verificationSteps.filter((s) => s.done).length;
   const booksRemainingBeforeVerification = getRemainingGraceBooksBeforeIdVerification(publishedBooksCount);
   const canUploadIdVerification = canSubmitSellerIdVerification(publishedBooksCount);
+  const sellerDisplayName = seller?.penName || `${userProfile?.firstName} ${userProfile?.lastName}`;
 
   if (loading) return (
     <div className="min-h-screen bg-[#0e0e0e]"><SellerHeader />
@@ -358,6 +360,81 @@ export default function SellerProfilePage() {
               style={{ borderColor: '#333', color: '#888' }}>
               Sign out
             </button>
+          </div>
+
+          <div
+            className="p-5 sm:p-6 rounded-2xl border space-y-5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(245,184,0,0.14) 0%, rgba(17,17,17,0.96) 42%, rgba(232,68,42,0.14) 100%)',
+              borderColor: '#2a2111',
+            }}
+          >
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center text-lg font-bold flex-shrink-0"
+                  style={{ background: '#141414', color: '#f5b800', border: '1px solid #2a2a2a' }}
+                >
+                  {userProfile?.avatarUrl
+                    ? <img src={userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    : (userProfile?.firstName?.[0] ?? '?')}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="font-display text-display-sm text-white">{sellerDisplayName}</h1>
+                    {seller?.isVerified ? (
+                      <span className="text-xs px-2 py-1 rounded-full flex items-center gap-1" style={{ background: '#2e1a0f', color: '#f5b800' }}>
+                        <BadgeCheck size={12} /> Verified Author
+                      </span>
+                    ) : (
+                      <span className="text-xs px-2 py-1 rounded-full" style={{ background: '#1a1a2e', color: '#93c5fd' }}>
+                        Seller Profile
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#94a3b8]">
+                    {userProfile?.username ? `@${userProfile.username}` : 'Add a handle so readers can recognize you'}
+                  </p>
+                  <p className="text-sm leading-relaxed" style={{ color: userProfile?.bio ? '#d1d5db' : '#6b7280' }}>
+                    {userProfile?.bio || 'Add a stronger author bio to build trust with readers and unlock verification faster.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Link
+                  href="/publish"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-center"
+                  style={{ background: '#e8442a', color: '#fff' }}
+                >
+                  Publish New Book
+                </Link>
+                <Link
+                  href="/seller/profile/verification"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium border text-center"
+                  style={{ borderColor: '#f5b800', color: '#f5b800' }}
+                >
+                  Verification
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+              {[
+                { label: 'Published Books', value: publishedBooksCount.toString(), hint: 'Live, review, and pre-orders' },
+                { label: 'Total Sales', value: (seller?.totalSales ?? 0).toString(), hint: 'Marketplace orders' },
+                { label: 'Verification', value: `${verificationDone}/5`, hint: 'Author trust progress' },
+                { label: 'Total Earnings', value: centsToDisplay(seller?.totalEarnings ?? 0), hint: 'Gross author earnings' },
+              ].map(({ label, value, hint }) => (
+                <div key={label} className="p-3 rounded-xl border" style={{ background: 'rgba(17,17,17,0.88)', borderColor: '#2a2111' }}>
+                  <p className="text-xs text-[#6b7280]">{label}</p>
+                  <p className="font-display text-xl text-white mt-1">{value}</p>
+                  <p className="text-xs text-[#4b5563] mt-1">{hint}</p>
+                </div>
+              ))}
+            </div>
+
+            <ProgressBar value={verificationDone} max={5} color="#f5b800" height={6} showLabel />
           </div>
 
           {section === 'identity' && (
@@ -472,7 +549,7 @@ export default function SellerProfilePage() {
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'pending' && (
                           <span className="ml-auto flex items-center gap-1 text-xs" style={{ color: '#f5b800' }}>
-                            <Clock size={12} /> Under Review
+                            <Clock size={12} /> Under review
                           </span>
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'rejected' && (
@@ -593,7 +670,7 @@ export default function SellerProfilePage() {
                     <p className="text-xs text-[#555] mt-0.5">{coBooks.length} books published</p>
                     {userProfile?.bio
                       ? <p className="text-sm text-[#888] mt-2 leading-relaxed">{userProfile.bio}</p>
-                      : <p className="text-xs text-[#444] mt-2 italic">No bio yet — add one in Author Profile.</p>}
+                      : <p className="text-xs text-[#444] mt-2 italic">No bio added yet — update your Author Profile.</p>}
                     {seller?.website && (
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-[#555]">
                         <Globe size={12} /> {seller.website}

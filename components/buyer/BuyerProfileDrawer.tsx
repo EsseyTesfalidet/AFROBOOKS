@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { X, LogOut, ShoppingBag, Copy, Check, Star, Trash2 } from 'lucide-react';
+import { X, LogOut, ShoppingBag, Copy, Check, Star, Trash2, BadgeCheck } from 'lucide-react';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
 import { useAuthStore } from '@/store/authStore';
 import { updateUserProfile, logOut, changePassword, getUserProfile } from '@/lib/firebase/auth';
 import { db } from '@/lib/firebase/config';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { DEFAULT_SELLER_VERIFICATION_STATUS } from '@/lib/sellerVerification';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import Toggle from '@/components/shared/Toggle';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -194,9 +195,12 @@ export default function BuyerProfileDrawer() {
         socialLinks: { twitter: '', instagram: '', linkedin: '', goodreads: '' },
         stripeAccountId: null, stripeAccountStatus: 'not_connected',
         isVerified: false,
-        verificationStatus: { emailVerified: true, bioAdded: userProfile.bio.trim().length >= 50, firstBookPublished: false, idVerified: false, tenSalesReached: false },
+        verificationStatus: {
+          ...DEFAULT_SELLER_VERIFICATION_STATUS,
+          bioAdded: userProfile.bio.trim().length >= 50,
+        },
         taxFormType: null, taxFormStatus: 'not_submitted',
-        pendingBalance: 0, totalEarnings: 0, payoutSchedule: 'monthly',
+        pendingBalance: 0, totalEarnings: 0, payoutSchedule: 'monthly', nextPayoutDate: serverTimestamp(),
         followersCount: 0, totalSales: 0, averageRating: 0,
         createdAt: serverTimestamp(),
       }, { merge: true }),
@@ -365,6 +369,13 @@ export default function BuyerProfileDrawer() {
   };
 
   if (!userProfile) return null;
+  const buyerProfileCompletion = [
+    !!userProfile.firstName.trim(),
+    !!userProfile.username.trim(),
+    userProfile.bio.trim().length >= 20,
+    !!userProfile.country.trim(),
+  ].filter(Boolean).length;
+  const drawerInitials = `${userProfile.firstName?.[0] ?? ''}${userProfile.lastName?.[0] ?? ''}`.toUpperCase();
 
   return (
     <>
@@ -430,6 +441,60 @@ export default function BuyerProfileDrawer() {
             )}
           </div>
 
+          <div
+            className="p-4 rounded-2xl border space-y-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(232,68,42,0.16) 0%, rgba(17,17,17,0.96) 45%, rgba(14,165,233,0.12) 100%)',
+              borderColor: '#1f2937',
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center text-sm font-bold flex-shrink-0"
+                style={{ background: '#141414', color: '#f5b800', border: '1px solid #2a2a2a' }}
+              >
+                {userProfile.avatarUrl
+                  ? <img src={userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  : drawerInitials || '?'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-white truncate">{userProfile.firstName} {userProfile.lastName}</p>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: '#1a1a2e', color: '#7dd3fc' }}>
+                    Reader
+                  </span>
+                  {userProfile.subscriptionStatus === 'active' && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: '#2e1a0f', color: '#f5b800' }}>
+                      <BadgeCheck size={11} /> {userProfile.subscriptionPlan}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
+                  {userProfile.username ? `@${userProfile.username}` : 'Add a username to personalize your profile'}
+                </p>
+                <p className="text-xs mt-2 leading-relaxed" style={{ color: userProfile.bio ? '#d1d5db' : '#6b7280' }}>
+                  {userProfile.bio || 'Add a short bio to complete your reader profile.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Completion', value: `${buyerProfileCompletion}/4` },
+                { label: 'Credits', value: centsToDisplay(userProfile.referralCredits) },
+                { label: 'Plan', value: userProfile.subscriptionStatus === 'active' ? userProfile.subscriptionPlan : 'Free' },
+                { label: 'Mode', value: userProfile.activeRole === 'seller' ? 'Seller' : 'Buyer' },
+              ].map(({ label, value }) => (
+                <div key={label} className="p-2.5 rounded-xl border" style={{ background: 'rgba(17,17,17,0.86)', borderColor: '#1f2937' }}>
+                  <p className="text-[11px] text-[#6b7280]">{label}</p>
+                  <p className="text-sm font-medium text-white mt-1">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <ProgressBar value={buyerProfileCompletion} max={4} color="#f5b800" height={6} showLabel />
+          </div>
+
           {/* My Profile */}
           {section === 'account' && !editingProfile && (
             <div className="space-y-4">
@@ -444,7 +509,7 @@ export default function BuyerProfileDrawer() {
               {saved && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ background: '#0a1f0a', border: '1px solid #1a3a1a' }}>
                   <Check size={13} style={{ color: '#4ade80' }} />
-                  <span className="text-sm" style={{ color: '#4ade80' }}>Profile saved</span>
+                  <span className="text-sm" style={{ color: '#4ade80' }}>Profile updated.</span>
                 </div>
               )}
               <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
@@ -471,7 +536,7 @@ export default function BuyerProfileDrawer() {
                 {/* Bio */}
                 {userProfile.bio
                   ? <p className="text-sm leading-relaxed" style={{ color: '#888' }}>{userProfile.bio}</p>
-                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio yet</p>}
+                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio added yet.</p>}
 
                 {/* Other fields */}
                 <div className="space-y-2 pt-1" style={{ borderTop: '1px solid #1a1a1a', paddingTop: '12px' }}>

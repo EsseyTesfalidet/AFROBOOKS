@@ -18,6 +18,7 @@ import {
   getRemainingGraceBooksBeforeIdVerification,
   hasCompletedSellerVerification,
 } from '@/lib/sellerVerification';
+import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import Toggle from '@/components/shared/Toggle';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -279,6 +280,7 @@ export default function SellerProfileDrawer() {
   const verificationDone = verificationSteps.filter((s) => s.done).length;
   const booksRemainingBeforeVerification = getRemainingGraceBooksBeforeIdVerification(publishedBooksCount);
   const canUploadIdVerification = canSubmitSellerIdVerification(publishedBooksCount);
+  const sellerDisplayName = seller?.penName || `${userProfile?.firstName} ${userProfile?.lastName}`;
 
   const [isMobile, setIsMobile] = useState(false);
   const [dragY, setDragY] = useState(0);
@@ -490,6 +492,61 @@ export default function SellerProfileDrawer() {
             </button>
           )}
 
+          <div
+            className="p-4 rounded-2xl border space-y-4"
+            style={{
+              background: 'linear-gradient(135deg, rgba(245,184,0,0.14) 0%, rgba(17,17,17,0.96) 45%, rgba(232,68,42,0.14) 100%)',
+              borderColor: '#2a2111',
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center text-sm font-bold flex-shrink-0"
+                style={{ background: '#141414', color: '#f5b800', border: '1px solid #2a2a2a' }}
+              >
+                {userProfile.avatarUrl
+                  ? <img src={userProfile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  : (userProfile.firstName?.[0] ?? '?')}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-white truncate">{sellerDisplayName}</p>
+                  {seller?.isVerified ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: '#2e1a0f', color: '#f5b800' }}>
+                      <BadgeCheck size={11} /> Verified
+                    </span>
+                  ) : (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: '#1a1a2e', color: '#93c5fd' }}>
+                      Seller
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
+                  {userProfile.username ? `@${userProfile.username}` : 'Add a handle so readers can find you'}
+                </p>
+                <p className="text-xs mt-2 leading-relaxed" style={{ color: userProfile.bio ? '#d1d5db' : '#6b7280' }}>
+                  {userProfile.bio || 'Add a stronger author bio to improve trust and discovery.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Books', value: publishedBooksCount.toString() },
+                { label: 'Sales', value: (seller?.totalSales ?? 0).toString() },
+                { label: 'Verify', value: `${verificationDone}/5` },
+                { label: 'Earnings', value: centsToDisplay(seller?.totalEarnings ?? 0) },
+              ].map(({ label, value }) => (
+                <div key={label} className="p-2.5 rounded-xl border" style={{ background: 'rgba(17,17,17,0.88)', borderColor: '#2a2111' }}>
+                  <p className="text-[11px] text-[#6b7280]">{label}</p>
+                  <p className="text-sm font-medium text-white mt-1">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <ProgressBar value={verificationDone} max={5} color="#f5b800" height={6} showLabel />
+          </div>
+
           {/* Author Profile — view mode */}
           {section === 'identity' && !editingIdentity && (
             <div className="space-y-4">
@@ -504,7 +561,7 @@ export default function SellerProfileDrawer() {
               {savedProfile && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ background: '#0f2e1a', border: '1px solid #1a4a2a' }}>
                   <CheckCircle size={14} style={{ color: '#4ade80' }} />
-                  <span className="text-sm" style={{ color: '#4ade80' }}>Profile saved</span>
+                  <span className="text-sm" style={{ color: '#4ade80' }}>Author profile updated.</span>
                 </div>
               )}
               <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
@@ -526,7 +583,7 @@ export default function SellerProfileDrawer() {
                 </div>
                 {form.bio
                   ? <p className="text-sm leading-relaxed" style={{ color: '#888' }}>{form.bio}</p>
-                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio yet</p>}
+                  : <p className="text-sm italic" style={{ color: '#333' }}>No bio added yet.</p>}
                 <div className="space-y-2 pt-1" style={{ borderTop: '1px solid #1a1a1a', paddingTop: '12px' }}>
                   {form.website && (
                     <div className="flex items-center justify-between">
@@ -615,7 +672,7 @@ export default function SellerProfileDrawer() {
               {savedProfile && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ background: '#0f2e1a', border: '1px solid #1a4a2a' }}>
                   <CheckCircle size={14} style={{ color: '#4ade80' }} />
-                  <span className="text-sm" style={{ color: '#4ade80' }}>Profile saved successfully</span>
+                  <span className="text-sm" style={{ color: '#4ade80' }}>Author profile updated.</span>
                 </div>
               )}
               {userProfile && (
@@ -644,7 +701,7 @@ export default function SellerProfileDrawer() {
                     </div>
                     {userProfile.bio
                       ? <p className="text-xs text-[#888] mt-1 leading-relaxed">{userProfile.bio}</p>
-                      : <p className="text-xs text-[#444] mt-1 italic">No bio yet.</p>}
+                      : <p className="text-xs text-[#444] mt-1 italic">No bio added yet.</p>}
                     {seller?.website && (
                       <div className="flex items-center gap-1 mt-1 text-xs text-[#555]">
                         <Globe size={11} /> {seller.website}
@@ -702,7 +759,7 @@ export default function SellerProfileDrawer() {
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'pending' && (
                           <span className="flex items-center gap-1 text-xs" style={{ color: '#f5b800' }}>
-                            <Clock size={11} /> Under Review
+                            <Clock size={11} /> Under review
                           </span>
                         )}
                         {!done && label === 'ID verified' && canUploadIdVerification && idRequest?.status === 'rejected' && (

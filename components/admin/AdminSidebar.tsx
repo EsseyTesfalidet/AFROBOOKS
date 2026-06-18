@@ -29,6 +29,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const userProfile = useAuthStore((s) => s.userProfile);
+  const currentSection = NAV.find(({ href }) => pathname === href || (href !== '/admin' && pathname.startsWith(href)))?.label ?? 'Dashboard';
 
   async function handleSignOut() {
     await logOut();
@@ -41,10 +42,24 @@ export default function AdminSidebar() {
         <Logo size="sm" />
         <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: '#1f0e0c', color: '#e8442a' }}>ADMIN</span>
       </div>
-      <div className="flex flex-col items-center py-3 mb-3 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-        <AvatarUpload size={48} />
-        <p className="text-xs font-medium text-white mt-2">{userProfile?.firstName} {userProfile?.lastName}</p>
-        <p className="text-xs text-[#555]">Administrator</p>
+      <div
+        className="flex flex-col items-center py-4 px-3 mb-3 rounded-2xl border space-y-2"
+        style={{
+          background: 'linear-gradient(180deg, rgba(232,68,42,0.14) 0%, rgba(17,17,17,0.96) 52%, rgba(245,184,0,0.08) 100%)',
+          borderColor: '#2a2111',
+        }}
+      >
+        <AvatarUpload size={52} />
+        <p className="text-sm font-medium text-white text-center">{userProfile?.firstName} {userProfile?.lastName}</p>
+        <p className="text-xs text-[#9ca3af]">Administrator</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <span className="text-[11px] px-2 py-1 rounded-full" style={{ background: '#0f2e1a', color: '#4ade80' }}>
+            Live Ops
+          </span>
+          <span className="text-[11px] px-2 py-1 rounded-full" style={{ background: '#1a1a2e', color: '#93c5fd' }}>
+            {currentSection}
+          </span>
+        </div>
       </div>
       <nav className="flex-1 space-y-0.5">
         {NAV.map(({ label, href, icon: Icon }) => {
