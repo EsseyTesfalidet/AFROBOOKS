@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import StatusPill from '@/components/shared/StatusPill';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { db } from '@/lib/firebase/config';
+import { auth, db } from '@/lib/firebase/config';
 import { collection, getDocs } from 'firebase/firestore';
 import type { User } from '@/types/user';
 
@@ -51,9 +51,15 @@ export default function AdminUsersPage() {
     setPendingUserId(user.uid);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (auth.currentUser) {
+        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+      }
+
       const response = await fetch('/api/admin/moderate-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ uid: user.uid, action }),
       });
 

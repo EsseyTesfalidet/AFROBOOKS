@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import StatusPill from '@/components/shared/StatusPill';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { db } from '@/lib/firebase/config';
+import { auth, db } from '@/lib/firebase/config';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { getCopyrightBasisLabel } from '@/lib/utils/copyright';
@@ -43,9 +43,15 @@ export default function AdminBooksPage() {
     setPendingBookId(book.id);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (auth.currentUser) {
+        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+      }
+
       const response = await fetch('/api/admin/moderate-book', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ bookId: book.id, action: 'live' }),
       });
 
@@ -77,9 +83,15 @@ export default function AdminBooksPage() {
     setPendingBookId(book.id);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (auth.currentUser) {
+        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+      }
+
       const response = await fetch('/api/admin/moderate-book', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ bookId: book.id, action: 'delete' }),
       });
 

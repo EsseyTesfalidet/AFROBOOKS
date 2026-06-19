@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { db } from '@/lib/firebase/config';
+import { auth, db } from '@/lib/firebase/config';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { getCopyrightBasisLabel } from '@/lib/utils/copyright';
@@ -32,9 +32,15 @@ export default function AdminFlaggedPage() {
     setPendingBookId(book.id);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (auth.currentUser) {
+        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+      }
+
       const response = await fetch('/api/admin/moderate-book', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ bookId: book.id, action }),
       });
 
