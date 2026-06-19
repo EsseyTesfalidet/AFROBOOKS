@@ -7,7 +7,7 @@ import Logo from '@/components/shared/Logo';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { useAuthStore } from '@/store/authStore';
-import { updateUserProfile, logOut } from '@/lib/firebase/auth';
+import { updateUserProfile, logOutAndRedirect } from '@/lib/firebase/auth';
 import { useSellerDrawerStore } from '@/store/profileDrawerStore';
 import { getWorkspaceDestination, type WorkspaceRole } from '@/lib/utils/workspace';
 
@@ -86,14 +86,14 @@ export default function SellerHeader() {
             </div>
           ) : null}
           <button type="button"
-            onClick={async () => { await logOut(); router.replace('/login'); }}
+            onClick={() => { void logOutAndRedirect('/login'); }}
             className="hidden sm:block text-xs px-2.5 py-1 rounded-lg border"
             style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#b4b4bb', background: 'rgba(255,255,255,0.04)' }}>
             Sign out
           </button>
           {/* Sign-out icon — mobile only, near bell */}
           <button type="button" title="Sign out"
-            onClick={async () => { await logOut(); router.replace('/login'); }}
+            onClick={() => { void logOutAndRedirect('/login'); }}
             className="icon-button sm:hidden flex h-8 w-8 items-center justify-center rounded-lg">
             <LogOut size={17} />
           </button>

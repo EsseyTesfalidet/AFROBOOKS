@@ -78,9 +78,9 @@ export default function AdminUsersPage() {
   }
 
   const statusActions: Record<User['status'], { label: string; action: ModerationAction }[]> = {
-    active: [{ label: 'Warn', action: 'warned' }, { label: 'Suspend', action: 'suspended' }, { label: 'Ban', action: 'delete' }],
-    warned: [{ label: 'Suspend', action: 'suspended' }, { label: 'Ban', action: 'delete' }],
-    suspended: [{ label: 'Unsuspend', action: 'active' }, { label: 'Ban', action: 'delete' }],
+    active: [{ label: 'Warn', action: 'warned' }, { label: 'Disable', action: 'suspended' }, { label: 'Delete', action: 'delete' }],
+    warned: [{ label: 'Disable', action: 'suspended' }, { label: 'Delete', action: 'delete' }],
+    suspended: [{ label: 'Restore', action: 'active' }, { label: 'Delete', action: 'delete' }],
     banned: [{ label: 'Delete', action: 'delete' }],
   };
 
@@ -141,7 +141,9 @@ export default function AdminUsersPage() {
                               disabled={pendingUserId === user.uid}
                               onClick={() => updateStatus(user, action)}
                               className="text-xs px-2.5 py-1 rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                              style={{ borderColor: '#333', color: '#aaa' }}
+                              style={action === 'delete'
+                                ? { borderColor: '#e8442a', color: '#e8442a' }
+                                : { borderColor: '#333', color: '#aaa' }}
                             >
                               {label}
                             </button>

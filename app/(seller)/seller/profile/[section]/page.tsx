@@ -13,7 +13,7 @@ import { getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
 import { db, storage } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { updateUserProfile, changePassword, logOut } from '@/lib/firebase/auth';
+import { updateUserProfile, changePassword, logOutAndRedirect } from '@/lib/firebase/auth';
 import {
   DEFAULT_SELLER_VERIFICATION_STATUS,
   SELLER_BOOKS_BEFORE_ID_VERIFICATION,
@@ -26,6 +26,7 @@ import { getWorkspaceDestination, type WorkspaceRole } from '@/lib/utils/workspa
 import type { Seller } from '@/types/user';
 import type { Book } from '@/types/book';
 import ProgressBar from '@/components/shared/ProgressBar';
+import { useDeleteAccount } from '@/hooks/useDeleteAccount';
 
 const SIDEBAR_GROUPS = [
   { label: 'Identity', items: [
@@ -100,6 +101,7 @@ function SellerProfilePageContent() {
     emailReceipts: true, weeklyDigest: false, promotionalEmails: false,
   });
   const [notifSaving, setNotifSaving] = useState(false);
+  const { deletingAccount, deleteError, handleDeleteAccount } = useDeleteAccount();
 
   useEffect(() => {
     if (authLoading) return;
@@ -377,7 +379,7 @@ function SellerProfilePageContent() {
               />
             ) : null}
             <button type="button"
-              onClick={async () => { await logOut(); router.replace('/login'); }}
+              onClick={() => { void logOutAndRedirect('/login'); }}
               className="w-full py-2.5 rounded-xl text-xs font-medium border"
               style={{ borderColor: '#333', color: '#888' }}>
               Sign out
@@ -921,6 +923,21 @@ function SellerProfilePageContent() {
                   {pwSaving && <LoadingSpinner size={14} color="#fff" />}
                   Update Password
                 </button>
+                <div className="border-t pt-5 space-y-3" style={{ borderColor: '#1a1a1a' }}>
+                  <p className="text-sm font-medium text-[#e8442a]">Danger Zone</p>
+                  <p className="text-sm text-[#666]">This permanently removes your account, books, and related data.</p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deletingAccount}
+                    className="w-full py-2.5 rounded-lg text-sm border flex items-center justify-center gap-2 disabled:opacity-60"
+                    style={{ borderColor: '#e8442a', color: '#e8442a' }}
+                  >
+                    {deletingAccount && <LoadingSpinner size={13} color="#e8442a" />}
+                    Delete Account
+                  </button>
+                  {deleteError && <p className="text-sm text-[#e8442a]">{deleteError}</p>}
+                </div>
               </div>
             </div>
           )}

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { X, LogOut, ShoppingBag, Copy, Check, Star, Trash2, BadgeCheck } from 'lucide-react';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
 import { useAuthStore } from '@/store/authStore';
-import { updateUserProfile, logOut, changePassword, getUserProfile } from '@/lib/firebase/auth';
+import { updateUserProfile, logOutAndRedirect, changePassword, getUserProfile } from '@/lib/firebase/auth';
 import { db } from '@/lib/firebase/config';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { DEFAULT_SELLER_VERIFICATION_STATUS } from '@/lib/sellerVerification';
@@ -19,6 +19,7 @@ import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { getWorkspaceDestination, getWorkspaceLabel, hasAuthorWorkspace, type WorkspaceRole } from '@/lib/utils/workspace';
 import { getUserLibrary, getBook, getReadingProgress, getUserWishlist, toggleWishlist, getUserOrders } from '@/lib/firebase/firestore';
+import { useDeleteAccount } from '@/hooks/useDeleteAccount';
 import type { Book } from '@/types/book';
 import type { Order } from '@/types/order';
 import type { Review } from '@/types/review';
@@ -73,6 +74,7 @@ export default function BuyerProfileDrawer() {
     allowRecommendations: true,
     shareReadingActivity: false,
   });
+  const { deletingAccount, deleteError, handleDeleteAccount } = useDeleteAccount(close);
 
   // When account section opens, default to view mode unless profile is empty
   useEffect(() => {
@@ -189,8 +191,7 @@ export default function BuyerProfileDrawer() {
 
   async function handleSignOut() {
     close();
-    await logOut();
-    router.replace('/login');
+    await logOutAndRedirect('/login');
   }
 
   async function handleBecomeSeller() {
@@ -707,9 +708,18 @@ export default function BuyerProfileDrawer() {
                   </div>
                 </div>
                 <div className="border-t pt-4 mt-4" style={{ borderColor: '#1a1a1a' }}>
-                  <button type="button" className="w-full py-2.5 rounded-lg text-xs border" style={{ borderColor: '#e8442a', color: '#e8442a' }}>
+                  <p className="text-xs text-[#666] mb-2">This permanently removes your account and saved data.</p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deletingAccount}
+                    className="w-full py-2.5 rounded-lg text-xs border flex items-center justify-center gap-2 disabled:opacity-60"
+                    style={{ borderColor: '#e8442a', color: '#e8442a' }}
+                  >
+                    {deletingAccount && <LoadingSpinner size={12} color="#e8442a" />}
                     Delete Account
                   </button>
+                  {deleteError && <p className="text-xs text-[#e8442a] mt-2">{deleteError}</p>}
                 </div>
               </div>
             </div>

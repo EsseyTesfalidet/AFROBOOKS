@@ -12,7 +12,7 @@ import ReviewCard from '@/components/buyer/ReviewCard';
 import ReviewForm from '@/components/buyer/ReviewForm';
 import PromoCodeInput from '@/components/buyer/PromoCodeInput';
 import FollowButton from '@/components/shared/FollowButton';
-import { getBook, getBookReviews, isBookInLibrary, createReport, getSimilarBooks } from '@/lib/firebase/firestore';
+import { getBook, getBookReviews, isBookInLibrary, getSimilarBooks } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
@@ -32,6 +32,7 @@ export default function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const userProfile = useAuthStore((s) => s.userProfile);
+  const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const { addItem, isInCart, applyPromo, removePromo, promoCode, promoBookId } = useCartStore();
   const addRecentlyViewedBook = useRecentlyViewedStore((state) => state.addBook);
 
@@ -133,17 +134,35 @@ export default function BookDetailPage() {
   async function handleReport() {
     if (!reportReason || !userProfile || !book) return;
     setReportSubmitting(true);
-    await createReport({
-      reporterId: userProfile.uid,
-      reporterName: `${userProfile.firstName} ${userProfile.lastName}`,
-      targetType: 'book',
-      targetId: book.id,
-      targetName: book.title,
-      reason: reportReason,
-      status: 'open',
-    });
-    setReportSubmitting(false);
-    setReportDone(true);
+    try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (firebaseUser) {
+        headers.Authorization = `Bearer ${await firebaseUser.getIdToken()}`;
+      }
+
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          targetType: 'book',
+          targetId: book.id,
+          targetName: book.title,
+          reason: reportReason,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Unable to submit this report.');
+      }
+
+      setReportDone(true);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to submit this report.');
+    } finally {
+      setReportSubmitting(false);
+    }
   }
 
   return (

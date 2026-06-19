@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { updateUserProfile, logOut, changePassword, getUserProfile } from '@/lib/firebase/auth';
+import { updateUserProfile, logOutAndRedirect, changePassword, getUserProfile } from '@/lib/firebase/auth';
 import { db } from '@/lib/firebase/config';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc, orderBy } from 'firebase/firestore';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
@@ -19,6 +19,7 @@ import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { getWorkspaceDestination, getWorkspaceLabel, hasAuthorWorkspace, type WorkspaceRole } from '@/lib/utils/workspace';
 import { LogOut, Copy, Check, Star, BookOpen, Trash2, ShoppingBag, BadgeCheck } from 'lucide-react';
 import { getUserLibrary, getBook, getReadingProgress, getUserWishlist, toggleWishlist, getUserOrders } from '@/lib/firebase/firestore';
+import { useDeleteAccount } from '@/hooks/useDeleteAccount';
 import type { Book } from '@/types/book';
 import type { Order } from '@/types/order';
 import type { Review } from '@/types/review';
@@ -75,6 +76,7 @@ export default function BuyerProfilePage() {
     allowRecommendations: userProfile?.notificationPreferences?.recommendations ?? true,
     shareReadingActivity: false,
   });
+  const { deletingAccount, deleteError, handleDeleteAccount } = useDeleteAccount();
 
   useEffect(() => {
     if (!userProfile) return;
@@ -165,8 +167,7 @@ export default function BuyerProfilePage() {
   }
 
   async function handleSignOut() {
-    await logOut();
-    router.replace('/login');
+    await logOutAndRedirect('/login');
   }
 
   async function handleBecomeSeller() {
@@ -573,9 +574,18 @@ export default function BuyerProfilePage() {
                 </div>
                 <div className="border-t pt-5 space-y-3" style={{ borderColor: '#1a1a1a' }}>
                   <p className="text-sm font-medium text-[#e8442a]">Danger Zone</p>
-                  <button type="button" className="w-full py-2.5 rounded-lg text-sm border" style={{ borderColor: '#e8442a', color: '#e8442a' }}>
+                  <p className="text-sm text-[#666]">This permanently removes your account and saved data.</p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deletingAccount}
+                    className="w-full py-2.5 rounded-lg text-sm border flex items-center justify-center gap-2 disabled:opacity-60"
+                    style={{ borderColor: '#e8442a', color: '#e8442a' }}
+                  >
+                    {deletingAccount && <LoadingSpinner size={13} color="#e8442a" />}
                     Delete Account
                   </button>
+                  {deleteError && <p className="text-sm text-[#e8442a]">{deleteError}</p>}
                 </div>
               </div>
             </div>

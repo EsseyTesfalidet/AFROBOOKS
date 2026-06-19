@@ -7,6 +7,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { db } from '@/lib/firebase/config';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import { getCopyrightBasisLabel } from '@/lib/utils/copyright';
 import type { Book } from '@/types/book';
 
 export default function AdminBooksPage() {
@@ -56,7 +57,7 @@ export default function AdminBooksPage() {
       setBooks((prev) =>
         prev.map((item) =>
           item.id === book.id
-            ? { ...item, status: 'live', flagReason: null, flagCount: 0 }
+            ? { ...item, status: 'live', flagReason: null, flagCount: 0, copyrightReviewStatus: 'approved' }
             : item
         )
       );
@@ -124,10 +125,22 @@ export default function AdminBooksPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-9 rounded flex-shrink-0" style={{ background: book.coverBgColor }} />
-                        <p className="text-white truncate max-w-[140px]">{book.title}</p>
+                        <div className="min-w-0">
+                          <p className="text-white truncate max-w-[140px]">{book.title}</p>
+                          <p className="text-[11px] text-[#666] truncate max-w-[180px]">
+                            {getCopyrightBasisLabel(book.copyrightBasis)}{book.copyrightReviewStatus ? ` · review ${book.copyrightReviewStatus}` : ''}
+                          </p>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-[#aaa]">{book.authorName}</td>
+                    <td className="px-4 py-3 text-[#aaa]">
+                      <div className="space-y-1">
+                        <p>{book.authorName}</p>
+                        {book.copyrightDetails && (
+                          <p className="text-[11px] text-[#555] max-w-[180px] truncate">{book.copyrightDetails}</p>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(book.price)}</td>
                     <td className="px-4 py-3 text-[#aaa]">{book.totalSales}</td>
                     <td className="px-4 py-3 text-[#aaa]">{book.averageRating.toFixed(1)}</td>

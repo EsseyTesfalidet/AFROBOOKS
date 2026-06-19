@@ -29,6 +29,7 @@ function ListingsPageFallback() {
 function ListingsPageContent() {
   const searchParams = useSearchParams();
   const userProfile = useAuthStore((s) => s.userProfile);
+  const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const [books, setBooks] = useState<Book[]>([]);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +63,16 @@ function ListingsPageContent() {
     setPendingDeleteBookId(book.id);
 
     try {
-      const response = await fetch(`/api/books/${book.id}`, { method: 'DELETE' });
+      const headers: HeadersInit = {};
+      if (firebaseUser) {
+        headers.Authorization = `Bearer ${await firebaseUser.getIdToken()}`;
+      }
+
+      const response = await fetch(`/api/books/${book.id}`, {
+        method: 'DELETE',
+        headers,
+        credentials: 'include',
+      });
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
@@ -107,6 +117,7 @@ function ListingsPageContent() {
   const draftBooksCount = books.filter((book) => book.status === 'draft').length;
   const publishedStatus = searchParams.get('published');
   const publishMode = searchParams.get('mode');
+  const reviewReason = searchParams.get('review');
 
   const publishNotice = useMemo(() => {
     if (publishedStatus === 'live') {
@@ -123,7 +134,10 @@ function ListingsPageContent() {
     if (publishedStatus === 'in_review') {
       return {
         title: 'Book sent to review.',
-        message: 'It is saved correctly and will appear to readers after approval in Admin > Books.',
+        message:
+          reviewReason === 'copyright'
+            ? 'It is saved correctly and is waiting for staff to verify publishing rights before readers can see it.'
+            : 'It is saved correctly and will appear to readers after approval in Admin > Books.',
         styles: { background: '#102033', borderColor: '#1e3a5f', color: '#7dd3fc' },
       };
     }
@@ -137,7 +151,7 @@ function ListingsPageContent() {
     }
 
     return null;
-  }, [publishMode, publishedStatus]);
+  }, [publishMode, publishedStatus, reviewReason]);
 
   if (loading) return (
     <div className="min-h-screen bg-[#0e0e0e]">

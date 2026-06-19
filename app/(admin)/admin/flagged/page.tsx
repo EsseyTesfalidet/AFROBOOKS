@@ -6,6 +6,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { db } from '@/lib/firebase/config';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import { getCopyrightBasisLabel } from '@/lib/utils/copyright';
 import type { Book } from '@/types/book';
 
 export default function AdminFlaggedPage() {
@@ -90,6 +91,13 @@ export default function AdminFlaggedPage() {
                           <p className="text-xs text-[#555] mt-1">{book.flagCount} report{book.flagCount !== 1 ? 's' : ''}</p>
                         </div>
                       )}
+                      <div className="mt-3 p-3 rounded-lg border" style={{ background: '#161616', borderColor: '#252525' }}>
+                        <p className="text-xs font-medium text-white">Rights declaration</p>
+                        <p className="text-xs text-[#aaa] mt-1">{getCopyrightBasisLabel(book.copyrightBasis)}</p>
+                        {book.copyrightDetails && (
+                          <p className="text-xs text-[#666] mt-1">{book.copyrightDetails}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-3 mt-4">

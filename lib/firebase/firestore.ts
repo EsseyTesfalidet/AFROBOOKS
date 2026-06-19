@@ -322,7 +322,15 @@ export async function getUserOrders(userId: string): Promise<Order[]> {
     orderBy('createdAt', 'desc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
+  const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
+  const visibility = await Promise.all(
+    orders.map(async (order) => ({
+      order,
+      exists: (await getDoc(doc(db, 'books', order.bookId)).catch(() => null))?.exists() ?? false,
+    }))
+  );
+
+  return visibility.filter(({ exists }) => exists).map(({ order }) => order);
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────

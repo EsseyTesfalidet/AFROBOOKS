@@ -20,10 +20,12 @@ import {
   requiresSellerIdVerificationForPublishing,
 } from '@/lib/sellerVerification';
 import type { Chapter } from '@/types/book';
+import type { CopyrightBasis } from '@/types/book';
 import type { Seller } from '@/types/user';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { ShieldAlert } from 'lucide-react';
 import { importManuscriptFile } from '@/lib/publishing/manuscriptImport';
+import { COPYRIGHT_BASIS_OPTIONS, getCopyrightBasisLabel, requiresManualCopyrightReview } from '@/lib/utils/copyright';
 
 const STEPS = ['Details', 'Cover', 'Book Content', 'Pricing', 'Publish'];
 const GENRES = ['Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
@@ -58,6 +60,9 @@ export default function PublishPage() {
   const [language, setLanguage] = useState('English');
   const [ageGroup, setAgeGroup] = useState<'all' | 'children' | 'teen' | 'adult'>('all');
   const [isbn, setIsbn] = useState('');
+  const [copyrightBasis, setCopyrightBasis] = useState<CopyrightBasis>('original');
+  const [copyrightDetails, setCopyrightDetails] = useState('');
+  const [copyrightAttested, setCopyrightAttested] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [accentColor, setAccentColor] = useState(ACCENT_COLORS[0]);
   const [bgColor, setBgColor] = useState(BG_COLORS[0]);
@@ -166,6 +171,14 @@ export default function PublishPage() {
       setPublishError('Add at least one chapter or import a manuscript before publishing.');
       return;
     }
+    if (!copyrightAttested) {
+      setPublishError('Confirm that you own the rights or are legally allowed to publish this book.');
+      return;
+    }
+    if (requiresManualCopyrightReview(copyrightBasis) && !copyrightDetails.trim()) {
+      setPublishError('Add copyright or licensing details so the review team can verify this book.');
+      return;
+    }
     if (publishMode !== 'draft' && requiresIdVerificationForPublishingNow) {
       setPublishError(
         `You have reached the ${SELLER_BOOKS_BEFORE_ID_VERIFICATION}-book grace limit. Submit ID verification before publishing another live title or pre-order.`
@@ -176,9 +189,10 @@ export default function PublishPage() {
     try {
       const settings = await getPlatformSettings();
       const shouldCreatePublicListing = publishMode !== 'draft';
+      const requiresRightsReview = requiresManualCopyrightReview(copyrightBasis);
       const nextBookStatus =
         shouldCreatePublicListing
-          ? (settings.autoApproveBooks ? 'live' : 'in_review')
+          ? ((settings.autoApproveBooks && !requiresRightsReview) ? 'live' : 'in_review')
           : 'draft';
 
       // Create book document
@@ -218,6 +232,12 @@ export default function PublishPage() {
         wordCount: chapters.reduce((s, c) => s + c.wordCount, 0),
         chapterCount: chapters.length,
         tags: [genre.toLowerCase()],
+        copyrightBasis,
+        copyrightDetails: copyrightDetails.trim() || null,
+        copyrightAttestationAccepted: copyrightAttested,
+        copyrightReviewStatus: shouldCreatePublicListing
+          ? (requiresRightsReview || !settings.autoApproveBooks ? 'pending' : 'approved')
+          : 'not_needed',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -269,6 +289,9 @@ export default function PublishPage() {
         published: nextBookStatus,
         mode: publishMode,
       });
+      if (shouldCreatePublicListing && requiresRightsReview) {
+        resultParams.set('review', 'copyright');
+      }
       router.push(`/listings?${resultParams.toString()}`);
     } catch (err) {
       console.error('Publish error:', err);
@@ -290,6 +313,8 @@ export default function PublishPage() {
     { label: 'Book content added', done: chapters.length > 0 },
     { label: 'Price set', done: price > 0 },
     { label: 'Author name set', done: !!authorName },
+    { label: 'Rights confirmed', done: copyrightAttested },
+    { label: 'Rights review notes added', done: !requiresManualCopyrightReview(copyrightBasis) || !!copyrightDetails.trim() },
   ];
   const idVerified = seller?.verificationStatus?.idVerified ?? false;
   const booksRemainingBeforeVerification = getRemainingGraceBooksBeforeIdVerification(publishedBooksCount);
@@ -425,6 +450,61 @@ export default function PublishPage() {
                 <div>
                   <label className="block text-sm text-[#aaa] mb-1.5">ISBN (optional)</label>
                   <input value={isbn} onChange={(e) => setIsbn(e.target.value)} placeholder="978-..." className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                </div>
+                <div className="space-y-3 rounded-xl border p-4" style={{ background: '#151515', borderColor: '#252525' }}>
+                  <div>
+                    <p className="text-sm font-medium text-white">Publishing Rights</p>
+                    <p className="mt-1 text-xs text-[#666]">Tell the platform why you are legally allowed to publish this book.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {COPYRIGHT_BASIS_OPTIONS.map((option) => (
+                      <label
+                        key={option.value}
+                        className="flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all"
+                        style={{
+                          border: copyrightBasis === option.value ? '1.5px solid #e8442a' : '1.5px solid #2a2a2a',
+                          background: copyrightBasis === option.value ? '#1f0e0c' : '#1a1a1a',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="copyrightBasis"
+                          value={option.value}
+                          checked={copyrightBasis === option.value}
+                          onChange={() => setCopyrightBasis(option.value)}
+                          className="mt-0.5 accent-[#e8442a]"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-white">{option.label}</p>
+                          <p className="text-xs text-[#666]">{option.description}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[#aaa] mb-1.5">
+                      Rights details {requiresManualCopyrightReview(copyrightBasis) ? '(required)' : '(optional)'}
+                    </label>
+                    <textarea
+                      value={copyrightDetails}
+                      onChange={(e) => setCopyrightDetails(e.target.value)}
+                      rows={3}
+                      placeholder="Add license, source, assignment, or public-domain details for the review team."
+                      className="w-full px-3.5 py-2.5 rounded-lg border text-sm resize-none"
+                      style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}
+                    />
+                  </div>
+                  <label className="flex items-start gap-3 rounded-xl border p-3" style={{ background: '#111', borderColor: '#2a2a2a' }}>
+                    <input
+                      type="checkbox"
+                      checked={copyrightAttested}
+                      onChange={(e) => setCopyrightAttested(e.target.checked)}
+                      className="mt-1 accent-[#e8442a]"
+                    />
+                    <span className="text-sm text-[#aaa]">
+                      I confirm that I own the rights to this book or I have explicit permission to publish it on AfroBooks.
+                    </span>
+                  </label>
                 </div>
               </div>
             )}
@@ -665,6 +745,16 @@ export default function PublishPage() {
                         style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
                     </div>
                   )}
+                </div>
+
+                <div className="rounded-xl border p-4" style={{ background: '#151515', borderColor: '#252525' }}>
+                  <p className="text-sm font-medium text-white">Copyright review</p>
+                  <p className="mt-1 text-xs text-[#666]">
+                    Rights basis: {getCopyrightBasisLabel(copyrightBasis)}.
+                    {requiresManualCopyrightReview(copyrightBasis)
+                      ? ' This book will stay in review until the team verifies the rights details you provided.'
+                      : ' Original works can go live automatically when other platform checks pass.'}
+                  </p>
                 </div>
 
                 <button type="button" onClick={handlePublish}

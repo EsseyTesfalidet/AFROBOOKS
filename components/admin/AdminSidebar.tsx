@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, BookOpen, Flag, DollarSign,
   CreditCard, Radio, AlertTriangle, Megaphone, Settings, LogOut, ShieldCheck,
 } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
-import { logOut } from '@/lib/firebase/auth';
+import { logOutAndRedirect } from '@/lib/firebase/auth';
 import { useAuthStore } from '@/store/authStore';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 
@@ -27,13 +27,11 @@ const NAV = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const userProfile = useAuthStore((s) => s.userProfile);
   const currentSection = NAV.find(({ href }) => pathname === href || (href !== '/admin' && pathname.startsWith(href)))?.label ?? 'Dashboard';
 
   async function handleSignOut() {
-    await logOut();
-    router.replace('/login');
+    await logOutAndRedirect('/login');
   }
 
   return (

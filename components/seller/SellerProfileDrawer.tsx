@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { X, LogOut, ExternalLink, CheckCircle, Circle, Upload, Clock, Plus, Trash2, UserPlus, Copy, BadgeCheck, Globe } from 'lucide-react';
 import { useSellerDrawerStore } from '@/store/profileDrawerStore';
 import { useAuthStore } from '@/store/authStore';
-import { updateUserProfile, logOut, changePassword } from '@/lib/firebase/auth';
+import { updateUserProfile, logOutAndRedirect, changePassword } from '@/lib/firebase/auth';
 import { getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
 import { db, storage } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
@@ -25,6 +25,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ProgressBar from '@/components/shared/ProgressBar';
 import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { getWorkspaceDestination, type WorkspaceRole } from '@/lib/utils/workspace';
+import { useDeleteAccount } from '@/hooks/useDeleteAccount';
 import type { Seller } from '@/types/user';
 import type { Book } from '@/types/book';
 
@@ -91,6 +92,7 @@ export default function SellerProfileDrawer() {
     emailReceipts: true, weeklyDigest: false, promotionalEmails: false,
   });
   const [notifSaving, setNotifSaving] = useState(false);
+  const { deletingAccount, deleteError, handleDeleteAccount } = useDeleteAccount(close);
 
   // When identity section opens, default to view mode unless profile is empty
   useEffect(() => {
@@ -275,8 +277,7 @@ export default function SellerProfileDrawer() {
 
   async function handleSignOut() {
     close();
-    await logOut();
-    router.replace('/login');
+    await logOutAndRedirect('/login');
   }
 
   async function handleWorkspaceChange(nextRole: WorkspaceRole) {
@@ -1012,6 +1013,21 @@ export default function SellerProfileDrawer() {
                   {pwSaving && <LoadingSpinner size={13} color="#fff" />}
                   Update Password
                 </button>
+                <div className="border-t pt-4 space-y-2" style={{ borderColor: '#1a1a1a' }}>
+                  <p className="text-xs font-medium text-[#e8442a] uppercase tracking-[0.2em]">Danger Zone</p>
+                  <p className="text-xs text-[#666]">This permanently removes your account, books, and related data.</p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deletingAccount}
+                    className="w-full py-2.5 rounded-lg text-xs border flex items-center justify-center gap-2 disabled:opacity-60"
+                    style={{ borderColor: '#e8442a', color: '#e8442a' }}
+                  >
+                    {deletingAccount && <LoadingSpinner size={12} color="#e8442a" />}
+                    Delete Account
+                  </button>
+                  {deleteError && <p className="text-xs text-[#e8442a]">{deleteError}</p>}
+                </div>
               </div>
             </div>
           )}

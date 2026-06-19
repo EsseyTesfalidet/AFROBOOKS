@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       publishedAt: book.publishedAt ?? new Date(),
       flagReason: null,
       flagCount: 0,
+      copyrightReviewStatus: 'approved',
       updatedAt: new Date(),
     });
 

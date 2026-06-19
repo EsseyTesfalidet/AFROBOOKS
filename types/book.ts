@@ -1,5 +1,8 @@
 import { Timestamp } from 'firebase/firestore';
 
+export type CopyrightBasis = 'original' | 'licensed' | 'public_domain' | 'commissioned' | 'other';
+export type CopyrightReviewStatus = 'not_needed' | 'pending' | 'approved' | 'flagged';
+
 export interface Book {
   id: string;
   sellerId: string;
@@ -40,6 +43,10 @@ export interface Book {
   coAuthors?: { name: string; email: string; revenueShare: number }[];
   isPreorder?: boolean;
   releaseDate?: Timestamp | null;
+  copyrightBasis?: CopyrightBasis;
+  copyrightDetails?: string | null;
+  copyrightAttestationAccepted?: boolean;
+  copyrightReviewStatus?: CopyrightReviewStatus;
 }
 
 export interface Chapter {

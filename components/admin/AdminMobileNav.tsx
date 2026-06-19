@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, BookOpen, Flag, DollarSign,
   CreditCard, Radio, ShieldCheck, AlertTriangle, Megaphone, Settings,
 } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
-import { logOut } from '@/lib/firebase/auth';
+import { logOutAndRedirect } from '@/lib/firebase/auth';
 
 const NAV = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -25,7 +25,6 @@ const NAV = [
 
 export default function AdminMobileNav() {
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
     <header className="md:hidden sticky top-0 z-50" style={{ background: '#0d0d0d', borderBottom: '1px solid #1a1a1a' }}>
@@ -36,7 +35,7 @@ export default function AdminMobileNav() {
         </div>
         <button
           type="button"
-          onClick={async () => { await logOut(); router.replace('/login'); }}
+          onClick={() => { void logOutAndRedirect('/login'); }}
           className="text-xs px-2.5 py-1 rounded-lg border"
           style={{ borderColor: '#333', color: '#888' }}
         >

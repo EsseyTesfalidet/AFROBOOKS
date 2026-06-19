@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './config';
-import { setClientAuthHints, syncAuthSession } from './session';
+import { clearAuthSession, setClientAuthHints, syncAuthSession } from './session';
 import type { User as UserProfile } from '@/types/user';
 
 const googleProvider = new GoogleAuthProvider();
@@ -176,7 +176,36 @@ export async function signInWithGoogle(): Promise<User | null> {
 }
 
 export async function logOut(): Promise<void> {
-  await signOut(auth);
+  await Promise.allSettled([clearAuthSession(), signOut(auth)]);
+}
+
+export async function logOutAndRedirect(destination = '/login'): Promise<void> {
+  await logOut().catch(() => undefined);
+
+  if (typeof window !== 'undefined') {
+    window.location.replace(destination);
+  }
+}
+
+export async function deleteCurrentAccount(): Promise<void> {
+  const headers: HeadersInit = {};
+
+  if (auth.currentUser) {
+    headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+  }
+
+  const response = await fetch('/api/account', {
+    method: 'DELETE',
+    headers,
+    credentials: 'include',
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error ?? 'Unable to delete account.');
+  }
+
+  await logOut().catch(() => undefined);
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
