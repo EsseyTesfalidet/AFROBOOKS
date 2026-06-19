@@ -43,6 +43,7 @@ export interface Book {
   coAuthors?: { name: string; email: string; revenueShare: number }[];
   isPreorder?: boolean;
   releaseDate?: Timestamp | null;
+  manuscriptUrl?: string | null;
   copyrightBasis?: CopyrightBasis;
   copyrightDetails?: string | null;
   copyrightAttestationAccepted?: boolean;

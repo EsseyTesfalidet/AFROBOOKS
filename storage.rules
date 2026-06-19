@@ -7,42 +7,70 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return request.auth.token.role == 'admin';
+      return isSignedIn() && request.auth.token.role == 'admin';
     }
 
-    // Book covers — sellers can upload, anyone can read
-    match /covers/{bookId}/{filename} {
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isImageOrPdf() {
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType == 'application/pdf';
+    }
+
+    // Book covers — sellerId in path so ownership can be enforced
+    match /covers/{sellerId}/{bookId}/{filename} {
       allow read: if true;
-      allow write: if isSignedIn() && request.resource.size < 5 * 1024 * 1024 &&
-        request.resource.contentType.matches('image/.*');
+      allow create, update: if isOwner(sellerId) &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        isImage();
+      allow delete: if isOwner(sellerId) || isAdmin();
     }
 
-    // User avatars
+    // Raw manuscript files — stored alongside parsed Firestore chapters for copyright records
+    match /manuscripts/{sellerId}/{bookId}/{filename} {
+      allow read: if isOwner(sellerId) || isAdmin();
+      allow create, update: if isOwner(sellerId) &&
+        request.resource.size < 50 * 1024 * 1024 &&
+        (request.resource.contentType == 'text/plain' ||
+         request.resource.contentType == 'text/markdown' ||
+         request.resource.contentType.matches('text/.*'));
+      allow delete: if isOwner(sellerId) || isAdmin();
+    }
+
+    // User avatars — public read, owner write/delete
     match /avatars/{userId}/{filename} {
       allow read: if true;
-      allow write: if request.auth.uid == userId &&
+      allow create, update: if isOwner(userId) &&
         request.resource.size < 2 * 1024 * 1024 &&
-        request.resource.contentType.matches('image/.*');
+        isImage();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
-    // ID verification documents — seller uploads, only admin reads
+    // ID verification documents — owner uploads (image or PDF), only admin reads
     match /verification/{userId}/{filename} {
       allow read: if isAdmin();
-      allow write: if request.auth.uid == userId &&
+      allow create, update: if isOwner(userId) &&
         request.resource.size < 10 * 1024 * 1024 &&
-        request.resource.contentType.matches('image/.*');
+        isImageOrPdf();
+      allow delete: if isAdmin();
     }
 
-    // Tax forms — seller uploads PDF or image, only admin reads
+    // Tax forms — owner uploads (image or PDF), only admin reads
     match /tax/{userId}/{filename} {
       allow read: if isAdmin();
-      allow write: if request.auth.uid == userId &&
+      allow create, update: if isOwner(userId) &&
         request.resource.size < 10 * 1024 * 1024 &&
-        (request.resource.contentType.matches('image/.*') ||
-         request.resource.contentType == 'application/pdf');
+        isImageOrPdf();
+      allow delete: if isAdmin();
     }
 
-    // Deny all other paths
+    // Deny everything else
     match /{allPaths=**} {
       allow read, write: if false;
     }

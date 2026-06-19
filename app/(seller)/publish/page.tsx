@@ -7,7 +7,7 @@ import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
 import ChapterEditor from '@/components/seller/ChapterEditor';
 import { useAuthStore } from '@/store/authStore';
-import { uploadCoverImage } from '@/lib/firebase/storage';
+import { uploadCoverImage, uploadManuscript } from '@/lib/firebase/storage';
 import { db } from '@/lib/firebase/config';
 import { collection, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { calculateEarnings } from '@/lib/utils/calculateEarnings';
@@ -68,6 +68,7 @@ export default function PublishPage() {
   const [bgColor, setBgColor] = useState(BG_COLORS[0]);
   const [chapters, setChapters] = useState<DraftChapter[]>([]);
   const [manuscriptFileName, setManuscriptFileName] = useState('');
+  const [manuscriptFile, setManuscriptFile] = useState<File | null>(null);
   const [manuscriptImporting, setManuscriptImporting] = useState(false);
   const [manuscriptError, setManuscriptError] = useState('');
   const [price, setPrice] = useState(PRICE_TIERS[2]);
@@ -142,6 +143,7 @@ export default function PublishPage() {
       const imported = await importManuscriptFile(file);
       setChapters(imported.chapters);
       setManuscriptFileName(imported.fileName);
+      setManuscriptFile(file);
       setEditingChapter(null);
     } catch (error) {
       setManuscriptError(
@@ -242,11 +244,18 @@ export default function PublishPage() {
         updatedAt: serverTimestamp(),
       });
 
-      // Upload cover if provided
+      // Upload cover and manuscript if provided
+      const { updateDoc } = await import('firebase/firestore');
+      const storageUpdates: Record<string, string> = {};
+
       if (coverFile) {
-        const coverUrl = await uploadCoverImage(bookRef.id, coverFile);
-        const { updateDoc } = await import('firebase/firestore');
-        await updateDoc(doc(db, 'books', bookRef.id), { coverUrl });
+        storageUpdates.coverUrl = await uploadCoverImage(userProfile.uid, bookRef.id, coverFile);
+      }
+      if (manuscriptFile) {
+        storageUpdates.manuscriptUrl = await uploadManuscript(userProfile.uid, bookRef.id, manuscriptFile);
+      }
+      if (Object.keys(storageUpdates).length > 0) {
+        await updateDoc(doc(db, 'books', bookRef.id), storageUpdates);
       }
 
       // Save chapters as subcollection
