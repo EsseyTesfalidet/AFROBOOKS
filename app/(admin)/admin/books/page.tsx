@@ -5,7 +5,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import StatusPill from '@/components/shared/StatusPill';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 
@@ -15,6 +15,7 @@ export default function AdminBooksPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [pendingBookId, setPendingBookId] = useState<string | null>(null);
 
   useEffect(() => {
     getDocs(collection(db, 'books')).then((snap) => {
@@ -38,32 +39,60 @@ export default function AdminBooksPage() {
   }
 
   async function approveBook(book: Book) {
-    await updateDoc(doc(db, 'books', book.id), {
-      status: 'live',
-      publishedAt: book.publishedAt ?? serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    setBooks((prev) => prev.map((item) => item.id === book.id ? { ...item, status: 'live' } : item));
-    await addDoc(collection(db, 'notifications'), {
-      userId: book.sellerId,
-      type: 'system',
-      title: 'Book Approved',
-      message: `Your book "${book.title}" is now live in the reader catalog.`,
-      isRead: false,
-      actionUrl: '/listings',
-      relatedBookId: book.id,
-      createdAt: serverTimestamp(),
-    });
+    setPendingBookId(book.id);
+
+    try {
+      const response = await fetch('/api/admin/moderate-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: book.id, action: 'live' }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Unable to approve this book.');
+      }
+
+      setBooks((prev) =>
+        prev.map((item) =>
+          item.id === book.id
+            ? { ...item, status: 'live', flagReason: null, flagCount: 0 }
+            : item
+        )
+      );
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to approve this book.');
+    } finally {
+      setPendingBookId(null);
+    }
   }
 
-  async function removeBook(bookId: string, sellerId: string, title: string) {
-    await updateDoc(doc(db, 'books', bookId), { status: 'removed', updatedAt: serverTimestamp() });
-    setBooks((prev) => prev.map((b) => b.id === bookId ? { ...b, status: 'removed' } : b));
-    await addDoc(collection(db, 'notifications'), {
-      userId: sellerId, type: 'system', title: 'Book Removed',
-      message: `Your book "${title}" has been removed by the platform admin.`,
-      isRead: false, actionUrl: '/listings', relatedBookId: bookId, createdAt: serverTimestamp(),
-    });
+  async function deleteBook(book: Book) {
+    const confirmed = window.confirm(`Permanently delete "${book.title}" from the platform?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingBookId(book.id);
+
+    try {
+      const response = await fetch('/api/admin/moderate-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: book.id, action: 'delete' }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Unable to delete this book.');
+      }
+
+      setBooks((prev) => prev.filter((item) => item.id !== book.id));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to delete this book.');
+    } finally {
+      setPendingBookId(null);
+    }
   }
 
   return (
@@ -108,8 +137,9 @@ export default function AdminBooksPage() {
                         {book.status === 'in_review' && (
                           <button
                             type="button"
+                            disabled={pendingBookId === book.id}
                             onClick={() => approveBook(book)}
-                            className="text-xs px-2.5 py-1 rounded-lg border"
+                            className="text-xs px-2.5 py-1 rounded-lg border disabled:cursor-not-allowed disabled:opacity-50"
                             style={{ borderColor: '#4ade80', color: '#4ade80' }}
                           >
                             Approve
@@ -120,12 +150,15 @@ export default function AdminBooksPage() {
                           style={{ borderColor: book.isFeatured ? '#f5b800' : '#333', color: book.isFeatured ? '#f5b800' : '#888' }}>
                           {book.isFeatured ? 'Unfeature' : 'Feature'}
                         </button>
-                        {book.status !== 'removed' && (
-                          <button type="button" onClick={() => removeBook(book.id, book.sellerId, book.title)}
-                            className="text-xs px-2.5 py-1 rounded-lg border" style={{ borderColor: '#333', color: '#e8442a' }}>
-                            Remove
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          disabled={pendingBookId === book.id}
+                          onClick={() => deleteBook(book)}
+                          className="text-xs px-2.5 py-1 rounded-lg border disabled:cursor-not-allowed disabled:opacity-50"
+                          style={{ borderColor: '#333', color: '#e8442a' }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -41,7 +41,11 @@ export default function ReaderResumeBar() {
       }
 
       const book = await getBook(topProgress.bookId);
-      if (!active || !book) return;
+      if (!active) return;
+      if (!book) {
+        setResumeState(null);
+        return;
+      }
 
       setResumeState({ progress: topProgress, book });
       if (dismissedId && dismissedId !== topProgress.bookId) {

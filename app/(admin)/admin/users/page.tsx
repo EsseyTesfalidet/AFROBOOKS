@@ -5,8 +5,10 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import StatusPill from '@/components/shared/StatusPill';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import type { User } from '@/types/user';
+
+type ModerationAction = 'active' | 'warned' | 'suspended' | 'delete';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -15,6 +17,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     getDocs(collection(db, 'users')).then((snap) => {
@@ -33,26 +36,52 @@ export default function AdminUsersPage() {
     setFiltered(res);
   }, [search, roleFilter, statusFilter, users]);
 
-  async function updateStatus(uid: string, status: User['status']) {
-    await updateDoc(doc(db, 'users', uid), { status, updatedAt: serverTimestamp() });
-    setUsers((prev) => prev.map((u) => u.uid === uid ? { ...u, status } : u));
-    await addDoc(collection(db, 'notifications'), {
-      userId: uid,
-      type: 'system',
-      title: 'Account Status Update',
-      message: `Your account status has been updated to: ${status}.`,
-      isRead: false,
-      actionUrl: null,
-      relatedBookId: null,
-      createdAt: serverTimestamp(),
-    });
+  async function updateStatus(user: User, action: ModerationAction) {
+    const isDelete = action === 'delete';
+    const confirmed =
+      !isDelete ||
+      window.confirm(
+        `Permanently delete ${user.firstName} ${user.lastName}'s account${user.role === 'seller' || user.role === 'both' ? ' and all of their books' : ''}?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingUserId(user.uid);
+
+    try {
+      const response = await fetch('/api/admin/moderate-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid, action }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Unable to update account moderation.');
+      }
+
+      if (action === 'delete') {
+        setUsers((prev) => prev.filter((item) => item.uid !== user.uid));
+        return;
+      }
+
+      setUsers((prev) =>
+        prev.map((item) => (item.uid === user.uid ? { ...item, status: action } : item))
+      );
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to update account moderation.');
+    } finally {
+      setPendingUserId(null);
+    }
   }
 
-  const statusActions: Record<User['status'], { label: string; next: User['status'] }[]> = {
-    active: [{ label: 'Warn', next: 'warned' }, { label: 'Suspend', next: 'suspended' }],
-    warned: [{ label: 'Suspend', next: 'suspended' }, { label: 'Ban', next: 'banned' }],
-    suspended: [{ label: 'Unsuspend', next: 'active' }, { label: 'Ban', next: 'banned' }],
-    banned: [],
+  const statusActions: Record<User['status'], { label: string; action: ModerationAction }[]> = {
+    active: [{ label: 'Warn', action: 'warned' }, { label: 'Suspend', action: 'suspended' }, { label: 'Ban', action: 'delete' }],
+    warned: [{ label: 'Suspend', action: 'suspended' }, { label: 'Ban', action: 'delete' }],
+    suspended: [{ label: 'Unsuspend', action: 'active' }, { label: 'Ban', action: 'delete' }],
+    banned: [{ label: 'Delete', action: 'delete' }],
   };
 
   return (
@@ -101,15 +130,24 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 text-[#555] text-xs">{user.createdAt?.toDate?.()?.toLocaleDateString?.()}</td>
                     <td className="px-4 py-3"><StatusPill status={user.status} /></td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        {(statusActions[user.status] ?? []).map(({ label, next }) => (
-                          <button key={label} type="button" onClick={() => updateStatus(user.uid, next)}
-                            className="text-xs px-2.5 py-1 rounded-lg border transition-colors"
-                            style={{ borderColor: '#333', color: '#aaa' }}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
+                      {user.role === 'admin' ? (
+                        <span className="text-xs text-[#666]">Protected account</span>
+                      ) : (
+                        <div className="flex gap-2">
+                          {(statusActions[user.status] ?? []).map(({ label, action }) => (
+                            <button
+                              key={label}
+                              type="button"
+                              disabled={pendingUserId === user.uid}
+                              onClick={() => updateStatus(user, action)}
+                              className="text-xs px-2.5 py-1 rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                              style={{ borderColor: '#333', color: '#aaa' }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

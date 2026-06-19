@@ -39,7 +39,7 @@ export default function LibraryPage() {
           };
         })
       );
-      setEntries(populated);
+      setEntries(populated.filter((entry) => entry.book));
       setLoading(false);
     });
   }, [userProfile?.uid]);

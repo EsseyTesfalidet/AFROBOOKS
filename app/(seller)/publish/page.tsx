@@ -23,8 +23,9 @@ import type { Chapter } from '@/types/book';
 import type { Seller } from '@/types/user';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { ShieldAlert } from 'lucide-react';
+import { importManuscriptFile } from '@/lib/publishing/manuscriptImport';
 
-const STEPS = ['Details', 'Cover', 'Chapters', 'Pricing', 'Publish'];
+const STEPS = ['Details', 'Cover', 'Book Content', 'Pricing', 'Publish'];
 const GENRES = ['Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 const PRICE_TIERS = [299, 499, 699, 999, 1499, 1999];
 const ACCENT_COLORS = ['#e8442a', '#f5b800', '#4ade80', '#7c3aed', '#0ea5e9', '#f97316', '#ec4899', '#6366f1'];
@@ -61,6 +62,9 @@ export default function PublishPage() {
   const [accentColor, setAccentColor] = useState(ACCENT_COLORS[0]);
   const [bgColor, setBgColor] = useState(BG_COLORS[0]);
   const [chapters, setChapters] = useState<DraftChapter[]>([]);
+  const [manuscriptFileName, setManuscriptFileName] = useState('');
+  const [manuscriptImporting, setManuscriptImporting] = useState(false);
+  const [manuscriptError, setManuscriptError] = useState('');
   const [price, setPrice] = useState(PRICE_TIERS[2]);
   const [customPrice, setCustomPrice] = useState('');
   const [subscriptionType, setSubscriptionType] = useState<'sell_only' | 'sell_and_sub' | 'sub_only'>('sell_only');
@@ -113,9 +117,55 @@ export default function PublishPage() {
     ));
   }
 
+  async function handleManuscriptSelection(file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    const shouldReplaceExisting =
+      chapters.length === 0 ||
+      window.confirm('Replace the current chapter list with the uploaded manuscript?');
+
+    if (!shouldReplaceExisting) {
+      return;
+    }
+
+    setManuscriptImporting(true);
+    setManuscriptError('');
+
+    try {
+      const imported = await importManuscriptFile(file);
+      setChapters(imported.chapters);
+      setManuscriptFileName(imported.fileName);
+      setEditingChapter(null);
+    } catch (error) {
+      setManuscriptError(
+        error instanceof Error ? error.message : 'We could not import that manuscript.'
+      );
+    } finally {
+      setManuscriptImporting(false);
+    }
+  }
+
   async function handlePublish() {
     if (!userProfile) return;
     setPublishError('');
+    if (!title.trim()) {
+      setPublishError('Add a book title before publishing.');
+      return;
+    }
+    if (!authorName.trim()) {
+      setPublishError('Add the author name before publishing.');
+      return;
+    }
+    if (!genre.trim()) {
+      setPublishError('Choose a genre before publishing.');
+      return;
+    }
+    if (chapters.length === 0) {
+      setPublishError('Add at least one chapter or import a manuscript before publishing.');
+      return;
+    }
     if (publishMode !== 'draft' && requiresIdVerificationForPublishingNow) {
       setPublishError(
         `You have reached the ${SELLER_BOOKS_BEFORE_ID_VERIFICATION}-book grace limit. Submit ID verification before publishing another live title or pre-order.`
@@ -237,7 +287,7 @@ export default function PublishPage() {
     { label: 'Description added', done: !!description },
     { label: 'Genre selected', done: !!genre },
     { label: 'Cover configured', done: !!accentColor },
-    { label: 'At least one chapter', done: chapters.length > 0 },
+    { label: 'Book content added', done: chapters.length > 0 },
     { label: 'Price set', done: price > 0 },
     { label: 'Author name set', done: !!authorName },
   ];
@@ -420,7 +470,56 @@ export default function PublishPage() {
             {/* Step 3: Chapters */}
             {step === 2 && (
               <div className="space-y-4">
-                <h2 className="font-display text-display-sm text-white">Chapters</h2>
+                <h2 className="font-display text-display-sm text-white">Book Content</h2>
+                <div
+                  className="rounded-xl border p-4"
+                  style={{ background: '#161616', borderColor: '#2a2a2a' }}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-white">Upload full book manuscript</p>
+                      <p className="text-xs text-[#777]">
+                        Drop in the whole book as a `.txt` or `.md` file. The app will import the full manuscript and turn it into publishable reading content.
+                      </p>
+                      <p className="text-xs text-[#555]">
+                        Use headings like `Chapter 1: Opening` or `## Chapter title` to split the book automatically. If there are no headings, the entire upload is still imported as one complete reading section.
+                      </p>
+                    </div>
+                    <label
+                      className="inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium"
+                      style={{ background: '#e8442a', color: '#fff' }}
+                    >
+                      <input
+                        type="file"
+                        accept=".txt,.md,.markdown,text/plain,text/markdown"
+                        className="hidden"
+                        onChange={(event) => {
+                          const selectedFile = event.target.files?.[0] ?? null;
+                          void handleManuscriptSelection(selectedFile);
+                          event.currentTarget.value = '';
+                        }}
+                      />
+                      {manuscriptImporting ? 'Importing…' : 'Upload manuscript'}
+                    </label>
+                  </div>
+
+                  {manuscriptFileName && (
+                    <p className="mt-3 text-xs text-[#4ade80]">
+                      Imported the full manuscript `{manuscriptFileName}` into {chapters.length} reading section{chapters.length === 1 ? '' : 's'}.
+                    </p>
+                  )}
+                  {manuscriptError && (
+                    <p className="mt-3 text-xs text-[#f5b800]">{manuscriptError}</p>
+                  )}
+                </div>
+
+                <div className="rounded-xl border p-4" style={{ background: '#131313', borderColor: '#232323' }}>
+                  <p className="text-sm font-medium text-white">Manual editing stays available</p>
+                  <p className="mt-1 text-xs text-[#666]">
+                    After uploading the full book, you can still edit titles, preview access, and chapter content below before publishing.
+                  </p>
+                </div>
+
                 {chapters.map((ch) => (
                   <div key={ch.chapterNumber} className="flex items-center justify-between p-3 rounded-lg border" style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}>
                     <div>

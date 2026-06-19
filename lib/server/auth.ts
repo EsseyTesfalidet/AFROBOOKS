@@ -5,6 +5,7 @@ export interface AuthenticatedRequestUser {
   uid: string;
   email: string | null;
   role: 'buyer' | 'seller' | 'both' | 'admin';
+  status: 'active' | 'warned' | 'suspended' | 'banned';
 }
 
 function getBearerToken(request: NextRequest) {
@@ -50,11 +51,18 @@ export async function requireRequestUser(
   const userData = userSnap.data() as {
     role?: AuthenticatedRequestUser['role'];
     email?: string | null;
+    status?: AuthenticatedRequestUser['status'];
   };
+
+  const status = userData.status ?? 'active';
+  if (status === 'suspended' || status === 'banned') {
+    throw new Error('Unauthorized');
+  }
 
   return {
     uid: decodedToken.uid,
     email: userData.email ?? decodedToken.email ?? null,
     role: userData.role ?? 'buyer',
+    status,
   };
 }

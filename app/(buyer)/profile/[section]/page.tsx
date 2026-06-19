@@ -85,8 +85,13 @@ export default function BuyerProfilePage() {
           const [book, prog] = await Promise.all([getBook(item.bookId), getReadingProgress(userProfile.uid, item.bookId)]);
           return { bookId: item.bookId, book, progress: prog?.percentComplete ?? 0, finished: prog?.isFinished ?? false };
         }));
-        setLibraryEntries(entries);
-        setReadingStats({ total: entries.length, finished: entries.filter((e) => e.finished).length, inProgress: entries.filter((e) => e.progress > 0 && !e.finished).length });
+        const visibleEntries = entries.filter((entry) => entry.book);
+        setLibraryEntries(visibleEntries);
+        setReadingStats({
+          total: visibleEntries.length,
+          finished: visibleEntries.filter((entry) => entry.finished).length,
+          inProgress: visibleEntries.filter((entry) => entry.progress > 0 && !entry.finished).length,
+        });
         setSectionLoading(false);
       });
     }
@@ -94,7 +99,7 @@ export default function BuyerProfilePage() {
       setSectionLoading(true);
       getUserWishlist(userProfile.uid).then(async (items) => {
         const entries = await Promise.all(items.map(async (item) => ({ id: item.id, bookId: item.bookId, book: await getBook(item.bookId) })));
-        setWishlistEntries(entries);
+        setWishlistEntries(entries.filter((entry) => entry.book));
         setSectionLoading(false);
       });
     }

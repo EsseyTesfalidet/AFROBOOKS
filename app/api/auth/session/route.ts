@@ -14,11 +14,22 @@ export async function POST(request: NextRequest) {
     const adminDb = await getAdminDb();
 
     const decoded = await adminAuth.verifyIdToken(idToken);
+    await adminAuth.getUser(decoded.uid);
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn: SESSION_MAX_AGE_MS,
     });
     const userSnap = await adminDb.collection('users').doc(decoded.uid).get();
-    const role = (userSnap.data()?.role as string | undefined) ?? 'buyer';
+
+    if (!userSnap.exists) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 403 });
+    }
+
+    const userData = userSnap.data() as { role?: string; status?: string };
+    if (userData.status === 'suspended' || userData.status === 'banned') {
+      return NextResponse.json({ error: 'Account unavailable' }, { status: 403 });
+    }
+
+    const role = userData.role ?? 'buyer';
 
     const response = NextResponse.json({ ok: true });
     const secure = process.env.NODE_ENV === 'production';

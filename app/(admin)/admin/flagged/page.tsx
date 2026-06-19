@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 
 export default function AdminFlaggedPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingBookId, setPendingBookId] = useState<string | null>(null);
 
   useEffect(() => {
     getDocs(query(collection(db, 'books'), where('status', '==', 'flagged'))).then((snap) => {
@@ -19,15 +20,34 @@ export default function AdminFlaggedPage() {
     });
   }, []);
 
-  async function handleAction(bookId: string, sellerId: string, title: string, action: 'live' | 'removed') {
-    await updateDoc(doc(db, 'books', bookId), { status: action, updatedAt: serverTimestamp() });
-    setBooks((prev) => prev.filter((b) => b.id !== bookId));
-    await addDoc(collection(db, 'notifications'), {
-      userId: sellerId, type: 'system',
-      title: action === 'live' ? 'Book Approved' : 'Book Removed',
-      message: action === 'live' ? `Your book "${title}" has been approved.` : `Your book "${title}" has been removed.`,
-      isRead: false, actionUrl: '/listings', relatedBookId: bookId, createdAt: serverTimestamp(),
-    });
+  async function handleAction(book: Book, action: 'live' | 'delete') {
+    if (
+      action === 'delete' &&
+      !window.confirm(`Permanently delete "${book.title}" from the platform?`)
+    ) {
+      return;
+    }
+
+    setPendingBookId(book.id);
+
+    try {
+      const response = await fetch('/api/admin/moderate-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: book.id, action }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Unable to update this book.');
+      }
+
+      setBooks((prev) => prev.filter((item) => item.id !== book.id));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to update this book.');
+    } finally {
+      setPendingBookId(null);
+    }
   }
 
   return (
@@ -73,13 +93,23 @@ export default function AdminFlaggedPage() {
                     </div>
                   </div>
                   <div className="flex gap-3 mt-4">
-                    <button type="button" onClick={() => handleAction(book.id, book.sellerId, book.title, 'live')}
-                      className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: '#0f2e1a', color: '#4ade80', border: '1px solid #1a4a2a' }}>
+                    <button
+                      type="button"
+                      disabled={pendingBookId === book.id}
+                      onClick={() => handleAction(book, 'live')}
+                      className="px-4 py-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ background: '#0f2e1a', color: '#4ade80', border: '1px solid #1a4a2a' }}
+                    >
                       Approve
                     </button>
-                    <button type="button" onClick={() => handleAction(book.id, book.sellerId, book.title, 'removed')}
-                      className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: '#1f0e0c', color: '#e8442a', border: '1px solid #3a1a18' }}>
-                      Remove
+                    <button
+                      type="button"
+                      disabled={pendingBookId === book.id}
+                      onClick={() => handleAction(book, 'delete')}
+                      className="px-4 py-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ background: '#1f0e0c', color: '#e8442a', border: '1px solid #3a1a18' }}
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>

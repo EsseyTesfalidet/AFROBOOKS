@@ -10,7 +10,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
 import { getSellerBooks } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { doc, updateDoc, serverTimestamp, getDocs, collection, query, where, addDoc } from 'firebase/firestore';
+import { getDocs, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { generatePromoCode } from '@/lib/utils/generatePromoCode';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
@@ -33,6 +33,7 @@ function ListingsPageContent() {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'books' | 'promos'>('books');
+  const [pendingDeleteBookId, setPendingDeleteBookId] = useState<string | null>(null);
   const [codeForm, setCodeForm] = useState({
     discountType: 'percentage' as 'percentage' | 'fixed' | 'free',
     code: '', discountValue: '', applyTo: 'all', specificBookId: '',
@@ -52,9 +53,29 @@ function ListingsPageContent() {
     });
   }, [userProfile?.uid]);
 
-  async function removeBook(bookId: string) {
-    await updateDoc(doc(db, 'books', bookId), { status: 'removed', updatedAt: serverTimestamp() });
-    setBooks((b) => b.filter((x) => x.id !== bookId));
+  async function removeBook(book: Book) {
+    const confirmed = window.confirm(`Permanently remove "${book.title}" and all of its related data?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingDeleteBookId(book.id);
+
+    try {
+      const response = await fetch(`/api/books/${book.id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Unable to remove this book.');
+      }
+
+      setBooks((current) => current.filter((item) => item.id !== book.id));
+      setPromoCodes((current) => current.filter((code) => code.specificBookId !== book.id));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to remove this book.');
+    } finally {
+      setPendingDeleteBookId(null);
+    }
   }
 
   async function createPromoCode() {
@@ -214,7 +235,15 @@ function ListingsPageContent() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <Link href={`/publish?edit=${book.id}`} className="text-xs text-[#e8442a] hover:underline">Edit</Link>
-                            <button type="button" title="Remove book" onClick={() => removeBook(book.id)} className="text-[#555] hover:text-[#e8442a]"><Trash2 size={13} /></button>
+                            <button
+                              type="button"
+                              title="Remove book"
+                              disabled={pendingDeleteBookId === book.id}
+                              onClick={() => removeBook(book)}
+                              className="text-[#555] hover:text-[#e8442a] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </td>
                       </tr>

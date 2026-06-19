@@ -38,9 +38,19 @@ export async function getLiveBooks(constraints: QueryConstraint[] = []): Promise
 }
 
 export async function getBook(bookId: string): Promise<Book | null> {
-  const snap = await getDoc(doc(db, 'books', bookId));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as Book;
+  try {
+    const snap = await getDoc(doc(db, 'books', bookId));
+    if (!snap.exists()) return null;
+
+    const book = { id: snap.id, ...snap.data() } as Book;
+    if (book.status !== 'live') {
+      return null;
+    }
+
+    return book;
+  } catch {
+    return null;
+  }
 }
 
 export async function getBooksByGenre(genre: string, max = 10): Promise<Book[]> {

@@ -7,12 +7,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { BookOpen, ShieldCheck, Sparkles } from 'lucide-react';
-import { logIn, signInWithGoogle, getUserProfile } from '@/lib/firebase/auth';
-import { setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
+import { logIn, logOut, signInWithGoogle, getUserProfile } from '@/lib/firebase/auth';
+import { clearAuthSession, setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import { useAuthStore } from '@/store/authStore';
 import Logo from '@/components/shared/Logo';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
+import type { User as UserProfile } from '@/types/user';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -29,6 +30,29 @@ export default function LoginForm() {
 
   function finishAuthNavigation(destination: string) {
     window.location.replace(destination);
+  }
+
+  async function clearBlockedSession(message: string) {
+    await clearAuthSession();
+    await logOut().catch(() => undefined);
+    setFirebaseUser(null);
+    setUserProfile(null);
+    setLoading(false);
+    setError(message);
+  }
+
+  async function getAuthorizedProfile(uid: string): Promise<UserProfile> {
+    const profile = await getUserProfile(uid);
+
+    if (!profile || profile.status === 'banned') {
+      throw new Error('ACCOUNT_NOT_AVAILABLE');
+    }
+
+    if (profile.status === 'suspended') {
+      throw new Error('ACCOUNT_SUSPENDED');
+    }
+
+    return profile;
   }
 
   useEffect(() => {
@@ -49,23 +73,27 @@ export default function LoginForm() {
     setError('');
     try {
       const fbUser = await logIn(email, password);
+      const profile = await getAuthorizedProfile(fbUser.uid);
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
-      const profile = await getUserProfile(fbUser.uid);
       setFirebaseUser(fbUser);
       setUserProfile(profile);
       setLoading(false);
-      setClientAuthHints(fbUser.uid, profile?.role ?? 'buyer');
-      if (profile?.role === 'admin') {
+      setClientAuthHints(fbUser.uid, profile.role ?? 'buyer');
+      if (profile.role === 'admin') {
         finishAuthNavigation('/admin');
-      } else if (profile?.activeRole === 'seller') {
+      } else if (profile.activeRole === 'seller') {
         finishAuthNavigation('/dashboard');
       } else {
         finishAuthNavigation('/browse');
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
-      if (msg.includes('invalid-credential') || msg.includes('wrong-password') || msg.includes('user-not-found')) {
+      if (msg === 'ACCOUNT_SUSPENDED') {
+        await clearBlockedSession('This account is suspended. Contact support for help.');
+      } else if (msg === 'ACCOUNT_NOT_AVAILABLE') {
+        await clearBlockedSession('This account is no longer available.');
+      } else if (msg.includes('invalid-credential') || msg.includes('wrong-password') || msg.includes('user-not-found')) {
         setError('Incorrect email or password.');
       } else if (msg.includes('too-many-requests')) {
         setError('Too many attempts. Please wait a few minutes and try again.');
@@ -83,24 +111,29 @@ export default function LoginForm() {
     try {
       const user = await signInWithGoogle();
       if (!user) return;
+      const profile = await getAuthorizedProfile(user.uid);
       const token = await user.getIdToken();
       await syncAuthSession(token, user.uid);
-      const profile = await getUserProfile(user.uid);
       setFirebaseUser(user);
       setUserProfile(profile);
       setLoading(false);
-      setClientAuthHints(user.uid, profile?.role ?? 'buyer');
-      if (profile?.role === 'admin') finishAuthNavigation('/admin');
-      else if (profile?.activeRole === 'seller') finishAuthNavigation('/dashboard');
+      setClientAuthHints(user.uid, profile.role ?? 'buyer');
+      if (profile.role === 'admin') finishAuthNavigation('/admin');
+      else if (profile.activeRole === 'seller') finishAuthNavigation('/dashboard');
       else finishAuthNavigation('/browse');
     } catch (e: unknown) {
       setGoogleLoading(false);
+      const message = e instanceof Error ? e.message : '';
       const code =
         typeof e === 'object' && e && 'code' in e
           ? String((e as { code?: string }).code)
           : '';
 
-      if (code === 'auth/unauthorized-domain') {
+      if (message === 'ACCOUNT_SUSPENDED') {
+        await clearBlockedSession('This account is suspended. Contact support for help.');
+      } else if (message === 'ACCOUNT_NOT_AVAILABLE') {
+        await clearBlockedSession('This account is no longer available.');
+      } else if (code === 'auth/unauthorized-domain') {
         setError('Google sign-in is blocked for this domain. Add this site to Firebase Auth authorized domains.');
       } else if (code === 'auth/operation-not-allowed') {
         setError('Google sign-in is not enabled in Firebase Authentication.');
