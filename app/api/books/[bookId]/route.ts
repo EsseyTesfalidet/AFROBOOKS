@@ -36,9 +36,10 @@ export async function DELETE(
     return NextResponse.json({ ok: true, deleted: true });
   } catch (error) {
     console.error('book delete error:', error);
-    const status = error instanceof Error && error.message === 'Unauthorized' ? 401 : 500;
+    const message = error instanceof Error ? error.message : String(error);
+    const status = message === 'Unauthorized' ? 401 : 500;
     return NextResponse.json(
-      { error: status === 401 ? 'Unauthorized' : 'Unable to remove this book.' },
+      { error: status === 401 ? 'Unauthorized' : message },
       { status }
     );
   }
