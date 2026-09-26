@@ -23,6 +23,7 @@ service firebase.storage {
              request.resource.contentType == 'application/pdf';
     }
 
+    // Requires the Storage service agent's Firestore rules lookup permission.
     function canUploadBook(sellerId, bookId) {
       let book = firestore.get(/databases/(default)/documents/books/$(bookId)).data;
       return isOwner(sellerId) && book.sellerId == sellerId && book.status == 'draft';

@@ -1,4 +1,4 @@
-import type { firestore } from 'firebase-admin';
+import type { Firestore } from 'firebase-admin/firestore';
 
 export type Transfer = (input: {
   amount: number; destination: string; payoutId: string; sellerId: string;
@@ -7,7 +7,7 @@ export type Transfer = (input: {
 
 // Reserve before contacting Stripe. New sales accrue in pendingBalance separately.
 // Ambiguous transfers keep their reservation until reconciled, never automatically refunded.
-export async function paySeller(db: firestore.Firestore, sellerId: string, period: string, transfer: Transfer, now = Date.now()) {
+export async function paySeller(db: Firestore, sellerId: string, period: string, transfer: Transfer, now = Date.now()) {
   const sellerRef = db.collection('sellers').doc(sellerId);
   const payoutRef = await db.runTransaction(async (tx) => {
     const seller = (await tx.get(sellerRef)).data();

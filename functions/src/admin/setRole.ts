@@ -7,14 +7,15 @@ export const setAdminRole = functions.https.onRequest(async (req, res) => {
     return;
   }
 
-  const { uid, role, secret } = req.body;
+  const { uid, role, secret } = req.body ?? {};
+  const bootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
 
-  if (secret !== process.env.ADMIN_BOOTSTRAP_SECRET) {
+  if (!bootstrapSecret || typeof secret !== 'string' || secret !== bootstrapSecret) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  if (!uid || !role) {
+  if (typeof uid !== 'string' || !uid || uid.includes('/') || !['buyer', 'seller', 'both', 'admin'].includes(role)) {
     res.status(400).json({ error: 'uid and role are required' });
     return;
   }
