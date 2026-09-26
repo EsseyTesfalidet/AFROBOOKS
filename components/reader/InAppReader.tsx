@@ -31,7 +31,7 @@ function countWords(html: string): number {
 
 interface Props {
   book: Book;
-  userId: string;
+  userId: string | null;
   hasAccess: boolean;
 }
 
@@ -64,7 +64,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
   const flushProgress = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     const progress = pendingProgress.current;
-    if (!progress) return;
+    if (!progress || !userId) return;
     pendingProgress.current = null;
     void saveReadingProgress(userId, book.id, progress).catch(() => {
       setError('Your reading progress could not be saved.');
@@ -75,10 +75,14 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
     let active = true;
     setLoading(true);
     setError('');
+    setChapters([]);
     setShowPreviewGate(false);
     Promise.all([
       hasAccess ? getChapters(book.id) : getPreviewChapters(book.id),
-      getReadingProgress(userId, book.id),
+      userId ? getReadingProgress(userId, book.id).catch(() => {
+        if (active) setError('Your saved position could not be loaded. Starting from the first chapter.');
+        return null;
+      }) : Promise.resolve(null),
     ]).then(([items, progress]) => {
       if (!active) return;
       const chs = items as Chapter[];
@@ -115,6 +119,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
   const totalChapters = chapters.length;
   const prevChapter = chapters.find((c) => c.chapterNumber === currentChapter - 1);
   const nextChapter = chapters.find((c) => c.chapterNumber === currentChapter + 1);
+  const previewGateVisible = !hasAccess && (showPreviewGate || !nextChapter);
   const wordCount = activeChapter ? countWords(activeChapter.content) : 0;
   const readingMins = Math.max(1, Math.ceil(wordCount / WPM));
   const remainingMins = Math.max(0, Math.ceil((wordCount * (1 - percent / 100)) / WPM));
@@ -240,10 +245,16 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
             {book.title}
           </p>
           <p className="text-xs mt-0.5" style={{ color: th.muted, fontSize: 10 }}>
-            Ch {currentChapter}/{totalChapters}
-            {percent > 0 && remainingMins > 0 ? ` · ${remainingMins}m left` : ` · ${readingMins}m read`}
+            {loading ? 'Loading chapters…' : totalChapters === 0 ? 'No chapters available' : <>
+              {hasAccess ? 'Chapter' : 'Preview chapter'} {currentChapter}/{totalChapters}
+              {percent > 0 && remainingMins > 0 ? ` · ${remainingMins}m left` : ` · ${readingMins}m read`}
+            </>}
           </p>
         </div>
+
+        <Link href={`/book/${book.id}`} className="text-xs px-2 py-1.5" style={{ color: th.muted }}>
+          Book details
+        </Link>
 
         <button
           type="button"
@@ -279,6 +290,11 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
               className="animate-spin rounded-full"
               style={{ width: 32, height: 32, border: `2px solid ${th.border}`, borderTopColor: th.accent }}
             />
+          </div>
+        ) : chapters.length === 0 ? (
+          <div className="max-w-xl mx-auto px-4 pt-12 text-center space-y-4" style={{ color: th.text }}>
+            <p>{hasAccess ? 'This book does not have any chapters available yet.' : 'The author has not made a free preview available for this book.'}</p>
+            <Link href={`/book/${book.id}`} className="underline">View book details</Link>
           </div>
         ) : !isReading ? (
           <div className="max-w-xl mx-auto px-4 pt-12">
@@ -331,14 +347,14 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
               dangerouslySetInnerHTML={{ __html: sanitizeChapter(activeChapter.content) }}
             />
 
-            {showPreviewGate && (
+            {previewGateVisible && (
               <div className="mt-10">
                 <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />
               </div>
             )}
 
             {/* End-of-chapter nav */}
-            {!showPreviewGate && (
+            {!previewGateVisible && (
               <>
                 <div
                   className="flex items-center justify-between mt-14 pt-6 select-none"
@@ -419,7 +435,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
       </div>
 
       {/* ── Bottom chapter nav ───────────────────────────────── */}
-      <div
+      {totalChapters > 0 && <div
         className="fixed bottom-0 left-0 right-0 flex items-center justify-between flex-shrink-0 z-20 transition-transform duration-300 select-none"
         style={{
           height: 52,
@@ -466,7 +482,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
           <span className="truncate">{nextChapter ? nextChapter.title : 'Next'}</span>
           <ChevronRight size={14} />
         </button>
-      </div>
+      </div>}
 
       {/* ── Settings bottom sheet ────────────────────────────── */}
       {settingsOpen && (

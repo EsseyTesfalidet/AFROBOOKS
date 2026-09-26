@@ -2,7 +2,7 @@ import { after, before, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { fulfillPayment } from '../lib/server/fulfillPayment';
@@ -25,12 +25,29 @@ beforeEach(async () => {
     db.doc('users/author').set({ ...profile, uid: 'author', role: 'seller', email: 'private@example.test' }),
     db.doc('users/admin').set({ ...profile, uid: 'admin', role: 'admin' }),
     db.doc('books/book').set({ sellerId: 'author', status: 'live', totalSales: 0, inSubscription: true }),
-    db.doc('books/book/chapters/locked').set({ isPreview: false, content: 'paid' }),
-    db.doc('books/book/chapters/sample').set({ isPreview: true, content: 'preview' }),
+    db.doc('books/book/chapters/locked').set({ chapterNumber: 2, isPreview: false, content: 'paid' }),
+    db.doc('books/book/chapters/sample').set({ chapterNumber: 1, isPreview: true, content: 'preview' }),
     db.doc('sellers/author').set({ pendingBalance: 0, totalEarnings: 0, totalSales: 0 }),
   ]);
 });
 after(async () => { await env?.cleanup(); await deleteApp(adminApp); });
+
+test('reader queries allow guest previews and authorized full books only', async () => {
+  const guest = env.unauthenticatedContext().firestore();
+  const chapters = (client: typeof guest) => collection(client, 'books/book/chapters');
+  const preview = await assertSucceeds(getDocs(query(chapters(guest), where('isPreview', '==', true), orderBy('chapterNumber'))));
+  assert.deepEqual(preview.docs.map((chapter) => chapter.data().content), ['preview']);
+  await assertFails(getDocs(query(chapters(guest), orderBy('chapterNumber'))));
+  const reader = env.authenticatedContext('reader').firestore();
+  await assertFails(getDocs(query(chapters(reader), orderBy('chapterNumber'))));
+  await db.doc('library/reader_book').set({ userId: 'reader', bookId: 'book' });
+  assert.equal((await assertSucceeds(getDocs(query(chapters(reader), orderBy('chapterNumber'))))).size, 2);
+  const author = env.authenticatedContext('author').firestore();
+  assert.equal((await assertSucceeds(getDocs(query(chapters(author), orderBy('chapterNumber'))))).size, 2);
+  await db.doc('users/subscriber').set({ ...profile, uid: 'subscriber', subscriptionStatus: 'active' });
+  const subscriber = env.authenticatedContext('subscriber').firestore();
+  assert.equal((await assertSucceeds(getDocs(query(chapters(subscriber), orderBy('chapterNumber'))))).size, 2);
+});
 
 test('profile edits work but privileged fields and other profiles are protected', async () => {
   const client = env.authenticatedContext('reader').firestore();

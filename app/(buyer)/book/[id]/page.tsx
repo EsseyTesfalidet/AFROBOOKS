@@ -46,6 +46,8 @@ export default function BookDetailPage() {
   const [discount, setDiscount] = useState(0);
   const [selectedOption, setSelectedOption] = useState<'buy' | 'subscribe'>('buy');
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
+  const [reviewsError, setReviewsError] = useState('');
+  const authLoading = useAuthStore((s) => s.loading);
   const [linkCopied, setLinkCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
 
@@ -56,19 +58,32 @@ export default function BookDetailPage() {
   const [reportDone, setReportDone] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+    let active = true;
+    setLoading(true);
+    setError('');
+    setOwned(false);
+    setReviews([]);
+    setReviewsLoaded(false);
+    setReviewsError('');
+    setSimilar([]);
     Promise.all([
       getBook(id),
-      getBookReviews(id),
-      userProfile ? isBookInLibrary(userProfile.uid, id) : Promise.resolve(false),
-    ]).then(([b, r, o]) => {
+      firebaseUser ? isBookInLibrary(firebaseUser.uid, id) : Promise.resolve(false),
+    ]).then(([b, o]) => {
+      if (!active) return;
       setBook(b);
-      setReviews(r);
       setOwned(o);
       setLoading(false);
-      setReviewsLoaded(true);
-      if (b) getSimilarBooks(b.genre, id).then(setSimilar).catch(() => setSimilar([]));
-    }).catch(() => { setError('Unable to load this book. Please try again.'); setLoading(false); });
-  }, [id, userProfile?.uid]);
+      if (b) getSimilarBooks(b.genre, id).then((items) => { if (active) setSimilar(items); }).catch(() => {});
+    }).catch(() => {
+      if (active) { setError('Unable to load this book. Please try again.'); setLoading(false); }
+    });
+    getBookReviews(id).then((items) => {
+      if (active) { setReviews(items); setReviewsLoaded(true); }
+    }).catch(() => { if (active) setReviewsError('Reviews are temporarily unavailable. You can still read this book.'); });
+    return () => { active = false; };
+  }, [id, authLoading, firebaseUser?.uid]);
 
   useEffect(() => {
     if (promoBookId === id && promoCode) {
@@ -341,6 +356,7 @@ export default function BookDetailPage() {
         {/* Reviews */}
         <div>
           <h2 className="font-display text-display-sm text-white mb-4">Reviews</h2>
+          {reviewsError && <p role="status" className="text-sm text-[#888] mb-4">{reviewsError}</p>}
           {reviews.length > 0 && (
             <div className="mb-4 flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center sm:gap-6" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <div className="text-center">

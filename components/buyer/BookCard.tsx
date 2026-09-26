@@ -16,7 +16,7 @@ export default function BookCard({ book, rank, badge }: BookCardProps) {
 
   return (
     <Link
-      href={`/book/${book.id}`}
+      href={`/${isPreorder ? 'book' : 'read'}/${book.id}`}
       className="surface-panel-muted group block overflow-hidden rounded-[24px] transition-all hover:-translate-y-1"
     >
       {/* Cover */}

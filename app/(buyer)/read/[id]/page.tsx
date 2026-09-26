@@ -23,38 +23,41 @@ export default function ReadPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!firebaseUser) { router.replace('/login'); return; }
+    let active = true;
+    setLoading(true);
+    setError('');
+    setBook(null);
+    setHasAccess(false);
 
     Promise.all([
       getBook(id),
-      isBookInLibrary(firebaseUser.uid, id),
+      firebaseUser ? isBookInLibrary(firebaseUser.uid, id) : Promise.resolve(false),
     ]).then(([b, owned]) => {
+      if (!active) return;
       if (!b) { router.replace('/browse'); return; }
       setBook(b);
 
       const isSubscriber = userProfile?.subscriptionStatus === 'active';
       const canSubRead = isSubscriber && b.inSubscription;
-      const access = owned || canSubRead;
-
-      if (!access && !b.inSubscription && !owned) {
-        // Allow reading preview (first chapter only)
-        setHasAccess(false);
-      } else {
-        setHasAccess(!!access);
-      }
+      const isAuthor = firebaseUser?.uid === b.sellerId;
+      setHasAccess(!!firebaseUser && (owned || canSubRead || isAuthor || userProfile?.role === 'admin'));
 
       setLoading(false);
-    }).catch(() => { setError('Unable to load this book. Please try again.'); setLoading(false); });
-  }, [id, authLoading, firebaseUser?.uid, userProfile?.subscriptionStatus]);
+    }).catch(() => {
+      if (active) { setError('Unable to load this book. Please try again.'); setLoading(false); }
+    });
+    return () => { active = false; };
+  }, [id, authLoading, firebaseUser?.uid, userProfile?.subscriptionStatus, userProfile?.role, router]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
   if (error) return <div className="p-8"><p role="alert">{error}</p><Link href={`/book/${id}`}>Back to book</Link></div>;
-  if (!book || !firebaseUser) return null;
+  if (!book) return null;
 
   return (
     <InAppReader
+      key={`${book.id}:${firebaseUser?.uid ?? 'guest'}:${hasAccess}`}
       book={book}
-      userId={firebaseUser.uid}
+      userId={firebaseUser?.uid ?? null}
       hasAccess={hasAccess}
     />
   );
