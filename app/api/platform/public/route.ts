@@ -10,7 +10,8 @@ export async function GET() {
     return NextResponse.json({
       newUserSignupsOpen: data.newUserSignupsOpen ?? true,
       newSellerSignupsOpen: data.newSellerSignupsOpen ?? true,
-      subscriptionSalesActive: data.subscriptionSalesActive ?? true,
+      subscriptionSalesActive: false,
+      directSaleFee: data.directSaleFee ?? 15,
       maintenanceMode: data.maintenanceMode ?? false,
     });
   } catch (error) {
@@ -19,7 +20,8 @@ export async function GET() {
       {
         newUserSignupsOpen: true,
         newSellerSignupsOpen: true,
-        subscriptionSalesActive: true,
+        subscriptionSalesActive: false,
+        directSaleFee: 15,
         maintenanceMode: false,
       },
       { status: 200 }

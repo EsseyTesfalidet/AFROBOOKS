@@ -7,10 +7,8 @@ import { BadgeCheck, Globe, Twitter, Instagram, Linkedin, BookOpen } from 'lucid
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import FollowButton from '@/components/shared/FollowButton';
-import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useCatalog } from '@/hooks/useCatalog';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
-import type { Book } from '@/types/book';
 import type { Seller } from '@/types/user';
 
 interface AuthorProfile {
@@ -24,18 +22,19 @@ export default function AuthorPage() {
   const { id } = useParams<{ id: string }>();
   const [author, setAuthor] = useState<AuthorProfile | null>(null);
   const [seller, setSeller] = useState<Seller | null>(null);
-  const [books, setBooks] = useState<Book[]>([]);
+  const catalog = useCatalog();
+  const books = catalog.books.filter(book => book.sellerId === id);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/authors/${encodeURIComponent(id)}`).then((response) => response.ok ? response.json() : null),
-      getDocs(query(collection(db, 'books'), where('sellerId', '==', id), where('status', '==', 'live'))),
-    ]).then(([profile, booksSnap]) => {
+    let active = true;
+    setLoading(true);
+    fetch(`/api/authors/${encodeURIComponent(id)}`).then((response) => response.ok ? response.json() : null).then(profile => {
+      if (!active) return;
       setAuthor(profile?.author ?? null);
       setSeller(profile?.seller ?? null);
-      setBooks(booksSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Book)));
-    }).catch(() => setAuthor(null)).finally(() => setLoading(false));
+    }).catch(() => { if (active) setAuthor(null); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [id]);
 
   if (loading) return (
@@ -122,7 +121,7 @@ export default function AuthorPage() {
         {/* Books grid */}
         <div>
           <h2 className="text-sm font-medium text-white mb-4">Books by {displayName}</h2>
-          {books.length === 0 ? (
+          {catalog.loading ? <div className="flex justify-center py-8"><LoadingSpinner size={24} /></div> : catalog.error ? <div role="alert" className="py-8 text-sm text-red-300">{catalog.error}<button type="button" onClick={catalog.retry} className="ml-3 min-h-11 underline">Try again</button></div> : books.length === 0 ? (
             <p className="text-sm text-[#444] py-8 text-center">No published books are available yet.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

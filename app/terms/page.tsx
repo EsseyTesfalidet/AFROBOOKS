@@ -65,7 +65,7 @@ export default function TermsPage() {
             </ul>
           </section>
 
-          <section>
+          <section id="privacy" className="scroll-mt-20">
             <h2 className="font-display text-lg text-white mb-3">7. Privacy</h2>
             <p>We collect and process your personal data in accordance with our Privacy Policy. We do not sell your data to third parties. We use Stripe for payment processing and Firebase for authentication and data storage.</p>
           </section>

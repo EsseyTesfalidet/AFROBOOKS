@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BellRing, BookOpen, Compass, Sparkles } from 'lucide-react';
 import { getBook, getBooksByGenre, getBooksBySellerIds, getFollowedSellerIds, getActiveReadingProgress } from '@/lib/firebase/firestore';
-import type { Book } from '@/types/book';
-import type { ReadingProgress } from '@/types/order';
 
 interface MomentumCard {
   id: string;
@@ -31,6 +29,7 @@ function iconFor(type: MomentumCard['icon']) {
 }
 
 export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActive }: Props) {
+  const [error, setError] = useState(false);
   const [cards, setCards] = useState<MomentumCard[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -96,23 +95,12 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
         });
       }
 
-      if (!subscriptionActive) {
-        nextCards.push({
-          id: 'subscription',
-          title: 'Unlock subscriber shelves',
-          body: 'Get unlimited access to subscription titles and curated bundles.',
-          href: '/subscription',
-          cta: 'See plans',
-          accent: '#f5b800',
-          icon: 'subscription',
-        });
-      }
-
       setCards(nextCards.slice(0, 3));
       setLoading(false);
     }
 
-    loadMomentum();
+    setError(false);
+    loadMomentum().catch(() => { if (active) { setError(true); setLoading(false); } });
 
     return () => {
       active = false;
@@ -120,6 +108,7 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
   }, [favoriteGenre, subscriptionActive, userId]);
 
   const content = useMemo(() => {
+    if (error) return <p role="status" className="text-sm text-[#888]">Reading suggestions are unavailable. Reload to retry.</p>;
     if (loading) {
       return (
         <div className="grid gap-3 sm:grid-cols-3">
@@ -177,7 +166,7 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
         })}
       </div>
     );
-  }, [cards, loading]);
+  }, [cards, loading, error]);
 
   if (!content) return null;
 

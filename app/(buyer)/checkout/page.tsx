@@ -7,6 +7,7 @@ import BuyerHeader from '@/components/buyer/BuyerHeader';
 import { useCartStore } from '@/store/cartStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { useCatalog } from '@/hooks/useCatalog';
 
 const CheckoutPaymentPanel = dynamic(() => import('@/components/buyer/CheckoutPaymentPanel'), {
   ssr: false,
@@ -18,7 +19,8 @@ const CheckoutPaymentPanel = dynamic(() => import('@/components/buyer/CheckoutPa
 });
 
 export default function CheckoutPage() {
-  const { items, getBundleDiscount, promoCode, discountAmount, getTotal } = useCartStore();
+  const { items, getBundleDiscount, getTotal } = useCartStore();
+  const catalog = useCatalog();
   const router = useRouter();
   const bundle = getBundleDiscount();
   const tot = getTotal();
@@ -30,6 +32,8 @@ export default function CheckoutPage() {
   }, [items.length, router]);
 
   if (items.length === 0) return null;
+  if (catalog.loading || (!catalog.error && items.some(item => !catalog.books.some(book => book.id === item.bookId)))) return <div role="status" className="flex justify-center py-20"><LoadingSpinner size={28} /><span className="sr-only">Checking book availability…</span></div>;
+  if (catalog.error) return <div role="alert" className="p-8 text-[14px] text-red-300">{catalog.error}<button type="button" onClick={catalog.retry} className="ml-4 min-h-11 underline">Try again</button></div>;
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -60,12 +64,6 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span style={{ color: '#4ade80' }}>Bundle discount</span>
                   <span style={{ color: '#4ade80' }}>-{centsToDisplay(bundle)}</span>
-                </div>
-              )}
-              {discountAmount > 0 && (
-                <div className="flex justify-between">
-                  <span style={{ color: '#4ade80' }}>Promo: {promoCode}</span>
-                  <span style={{ color: '#4ade80' }}>-{centsToDisplay(discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between font-medium pt-1">

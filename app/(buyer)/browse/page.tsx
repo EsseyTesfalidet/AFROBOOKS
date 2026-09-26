@@ -2,339 +2,67 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, Compass, Search, Sparkles, Users } from 'lucide-react';
+import { Search } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCard from '@/components/buyer/BookCard';
 import BookRail from '@/components/buyer/BookRail';
 import ContinueReadingShelf from '@/components/buyer/ContinueReadingShelf';
-import ReaderMomentum from '@/components/buyer/ReaderMomentum';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import {
-  getBooksByGenre,
-  getBooksBySellerIds,
-  getFollowedSellerIds,
-  getLiveBooks,
-  getUserLibrary,
-} from '@/lib/firebase/firestore';
-import { orderBy, limit } from 'firebase/firestore';
+import { getFollowedSellerIds } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
+import { useCatalog } from '@/hooks/useCatalog';
+import { catalogShelves } from '@/lib/utils/catalog';
 import type { Book } from '@/types/book';
 
-const GENRES = ['All', 'Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
-
 export default function BrowsePage() {
-  const userProfile = useAuthStore((state) => state.userProfile);
-  const recentBookIds = useRecentlyViewedStore((state) => state.bookIds);
-  const [allBooks, setAllBooks] = useState<Book[]>([]);
-  const [trendingBooks, setTrendingBooks] = useState<Book[]>([]);
-  const [favoriteGenreBooks, setFavoriteGenreBooks] = useState<Book[]>([]);
-  const [followedAuthorBooks, setFollowedAuthorBooks] = useState<Book[]>([]);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [libraryCount, setLibraryCount] = useState(0);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const userProfile = useAuthStore(state => state.userProfile);
+  const recentBookIds = useRecentlyViewedStore(state => state.bookIds);
+  const { books: allBooks, loading, error, retry } = useCatalog();
+  const [followed, setFollowed] = useState<{ uid: string; ids: string[] } | null>(null);
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('All');
 
   useEffect(() => {
+    const uid = userProfile?.uid;
+    if (!uid) return;
     let active = true;
+    getFollowedSellerIds(uid, 50).then(ids => { if (active) setFollowed({ uid, ids }); }).catch(() => { if (active) setFollowed({ uid, ids: [] }); });
+    return () => { active = false; };
+  }, [userProfile?.uid]);
 
-    async function loadHome() {
-      setLoading(true);
-
-      const favoriteGenre = userProfile?.favoriteGenre || 'Fiction';
-      const [books, trending, genreBooks, libraryItems, followedIds] = await Promise.all([
-        getLiveBooks([orderBy('publishedAt', 'desc')]),
-        getLiveBooks([orderBy('totalSales', 'desc'), limit(12)]),
-        getBooksByGenre(favoriteGenre, 8),
-        userProfile?.uid ? getUserLibrary(userProfile.uid) : Promise.resolve([]),
-        userProfile?.uid ? getFollowedSellerIds(userProfile.uid, 8) : Promise.resolve([]),
-      ]);
-
-      const followedBooks =
-        followedIds.length > 0 ? await getBooksBySellerIds(followedIds, 8) : [];
-
-      if (!active) return;
-
-      setAllBooks(books);
-      setTrendingBooks(trending.filter((book) => book.totalSales > 0));
-      setFavoriteGenreBooks(genreBooks);
-      setFollowedAuthorBooks(followedBooks);
-      setFollowingCount(followedIds.length);
-      setLibraryCount(libraryItems.length);
-      setLoading(false);
-    }
-
-    loadHome().catch(() => { if (active) { setError('Unable to load your books. Please try again.'); setLoading(false); } });
-
-    return () => {
-      active = false;
-    };
-  }, [userProfile?.favoriteGenre, userProfile?.uid]);
-
+  const genres = useMemo(() => Array.from(new Set(allBooks.map(book => book.genre).filter(Boolean))).sort(), [allBooks]);
+  const shelves = useMemo(() => catalogShelves(allBooks, userProfile?.favoriteGenre), [allBooks, userProfile?.favoriteGenre]);
   const filteredBooks = useMemo(() => {
-    let next = allBooks;
-
-    if (genre !== 'All') {
-      next = next.filter((book) => book.genre === genre);
-    }
-
-    if (search.trim()) {
-      const query = search.toLowerCase();
-      next = next.filter(
-        (book) =>
-          book.title.toLowerCase().includes(query) ||
-          book.authorName.toLowerCase().includes(query) ||
-          book.genre.toLowerCase().includes(query)
-      );
-    }
-
-    return next;
+    const term = search.trim().toLocaleLowerCase();
+    return allBooks.filter(book => (genre === 'All' || book.genre === genre) && `${book.title ?? ''} ${book.authorName ?? ''} ${book.genre ?? ''}`.toLocaleLowerCase().includes(term));
   }, [allBooks, genre, search]);
+  const recentlyViewed = recentBookIds.map(id => allBooks.find(book => book.id === id)).filter((book): book is Book => !!book).slice(0, 8);
+  const followedBooks = followed?.uid === userProfile?.uid ? allBooks.filter(book => followed?.ids.includes(book.sellerId)).slice(0, 8) : [];
+  const filtering = !!search.trim() || genre !== 'All';
 
-  const subscriptionPicks = useMemo(
-    () => allBooks.filter((book) => book.inSubscription).slice(0, 10),
-    [allBooks]
-  );
-
-  const newArrivals = useMemo(() => allBooks.slice(0, 10), [allBooks]);
-  const recentlyViewedBooks = useMemo(
-    () => recentBookIds
-      .map((bookId) => allBooks.find((book) => book.id === bookId))
-      .filter((book): book is Book => Boolean(book))
-      .slice(0, 10),
-    [allBooks, recentBookIds]
-  );
-
-  const firstName = userProfile?.firstName || 'Reader';
-  const favoriteGenre = userProfile?.favoriteGenre || 'Fiction';
-  const showingFilteredFeed = search.trim().length > 0 || genre !== 'All';
-
-  return (
-    <div className="min-h-screen" style={{ background: '#0e0e0e' }}>
-      <BuyerHeader />
-      {error && <p role="alert" className="p-4 text-red-400">{error}</p>}
-
-      <main className="mx-auto max-w-5xl px-4 py-6 space-y-8">
-        <section
-          className="surface-panel overflow-hidden rounded-[28px] p-6 sm:p-7"
-          style={{
-            background:
-              'radial-gradient(circle at top right, rgba(124,58,237,0.22), transparent 34%), linear-gradient(180deg, #151515 0%, #101010 100%)',
-          }}
-        >
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: '#777' }}>
-                Personalized experience
-              </p>
-              <h1 className="mt-2 font-display text-5xl leading-none text-white sm:text-6xl">
-                {userProfile ? 'Welcome back,' : 'Discover African stories,'}
-                <br />
-                <span style={{ color: '#f5b800' }}>{userProfile ? `${firstName}.` : 'your next great read.'}</span>
-              </h1>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: '#888' }}>
-                Continue where you left off, discover new releases from authors you follow, and explore more titles in {favoriteGenre}.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Link
-                  href="/search"
-                  className="button-primary inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium"
-                >
-                  <Search size={16} />
-                  Search the catalog
-                </Link>
-                <Link
-                  href="/library"
-                  className="button-secondary inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium"
-                >
-                  <BookOpen size={16} />
-                  Open library
-                </Link>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 sm:w-[320px]">
-              {[
-                { label: 'In Library', value: libraryCount, icon: BookOpen, accent: '#e8442a' },
-                { label: 'Following', value: followingCount, icon: Users, accent: '#0ea5e9' },
-                { label: 'Focus Genre', value: favoriteGenre, icon: Compass, accent: '#7c3aed' },
-              ].map(({ label, value, icon: Icon, accent }) => (
-                <div
-                  key={label}
-                  className="surface-panel-muted rounded-2xl p-3"
-                >
-                  <Icon size={16} style={{ color: accent }} />
-                  <p className="mt-3 text-lg font-semibold text-white">{value}</p>
-                  <p className="mt-1 text-xs" style={{ color: '#666' }}>
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {userProfile ? (
-          <>
-            <ReaderMomentum
-              userId={userProfile.uid}
-              favoriteGenre={favoriteGenre}
-              subscriptionActive={userProfile.subscriptionStatus === 'active'}
-            />
-            <ContinueReadingShelf userId={userProfile.uid} />
-          </>
-        ) : null}
-
-        <section className="space-y-4">
-          <div className="surface-panel-muted flex flex-col gap-3 rounded-3xl p-4">
-            <div className="flex items-center gap-2">
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-2xl"
-                style={{ background: 'rgba(232,68,42,0.15)', color: '#e8442a' }}
-              >
-                <Sparkles size={18} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-white">Search, filter, and explore</p>
-                <p className="text-xs" style={{ color: '#666' }}>
-                  Refine the catalog without leaving your home feed.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" size={16} />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by title, author, or genre..."
-                  className="field-input w-full rounded-2xl py-3 pl-10 pr-4 text-sm"
-                />
-              </div>
-
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {GENRES.map((item) => {
-                  const active = genre === item;
-                  return (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setGenre(item)}
-                      className="flex-shrink-0 rounded-full px-3.5 py-2 text-sm font-medium transition-all"
-                      style={{
-                        background: active ? '#f5f2eb' : 'rgba(255,255,255,0.04)',
-                        color: active ? '#000' : '#aaa',
-                        border: `1px solid ${active ? '#f5f2eb' : 'rgba(255,255,255,0.08)'}`,
-                      }}
-                    >
-                      {item}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {!showingFilteredFeed ? (
-          <>
-            <BookRail
-              title={`Because you like ${favoriteGenre}`}
-              subtitle="A personalized shelf based on your favorite genre."
-              badge="Personal"
-              actionHref="/search"
-              books={favoriteGenreBooks}
-              emptyMessage="Set a favorite genre in your profile to unlock more tailored picks."
-            />
-
-            {followedAuthorBooks.length > 0 ? (
-              <BookRail
-                title="New from authors you follow"
-                subtitle="Fresh releases from writers already on your radar."
-                badge="Followed"
-                actionHref="/notifications"
-                books={followedAuthorBooks}
-              />
-            ) : null}
-
-            {recentlyViewedBooks.length > 0 ? (
-              <BookRail
-                title="Recently viewed"
-                subtitle="Jump back into titles you checked out recently."
-                badge="Resume"
-                books={recentlyViewedBooks}
-              />
-            ) : null}
-
-            <BookRail
-              title="Subscription picks"
-              subtitle="Titles that feel great for an unlimited reading session."
-              badge={userProfile?.subscriptionStatus === 'active' ? 'Included' : 'Upgrade'}
-              actionHref="/subscription"
-              actionLabel={userProfile?.subscriptionStatus === 'active' ? 'Browse plans' : 'See plans'}
-              books={subscriptionPicks}
-              emptyMessage="Subscription titles will appear here as more authors opt in."
-            />
-
-            <BookRail
-              title="Trending now"
-              subtitle="The titles readers are buying the most right now."
-              badge="Hot"
-              books={trendingBooks}
-            />
-
-            <BookRail
-              title="New arrivals"
-              subtitle="Fresh drops from across the catalog."
-              badge="Latest"
-              books={newArrivals}
-            />
-          </>
-        ) : null}
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-display text-display-sm text-white">
-                {showingFilteredFeed ? 'Filtered results' : 'All books'}
-              </h2>
-              <p className="text-sm" style={{ color: '#666' }}>
-                {filteredBooks.length} title{filteredBooks.length === 1 ? '' : 's'} ready to explore.
-              </p>
-            </div>
-            <Link href="/search" className="text-xs transition-colors hover:text-white" style={{ color: '#666' }}>
-              Advanced search →
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <LoadingSpinner size={36} />
-            </div>
-          ) : filteredBooks.length === 0 ? (
-            <div
-              className="empty-state-card rounded-3xl px-4 py-14 text-center"
-            >
-              <p className="text-sm" style={{ color: '#666' }}>
-                No books match that filter. Try another genre or use the search page.
-              </p>
-            </div>
-          ) : (
-            <div
-              className="grid gap-3.5"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}
-            >
-              {filteredBooks.map((book) => (
-                <BookCard key={book.id} book={book} />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
-  );
+  return <div className="min-h-screen bg-[#10100f]">
+    <BuyerHeader />
+    <main className="mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
+      <header><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">The AfroBooks collection</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Stories to get lost in.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">Explore books, discover authors, and open your next read.</p></header>
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_210px]">
+        <div><label htmlFor="catalog-search" className="sr-only">Search the catalog</label><div className="relative"><Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 text-[#96938b]" /><input id="catalog-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search title, author, or genre" className="min-h-11 w-full rounded-lg border border-white/15 bg-white/[0.03] pl-10 pr-3 text-[16px] placeholder:text-[#96938b]" /></div></div>
+        <div><label htmlFor="catalog-genre" className="sr-only">Filter by genre</label><select id="catalog-genre" value={genre} onChange={event=>setGenre(event.target.value)} className="min-h-11 w-full rounded-lg border border-white/15 bg-[#181816] px-3 text-[16px]"><option value="All">All genres</option>{genres.map(item=><option key={item}>{item}</option>)}</select></div>
+      </div>
+      {loading ? <div role="status" className="flex items-center gap-3 py-12 text-[14px] text-[#a8a49c]"><LoadingSpinner size={24} /> Loading the catalog…</div>
+        : error ? <div role="alert" className="py-8"><p className="text-[14px] text-[#ffc2ad]">{error}</p><button type="button" onClick={retry} className="mt-3 min-h-11 text-[14px] text-[#ffad91] underline">Try again</button></div>
+        : allBooks.length === 0 ? <div className="border-t border-white/10 py-10"><h2 className="text-[22px] font-semibold">New stories are on the way.</h2><p className="mt-3 text-[14px] text-[#a8a49c]">There are no published books in the catalog yet.</p></div>
+        : <>
+          {!filtering && <BookRail title={shelves.genre.length ? 'Recommended for you' : 'Discover a new favorite'} subtitle={shelves.genre.length ? `Based on your interest in ${userProfile?.favoriteGenre}.` : 'A few stories to start exploring.'} books={shelves.recommended} actionHref="/discover" actionLabel="Discover more" />}
+          {!filtering && userProfile && <ContinueReadingShelf key={userProfile.uid} userId={userProfile.uid} />}
+          {!filtering && followedBooks.length > 0 && <BookRail title="Authors you follow" books={followedBooks} />}
+          <section className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-[22px] font-semibold">{filtering ? 'Search results' : 'All books'}</h2><p role="status" className="mt-2 text-[13px] text-[#a8a49c]">{filteredBooks.length} {filteredBooks.length === 1 ? 'title' : 'titles'}</p></div><Link href="/search" className="min-h-11 py-3 text-[13px] text-[#b4b1a9] hover:text-white">More filters →</Link></div>
+            {filteredBooks.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">{filteredBooks.map((book,index)=><BookCard key={book.id} book={book} eager={index<5} />)}</div>
+              : <div className="py-8"><p className="text-[14px] text-[#a8a49c]">No books match your search.</p><button type="button" onClick={()=>{setSearch('');setGenre('All');}} className="mt-2 min-h-11 text-[14px] text-[#ffad91] underline">Clear filters</button></div>}
+          </section>
+          {!filtering && recentlyViewed.length > 0 && <BookRail title="Recently viewed" books={recentlyViewed} />}
+        </>}
+    </main>
+  </div>;
 }

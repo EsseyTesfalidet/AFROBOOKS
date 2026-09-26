@@ -10,7 +10,7 @@ export async function uploadCoverImage(sellerId: string, bookId: string, file: F
 export async function uploadManuscript(sellerId: string, bookId: string, file: File): Promise<string> {
   const storageRef = ref(storage, `manuscripts/${sellerId}/${bookId}/${file.name}`);
   await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  return storageRef.fullPath;
 }
 
 export async function uploadAvatar(userId: string, file: File): Promise<string> {

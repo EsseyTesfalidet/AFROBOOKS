@@ -1,4 +1,6 @@
-export function calculateEarnings(priceCents: number): {
+import { calculateFees } from './fees';
+
+export function calculateEarnings(priceCents: number, directSaleFee = 15): {
   stripeFee: number;
   platformFee: number;
   sellerEarnings: number;
@@ -6,10 +8,7 @@ export function calculateEarnings(priceCents: number): {
   platformFeeDisplay: string;
   sellerEarningsDisplay: string;
 } {
-  const stripeFee = Math.round(priceCents * 0.029) + 30;
-  const afterStripe = priceCents - stripeFee;
-  const platformFee = Math.round(afterStripe * 0.15);
-  const sellerEarnings = afterStripe - platformFee;
+  const { stripeFee, platformFee, sellerEarnings } = calculateFees(priceCents, directSaleFee);
 
   const fmt = (c: number) => `$${(c / 100).toFixed(2)}`;
   return {

@@ -29,7 +29,7 @@ export default function BookRail({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="font-display text-display-sm text-white">{title}</h2>
+            <h2 className="text-[22px] font-semibold tracking-tight text-[#f5f2eb]">{title}</h2>
             {badge ? (
               <span
                 className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
@@ -40,7 +40,7 @@ export default function BookRail({
             ) : null}
           </div>
           {subtitle ? (
-            <p className="mt-1 text-sm" style={{ color: '#666' }}>
+            <p className="mt-2 text-[13px] leading-relaxed" style={{ color: '#a8a49c' }}>
               {subtitle}
             </p>
           ) : null}
@@ -48,8 +48,8 @@ export default function BookRail({
         {actionHref ? (
           <Link
             href={actionHref}
-            className="hidden items-center gap-1 text-xs transition-colors hover:text-white sm:inline-flex"
-            style={{ color: '#666' }}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1 text-[12px] transition-colors hover:text-white"
+            style={{ color: '#b4b1a9' }}
           >
             {actionLabel} <ChevronRight size={12} />
           </Link>
@@ -65,11 +65,14 @@ export default function BookRail({
         </div>
       ) : (
         <div
-          className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory scrollbar-none"
+          className="flex gap-4 overflow-x-auto py-2 snap-x snap-mandatory"
+          tabIndex={0}
+          role="region"
+          aria-label={title}
           style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
           {books.map((book) => (
-            <div key={book.id} className="w-[152px] flex-shrink-0 snap-start">
+            <div key={book.id} className="w-[148px] flex-shrink-0 snap-start sm:w-[176px]">
               <BookCard book={book} />
             </div>
           ))}

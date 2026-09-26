@@ -23,6 +23,22 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
       throw new Error('Invalid order ownership or status');
     }
     const pending = orders.docs.filter((doc) => doc.data().status === 'pending');
+    const bookIds = [...new Set(pending.map(doc => doc.data().bookId as string))];
+    const books = await Promise.all(bookIds.map(id => tx.get(db.collection('books').doc(id))));
+    const deletions = await Promise.all(bookIds.map(id => tx.get(db.collection('bookDeletions').doc(id))));
+    const unavailable = books.filter((book, index) => !book.exists || book.data()?.deletionPending === true || book.data()?.status === 'removed' || deletions[index].exists);
+    if (unavailable.length) {
+      // Record the received payment for staff review. Never reconstruct a book,
+      // grant a dead entitlement, or credit earnings for unavailable content.
+      for (const order of pending) tx.update(order.ref, { status: 'needs_review', reviewReason: 'book_unavailable', paymentReceivedAt: new Date() });
+      tx.set(db.collection('notifications').doc(`${payment.id}_review`), {
+        userId, type: 'system', title: 'Payment needs review',
+        message: 'A book became unavailable while your payment was processing. Your payment has been recorded for review. Please do not pay again.',
+        isRead: false, actionUrl: `/checkout/receipt?orders=${orders.docs.map(doc => doc.id).join(',')}`, relatedBookId: null, createdAt: new Date(),
+      });
+      tx.create(fulfillmentRef, { userId, amount: total, status: 'needs_review', unavailableBookIds: unavailable.map(book => book.id), createdAt: new Date() });
+      return false;
+    }
     const sellerIds = [...new Set(pending.map((doc) => doc.data().sellerId as string))];
     const sellers = await Promise.all(sellerIds.map((id) => tx.get(db.collection('sellers').doc(id))));
     const promoId = payment.metadata.promoId;
@@ -35,7 +51,7 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
         id: `${userId}_${order.bookId}`, userId, bookId: order.bookId,
         purchaseType: 'bought', orderId: orderDoc.id, addedAt: new Date(),
       }, { merge: true });
-      tx.set(db.collection('books').doc(order.bookId), { totalSales: FieldValue.increment(1), updatedAt: new Date() }, { merge: true });
+      tx.update(db.collection('books').doc(order.bookId), { totalSales: FieldValue.increment(1), updatedAt: new Date() });
       for (const [recipient, type, title, actionUrl] of [
         [userId, 'purchase', 'Purchase Successful', `/read/${order.bookId}`],
         [order.sellerId, 'sale', 'New Sale', '/dashboard'],

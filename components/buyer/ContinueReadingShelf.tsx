@@ -6,6 +6,7 @@ import { BookOpen } from 'lucide-react';
 import { getActiveReadingProgress, getBook } from '@/lib/firebase/firestore';
 import type { ReadingProgress } from '@/types/order';
 import type { Book } from '@/types/book';
+import { useCatalog } from '@/hooks/useCatalog';
 
 interface ShelfItem {
   progress: ReadingProgress;
@@ -13,7 +14,9 @@ interface ShelfItem {
 }
 
 export default function ContinueReadingShelf({ userId }: { userId: string }) {
+  const catalog = useCatalog();
   const [items, setItems] = useState<ShelfItem[]>([]);
+  const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -25,10 +28,12 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
         .filter((x) => x.book !== null);
       setItems(merged);
       setLoaded(true);
-    });
+    }).catch(() => { setError('Unable to load reading progress. Reload to retry.'); setLoaded(true); });
   }, [userId]);
 
-  if (!loaded || items.length === 0) return null;
+  if (error) return <p role="status" className="text-sm text-[#888] mb-4">{error}</p>;
+  const availableItems = items.filter(item => catalog.books.some(book => book.id === item.book.id));
+  if (!loaded || availableItems.length === 0) return null;
 
   return (
     <div className="mb-6">
@@ -42,7 +47,7 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
         className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
         style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
-        {items.map(({ progress, book }) => (
+        {availableItems.map(({ progress, book }) => (
           <Link
             key={book.id}
             href={`/read/${book.id}`}

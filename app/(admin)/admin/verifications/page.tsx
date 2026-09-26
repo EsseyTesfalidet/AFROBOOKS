@@ -15,7 +15,8 @@ interface VerificationRequest {
   sellerId: string;
   sellerName: string;
   sellerEmail: string;
-  fileUrl: string;
+  fileUrl?: string;
+  filePath?: string;
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: { toDate: () => Date } | null;
   reviewedAt?: { toDate: () => Date } | null;
@@ -161,7 +162,7 @@ export default function AdminVerificationsPage() {
 
                 {/* View ID button */}
                 <a
-                  href={req.fileUrl}
+                  href={`/api/admin/verifications/${req.id}/file`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border flex-shrink-0"

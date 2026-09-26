@@ -1,13 +1,14 @@
 import SellerProfileDrawer from '@/components/seller/SellerProfileDrawer';
-import SellerSwipeNav from '@/components/seller/SellerSwipeNav';
+import { Suspense } from 'react';
+import ProfileLinkHandler from '@/components/shared/ProfileLinkHandler';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <div className="h-[60px] sm:hidden" aria-hidden="true" />
+      <div className="h-[calc(64px+env(safe-area-inset-bottom))] md:hidden" aria-hidden="true" />
       <SellerProfileDrawer />
-      <SellerSwipeNav />
+      <Suspense><ProfileLinkHandler seller /></Suspense>
     </>
   );
 }

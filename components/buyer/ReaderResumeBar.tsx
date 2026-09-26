@@ -9,6 +9,7 @@ import { getActiveReadingProgress, getBook } from '@/lib/firebase/firestore';
 import { getBuyerRouteState } from '@/components/buyer/buyerNavigation';
 import type { Book } from '@/types/book';
 import type { ReadingProgress } from '@/types/order';
+import { useCatalog } from '@/hooks/useCatalog';
 
 interface ResumeState {
   progress: ReadingProgress;
@@ -16,9 +17,11 @@ interface ResumeState {
 }
 
 export default function ReaderResumeBar() {
+  const catalog = useCatalog();
   const pathname = usePathname();
   const userProfile = useAuthStore((state) => state.userProfile);
   const routeState = getBuyerRouteState(pathname);
+  const [error, setError] = useState(false);
   const [resumeState, setResumeState] = useState<ResumeState | null>(null);
   const [dismissedId, setDismissedId] = useState<string | null>(null);
 
@@ -47,16 +50,17 @@ export default function ReaderResumeBar() {
         return;
       }
 
+      setError(false);
       setResumeState({ progress: topProgress, book });
       if (dismissedId && dismissedId !== topProgress.bookId) {
         setDismissedId(null);
       }
     }
 
-    load();
+    load().catch(() => { if (active) setError(true); });
 
     const handleFocus = () => {
-      load();
+      load().catch(() => { if (active) setError(true); });
     };
 
     window.addEventListener('focus', handleFocus);
@@ -81,7 +85,8 @@ export default function ReaderResumeBar() {
     );
   }, [dismissedId, pathname, resumeState]);
 
-  if (shouldHide || !routeState.showDrawer || !resumeState) {
+  if (error && routeState.showDrawer) return <Link href="/library" className="block text-center text-xs text-[#888]">Reading progress is unavailable. Open your library.</Link>;
+  if (shouldHide || !routeState.showDrawer || !resumeState || !catalog.books.some(book => book.id === resumeState.book.id)) {
     return null;
   }
 

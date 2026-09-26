@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getStorage } from 'firebase-admin/storage';
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 
 function getServiceAccount() {
@@ -64,6 +65,10 @@ export async function getAdminAuth() {
 
 export async function getAdminDb() {
   return getFirestore(ensureAdminApp());
+}
+
+export async function getAdminBucket() {
+  return getStorage(ensureAdminApp()).bucket();
 }
 
 export async function getAdminFieldValue() {

@@ -3,19 +3,24 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Trash2, ShoppingCart } from 'lucide-react';
-import Image from 'next/image';
+import { useCatalog } from '@/hooks/useCatalog';
+import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import BookCover from '@/components/shared/BookCover';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import { useCartStore } from '@/store/cartStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeItem, discountAmount, getSubtotal, getBundleDiscount, getTotal } = useCartStore();
+  const { items, removeItem, getSubtotal, getBundleDiscount, getTotal } = useCartStore();
+  const catalog = useCatalog();
 
   const sub = getSubtotal();
   const bundle = getBundleDiscount();
-  const promoDiscount = discountAmount;
   const tot = getTotal();
+
+  if (catalog.loading || (!catalog.error && items.some(item => !catalog.books.some(book => book.id === item.bookId)))) return <div role="status" className="flex justify-center py-20"><LoadingSpinner size={28} /><span className="sr-only">Checking book availability…</span></div>;
+  if (catalog.error) return <div role="alert" className="p-8 text-[14px] text-red-300">{catalog.error}<button type="button" onClick={catalog.retry} className="ml-4 min-h-11 underline">Try again</button></div>;
 
   if (items.length === 0) {
     return (
@@ -45,12 +50,7 @@ export default function CartPage() {
             {items.map((item) => (
               <div key={item.bookId} className="flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 {/* Mini cover */}
-                <div
-                  className="rounded-lg overflow-hidden flex-shrink-0 relative"
-                  style={{ width: 36, height: 46, background: item.coverBgColor }}
-                >
-                  <div className="absolute top-0 left-0 right-0 h-1" style={{ background: item.coverAccentColor }} />
-                </div>
+                <div className="w-10 shrink-0"><BookCover book={item} compact /></div>
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{item.title}</p>
@@ -61,7 +61,7 @@ export default function CartPage() {
                   {centsToDisplay(item.price)}
                 </p>
 
-                <button type="button" onClick={() => removeItem(item.bookId)} className="p-1.5 rounded-lg hover:bg-[#1a1a1a] transition-colors flex-shrink-0">
+                <button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => removeItem(item.bookId)} className="p-1.5 rounded-lg hover:bg-[#1a1a1a] transition-colors flex-shrink-0">
                   <Trash2 size={14} style={{ color: '#666' }} />
                 </button>
               </div>
@@ -83,12 +83,7 @@ export default function CartPage() {
                     <span style={{ color: '#4ade80' }}>Bundle discount (5%)</span>
                     <span style={{ color: '#4ade80' }}>-{centsToDisplay(bundle)}</span>
                   </div>
-                )}
-                {promoDiscount > 0 && (
-                  <div className="flex justify-between">
-                    <span style={{ color: '#4ade80' }}>Promo code</span>
-                    <span style={{ color: '#4ade80' }}>-{centsToDisplay(promoDiscount)}</span>
-                  </div>
+
                 )}
               </div>
 

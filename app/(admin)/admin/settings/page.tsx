@@ -11,6 +11,7 @@ import type { PlatformSettings } from '@/types/subscription';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
@@ -24,10 +25,12 @@ export default function AdminSettingsPage() {
 
   async function handleSave() {
     if (!settings) return;
+    if (!Number.isFinite(settings.directSaleFee) || settings.directSaleFee < 0 || settings.directSaleFee > 100) { setSaveError('Fee must be between 0 and 100.'); return; }
     setSaving(true);
-    await updatePlatformSettings(settings);
-    setSaving(false);
-    setSaved(true);
+    setSaveError('');
+    try { await updatePlatformSettings(settings); setSaved(true); }
+    catch { setSaveError('Unable to save settings. Please try again.'); }
+    finally { setSaving(false); }
     setTimeout(() => setSaved(false), 2000);
   }
 
@@ -66,14 +69,12 @@ export default function AdminSettingsPage() {
         <h1 className="font-display text-display-lg text-white mb-6">Platform Settings</h1>
 
         <div className="space-y-5">
+          {saveError && <p role="alert">{saveError}</p>}
           {/* Fees */}
           <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <h2 className="font-display text-display-sm text-white">Platform Fees</h2>
             {[
               { label: 'Direct sale fee (%)', key: 'directSaleFee', value: settings.directSaleFee },
-              { label: 'Subscription platform cut (%)', key: 'subscriptionPlatformCut', value: settings.subscriptionPlatformCut },
-              { label: 'Borrow rate per read (cents)', key: 'borrowRatePerRead', value: settings.borrowRatePerRead },
-              { label: 'New book exclusivity days', key: 'newBookExclusivityDays', value: settings.newBookExclusivityDays },
             ].map(({ label, key, value }) => (
               <div key={key} className="flex items-center justify-between">
                 <label htmlFor={`fee-${key}`} className="text-sm text-[#aaa]">{label}</label>
@@ -89,24 +90,6 @@ export default function AdminSettingsPage() {
             ))}
           </div>
 
-          {/* Subscription prices */}
-          <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <h2 className="font-display text-display-sm text-white">Subscription Prices (cents)</h2>
-            {(['basic', 'standard', 'premium'] as const).map((plan) => (
-              <div key={plan} className="flex items-center justify-between">
-                <label htmlFor={`price-${plan}`} className="text-sm text-[#aaa] capitalize">{plan} plan</label>
-                <input
-                  id={`price-${plan}`}
-                  type="number"
-                  value={settings.subscriptionPrices[plan]}
-                  onChange={(e) => update('subscriptionPrices', { ...settings.subscriptionPrices, [plan]: parseInt(e.target.value) })}
-                  className="w-28 px-3 py-1.5 rounded-lg border text-sm text-right"
-                  style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}
-                />
-              </div>
-            ))}
-          </div>
-
           {/* Controls */}
           <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <h2 className="font-display text-display-sm text-white">Platform Controls</h2>
@@ -114,7 +97,6 @@ export default function AdminSettingsPage() {
               { key: 'autoApproveBooks', label: 'Auto-approve new ebooks' },
               { key: 'newUserSignupsOpen', label: 'New user signups open' },
               { key: 'newSellerSignupsOpen', label: 'New author signups open' },
-              { key: 'subscriptionSalesActive', label: 'Subscription sales active' },
               { key: 'maintenanceMode', label: 'Maintenance mode' },
             ].map(({ key, label }) => (
               <Toggle

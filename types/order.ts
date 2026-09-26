@@ -16,7 +16,7 @@ export interface Order {
   stripeFee: number;
   platformFee: number;
   sellerEarnings: number;
-  status: 'pending' | 'completed' | 'refunded' | 'disputed';
+  status: 'pending' | 'completed' | 'refunded' | 'disputed' | 'needs_review';
   receiptEmailSent: boolean;
   createdAt: Timestamp;
 }
@@ -74,7 +74,7 @@ export interface Payout {
   salesEarnings: number;
   subscriptionEarnings: number;
   stripeTransferId: string | null;
-  status: 'pending' | 'processing' | 'paid' | 'failed';
+  status: 'pending' | 'processing' | 'paid' | 'failed' | 'needs_review';
   paidAt: Timestamp | null;
   createdAt: Timestamp;
 }

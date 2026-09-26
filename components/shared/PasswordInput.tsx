@@ -8,7 +8,7 @@ interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const PasswordInput = forwardRef<HTMLInputElement, Props>(
-  ({ hasError = false, className: _cls, style: _style, ...props }, ref) => {
+  ({ hasError = false, className, style, ...props }, ref) => {
     const [visible, setVisible] = useState(false);
 
     return (
@@ -16,9 +16,10 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(
         <input
           ref={ref}
           type={visible ? 'text' : 'password'}
-          className="field-input w-full rounded-xl px-3.5 py-3 text-sm pr-11"
+          className={`field-input w-full rounded-xl px-3.5 py-3 text-sm pr-11 ${className ?? ''}`}
           style={{
-            borderColor: hasError ? '#e8442a' : '#333',
+            ...style,
+            borderColor: hasError ? '#e8442a' : style?.borderColor ?? '#333',
           }}
           {...props}
         />

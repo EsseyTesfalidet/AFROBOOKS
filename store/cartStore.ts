@@ -21,6 +21,7 @@ interface CartState {
   discountAmount: number;
   addItem: (book: Book) => void;
   removeItem: (bookId: string) => void;
+  reconcileBooks: (books: Book[]) => void;
   clearCart: () => void;
   applyPromo: (code: string, discount: number, bookId: string) => void;
   removePromo: () => void;
@@ -69,8 +70,17 @@ export const useCartStore = create<CartState>()(
 
       clearCart: () => set({ items: [], promoCode: null, promoBookId: null, discountAmount: 0 }),
 
+      reconcileBooks: (books) => set(state => {
+        const live = new Map(books.map(book => [book.id, book]));
+        const items = state.items.flatMap(item => {
+          const book = live.get(item.bookId);
+          return book ? [{ ...item, title: book.title, authorName: book.authorName, coverUrl: book.coverUrl, coverBgColor: book.coverBgColor, coverAccentColor: book.coverAccentColor, price: book.price }] : [];
+        });
+        return JSON.stringify(items) === JSON.stringify(state.items) ? state : { items };
+      }),
+
       applyPromo: (code, discount, bookId) =>
-        set({ promoCode: code, promoBookId: bookId, discountAmount: discount }),
+        set({ promoCode: null, promoBookId: null, discountAmount: 0 }),
       removePromo: () => set({ promoCode: null, promoBookId: null, discountAmount: 0 }),
 
       isInCart: (bookId) => get().items.some((i) => i.bookId === bookId),
@@ -85,10 +95,10 @@ export const useCartStore = create<CartState>()(
       getTotal: () => {
         const subtotal = get().getSubtotal();
         const bundle = get().getBundleDiscount();
-        const promo = get().discountAmount;
+        const promo = 0;
         return Math.max(0, subtotal - bundle - promo);
       },
     }),
-    { name: 'afrobooks-cart' }
+    { name: 'afrobooks-cart', version: 1, migrate: (state) => ({ ...(state as CartState), promoCode: null, promoBookId: null, discountAmount: 0 }) }
   )
 );

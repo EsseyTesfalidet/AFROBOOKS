@@ -35,7 +35,7 @@ export default function AdminSubscriptionsPage() {
     premium: subs.filter((s) => s.plan === 'premium' && s.status === 'active').length,
     mrr: subs
       .filter((s) => s.status === 'active')
-      .reduce((sum, s) => sum + (s.plan === 'basic' ? 499 : s.plan === 'standard' ? 999 : 1499), 0),
+      .reduce((sum, s) => sum + (s.price ?? 0), 0),
   };
 
   return (

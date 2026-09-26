@@ -39,7 +39,7 @@ export default function AdminDashboard() {
       getDocs(query(collection(db, 'reports'), where('status', '==', 'open'))),
       getDocs(collection(db, 'orders')),
     ]).then(([users, books, subs, flagged, reports, orders]) => {
-      const allOrders = orders.docs.map((d) => d.data());
+      const allOrders = orders.docs.map((d) => d.data()).filter(order => order.status === 'completed');
       const todayOrders = allOrders.filter((o) => {
         const created = o.createdAt?.toDate?.();
         return created && created >= todayStart;

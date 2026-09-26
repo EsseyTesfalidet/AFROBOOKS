@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import SellerHeader from '@/components/seller/SellerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -25,6 +25,8 @@ export default function AnalyticsPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [seller, setSeller] = useState<Seller | null>(null);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [bookEarnings, setBookEarnings] = useState<Record<string, number>>({});
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [revenueData, setRevenueData] = useState<{ day: string; revenue: number; sales: number }[]>([]);
   const [genreData, setGenreData] = useState<{ name: string; value: number }[]>([]);
@@ -42,7 +44,10 @@ export default function AnalyticsPage() {
       setPayouts(payoutSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Payout)));
 
       // Build last-7-days revenue from real orders
-      const orders = ordersSnap.docs.map((d) => d.data());
+      const orders = ordersSnap.docs.map((d) => d.data()).filter(o => o.status === 'completed');
+      const earnings: Record<string, number> = {};
+      orders.forEach(o => { earnings[o.bookId] = (earnings[o.bookId] ?? 0) + (o.sellerEarnings ?? 0); });
+      setBookEarnings(earnings);
       const now = new Date();
       const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const rev = Array.from({ length: 7 }, (_, i) => {
@@ -52,7 +57,7 @@ export default function AnalyticsPage() {
         const dayOrders = orders.filter((o) => o.createdAt?.toDate?.()?.toDateString?.() === dateStr);
         return {
           day: DAY_NAMES[d.getDay()],
-          revenue: dayOrders.reduce((s: number, o) => s + Math.round((o.finalPrice ?? 0) * 0.7), 0),
+          revenue: dayOrders.reduce((s: number, o) => s + (o.sellerEarnings ?? 0), 0),
           sales: dayOrders.length,
         };
       });
@@ -65,8 +70,7 @@ export default function AnalyticsPage() {
       });
       setGenreData(Object.entries(genreMap).map(([name, value]) => ({ name, value })));
 
-      setLoading(false);
-    });
+    }).catch(() => setError('Unable to load all analytics. Please reload to retry.')).finally(() => setLoading(false));
   }, [userProfile?.uid]);
 
   const bookSalesData = books.slice(0, 5).map((b) => ({
@@ -76,7 +80,7 @@ export default function AnalyticsPage() {
 
   const totalRevenue = seller?.totalEarnings ?? 0;
   const pending = seller?.pendingBalance ?? 0;
-  const totalPaid = payouts.filter((p) => p.status === 'paid').reduce((s, p) => s + p.amountCents, 0);
+  const totalPaid = payouts.filter((p) => p.status === 'paid' && p.stripeTransferId).reduce((s, p) => s + p.amountCents, 0);
 
   if (loading) return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -91,17 +95,7 @@ export default function AnalyticsPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         <h1 className="font-display text-display-lg text-white mb-4">Analytics</h1>
 
-        {/* Date range */}
-        <div className="flex gap-2 mb-6">
-          {['7D', '30D', '90D', 'All Time'].map((d) => (
-            <button key={d} type="button"
-              className="px-3 py-1.5 rounded-lg text-xs border"
-              style={{ background: d === '30D' ? '#e8442a' : '#1a1a1a', color: d === '30D' ? '#fff' : '#888', borderColor: d === '30D' ? '#e8442a' : '#333' }}>
-              {d}
-            </button>
-          ))}
-        </div>
-
+        {error && <p role="alert">{error}</p>}
         {/* Tabs */}
         <div className="flex gap-4 mb-6 border-b" style={{ borderColor: '#1a1a1a' }}>
           {TABS.map((t) => (
@@ -132,7 +126,7 @@ export default function AnalyticsPage() {
 
             {/* Revenue chart */}
             <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <p className="text-sm font-medium text-white mb-4">Revenue (Last 7 Days)</p>
+              <p className="text-sm font-medium text-white mb-4">Seller earnings (Last 7 Days)</p>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
@@ -189,7 +183,7 @@ export default function AnalyticsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                      {['Period', 'Sales', 'Gross', 'Earnings', 'Status'].map((h) => (
+                      {['Period', 'Amount', 'Status'].map((h) => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -198,13 +192,11 @@ export default function AnalyticsPage() {
                     {payouts.map((p) => (
                       <tr key={p.id} style={{ borderBottom: '1px solid #111' }}>
                         <td className="px-4 py-3 text-[#aaa]">{p.periodLabel}</td>
-                        <td className="px-4 py-3 text-[#aaa]">{p.salesCount}</td>
-                        <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(p.salesEarnings + p.subscriptionEarnings)}</td>
                         <td className="px-4 py-3" style={{ color: '#4ade80' }}>{centsToDisplay(p.amountCents)}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-0.5 rounded"
                             style={{ background: p.status === 'paid' ? '#0f2e1a' : '#2e1a0f', color: p.status === 'paid' ? '#4ade80' : '#f5b800' }}>
-                            {p.status}
+                            {p.status === 'paid' && !p.stripeTransferId ? 'Recorded paid; unverified' : p.status}
                           </span>
                         </td>
                       </tr>
@@ -238,7 +230,7 @@ export default function AnalyticsPage() {
                     </td>
                     <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(b.price)}</td>
                     <td className="px-4 py-3 text-[#aaa]">{b.totalSales}</td>
-                    <td className="px-4 py-3" style={{ color: '#4ade80' }}>{centsToDisplay(b.totalSales * b.price * 0.7)}</td>
+                    <td className="px-4 py-3" style={{ color: '#4ade80' }}>{centsToDisplay(bookEarnings[b.id] ?? 0)}</td>
                     <td className="px-4 py-3 text-[#aaa]">{b.reviewCount}</td>
                     <td className="px-4 py-3 text-[#f5b800]">{b.averageRating.toFixed(1)}</td>
                   </tr>

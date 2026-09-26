@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, PlayCircle } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
+import BookCover from '@/components/shared/BookCover';
 import ProgressBar from '@/components/shared/ProgressBar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { getUserLibrary, getBook, getReadingProgress } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import type { Book } from '@/types/book';
+import { useCatalog } from '@/hooks/useCatalog';
 
 interface LibraryEntry {
   bookId: string;
@@ -19,11 +21,17 @@ interface LibraryEntry {
 
 export default function LibraryPage() {
   const userProfile = useAuthStore((s) => s.userProfile);
-  const [entries, setEntries] = useState<LibraryEntry[]>([]);
+  const [storedEntries, setEntries] = useState<LibraryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const catalog = useCatalog();
+  const entries = storedEntries.filter(entry => catalog.books.some(book => book.id === entry.bookId));
 
   useEffect(() => {
     if (!userProfile) return;
+    let active = true;
+    setLoading(true); setError(''); setEntries([]);
     getUserLibrary(userProfile.uid).then(async (items) => {
       const populated: LibraryEntry[] = await Promise.all(
         items.map(async (item) => {
@@ -39,17 +47,21 @@ export default function LibraryPage() {
           };
         })
       );
+      if (!active) return;
       setEntries(populated.filter((entry) => entry.book));
       setLoading(false);
-    });
-  }, [userProfile?.uid]);
+    }).catch(() => { if (active) { setError('Your library could not be loaded. Please try again.'); setLoading(false); } });
+    return () => { active = false; };
+  }, [userProfile?.uid, attempt]);
 
-  if (loading) return (
+  if (loading || catalog.loading) return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
       <div className="flex justify-center pt-16"><LoadingSpinner size={36} /></div>
     </div>
   );
+
+  if (error || catalog.error) return <div role="alert" className="p-8 text-[14px] text-red-300">{error || catalog.error}<button type="button" className="ml-4 min-h-11 underline" onClick={() => { setAttempt(value => value + 1); catalog.retry(); }}>Try again</button></div>;
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -78,13 +90,8 @@ export default function LibraryPage() {
                     className="flex-shrink-0 rounded-xl overflow-hidden snap-start border"
                     style={{ width: 150, background: '#111', borderColor: '#1a1a1a' }}
                   >
-                    <div className="relative" style={{ height: 90, background: book?.coverBgColor || '#1a1040' }}>
-                      <div className="absolute top-0 left-0 right-0 h-1" style={{ background: book?.coverAccentColor || '#7c3aed' }} />
-                      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85))' }} />
-                      <div className="absolute bottom-0 left-0 right-0 p-2">
-                        <p className="text-white font-medium truncate" style={{ fontSize: 11 }}>{book?.title ?? bookId}</p>
-                      </div>
-                    </div>
+                    {book && <BookCover book={book} />}
+                    <p className="px-2 pt-2 text-[12px] font-medium text-white line-clamp-2">{book?.title ?? bookId}</p>
                     <div className="px-2.5 pt-2 pb-2.5 space-y-1">
                       <ProgressBar value={progress} color="#e8442a" height={3} />
                       <p className="text-xs" style={{ color: '#555' }}>{progress}% · Ch. {currentChapter}</p>
@@ -109,12 +116,7 @@ export default function LibraryPage() {
             {entries.map(({ bookId, book, progress, currentChapter }) => (
               <div key={bookId} className="flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 {/* Cover */}
-                <div
-                  className="rounded-lg flex-shrink-0 relative overflow-hidden"
-                  style={{ width: 48, height: 60, background: book?.coverBgColor ?? '#1a1040' }}
-                >
-                  <div className="absolute top-0 left-0 right-0 h-1" style={{ background: book?.coverAccentColor ?? '#7c3aed' }} />
-                </div>
+                <div className="w-12 shrink-0">{book && <BookCover book={book} compact />}</div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">

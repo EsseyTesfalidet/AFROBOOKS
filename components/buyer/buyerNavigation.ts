@@ -51,8 +51,8 @@ const ROUTE_STATE_RULES: Array<{
     matches: ['/discover'],
     state: {
       eyebrow: 'Discover',
-      title: 'Curated For You',
-      subtitle: 'Taste-based shelves, staff picks, and hidden gems.',
+      title: 'Find Your Next Read',
+      subtitle: 'Explore stories and recommendations from the catalog.',
     },
   },
   {

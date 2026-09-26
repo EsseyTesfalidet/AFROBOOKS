@@ -1,18 +1,22 @@
+import type Stripe from 'stripe';
+import { syncSubscription } from '@/lib/server/syncSubscription';
 import { NextRequest, NextResponse } from 'next/server';
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { getStripeServer } from '@/lib/stripe/server';
 import { getAdminDb } from '@/lib/firebase/admin';
-import { sendPurchaseReceiptEmail, sendSubscriptionConfirmation } from '@/lib/server/email';
+import { sendPurchaseReceiptEmail } from '@/lib/server/email';
 import { fulfillPayment, type SuccessfulPayment } from '@/lib/server/fulfillPayment';
+import { paymentConfiguration } from '@/lib/stripe/config';
 
 export async function POST(req: NextRequest) {
-  const stripe = getStripeServer();
   const sig = req.headers.get('stripe-signature');
   const body = await req.text();
 
   if (!sig) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 });
   }
+  if (!paymentConfiguration(process.env).checkoutReady) return NextResponse.json({ error: 'Payments are not configured' }, { status: 503 });
+  const stripe = getStripeServer();
 
   let event;
   try {
@@ -25,6 +29,7 @@ export async function POST(req: NextRequest) {
 
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object as SuccessfulPayment;
+    if (!pi.metadata.bookIds && pi.metadata.purchaseType !== 'books') return NextResponse.json({ received: true });
     try {
       await fulfillPayment(adminDb, pi);
     } catch (error) {
@@ -34,7 +39,7 @@ export async function POST(req: NextRequest) {
     const ordersSnap = await adminDb.collection('orders').where('stripePaymentIntentId', '==', pi.id).get();
     const orders = ordersSnap.docs.map((doc) => doc.data());
     const buyer = (await adminDb.collection('users').doc(pi.metadata.userId).get()).data();
-    if (buyer?.email && orders.some((order) => !order.receiptEmailSent)) {
+    if (buyer?.email && orders.every(order => order.status === 'completed') && orders.some((order) => !order.receiptEmailSent)) {
       const sent = await sendPurchaseReceiptEmail({
         to: buyer.email,
         buyerName: [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || 'Reader',
@@ -46,55 +51,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
-    const sub = event.data.object as {
-      id: string;
-      status: string;
-      metadata: Record<string, string>;
-    };
-    const { userId, plan } = sub.metadata;
-
-    if (userId && plan) {
-      await adminDb.collection('users').doc(userId).set(
-        {
-          subscriptionId: sub.id,
-          subscriptionPlan: plan,
-          subscriptionStatus: sub.status === 'active' ? 'active' : 'past_due',
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
-
-      if (sub.status === 'active') {
-        const userSnap = await adminDb.collection('users').doc(userId).get();
-        const user = userSnap.data() as
-          | { email?: string; firstName?: string; lastName?: string }
-          | undefined;
-        if (user?.email) {
-          await sendSubscriptionConfirmation({
-            to: user.email,
-            userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Reader',
-            plan: plan as 'basic' | 'standard' | 'premium',
-            amountCents: plan === 'basic' ? 499 : plan === 'standard' ? 999 : 1499,
-          }).catch(() => false);
-        }
-      }
-    }
-  }
-
-  if (event.type === 'customer.subscription.deleted') {
-    const sub = event.data.object as { metadata: Record<string, string> };
-    const { userId } = sub.metadata;
-    if (userId) {
-      await adminDb.collection('users').doc(userId).set(
-        {
-          subscriptionPlan: 'none',
-          subscriptionStatus: 'cancelled',
-          subscriptionId: null,
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
+  if (['customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'].includes(event.type)) {
+    try {
+      const eventSub = event.data.object as Stripe.Subscription;
+      const latest = await stripe.subscriptions.retrieve(eventSub.id);
+      await syncSubscription(adminDb, latest);
+    } catch (error) {
+      console.error('Subscription synchronization failed:', error);
+      return NextResponse.json({ error: 'Subscription synchronization incomplete; retry required' }, { status: 500 });
     }
   }
 

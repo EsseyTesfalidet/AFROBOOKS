@@ -1,22 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Facebook, Heart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import { useAuthStore } from '@/store/authStore';
-import { getLiveBooks } from '@/lib/firebase/firestore';
-import { orderBy, limit } from 'firebase/firestore';
+import { useCatalog } from '@/hooks/useCatalog';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
-import type { Book } from '@/types/book';
 
 const GENRES = ['Fiction', 'History', 'Science', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 
 export default function LandingPage() {
   const router = useRouter();
   const { userProfile, loading } = useAuthStore();
-  const [books, setBooks] = useState<Book[]>([]);
+  const catalog = useCatalog();
+  const books = catalog.books.slice(0, 8);
 
   useEffect(() => {
     if (!loading && userProfile) {
@@ -25,10 +24,6 @@ export default function LandingPage() {
       else router.replace('/browse');
     }
   }, [loading, userProfile]);
-
-  useEffect(() => {
-    getLiveBooks([orderBy('publishedAt', 'desc'), limit(8)]).then(setBooks);
-  }, []);
 
   if (loading) return null;
   if (userProfile) return null;
@@ -113,10 +108,10 @@ export default function LandingPage() {
       <div style={{ borderTop: '1px solid #1a1a1a', borderBottom: '1px solid #1a1a1a' }}>
         <div className="max-w-4xl mx-auto px-5 py-10 grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
           {[
-            { value: '10K+', label: 'Active Readers', icon: Users },
-            { value: '500+', label: 'Ebooks', icon: BookOpen },
-            { value: '100+', label: 'African Authors', icon: Feather },
-            { value: '4.8★', label: 'Reader Rating', icon: Star },
+            { value: 'Discover', label: 'African stories', icon: Users },
+            { value: 'Preview', label: 'Before you buy', icon: BookOpen },
+            { value: 'Publish', label: 'Share your writing', icon: Feather },
+            { value: 'Review', label: 'Share your experience', icon: Star },
           ].map(({ value, label, icon: Icon }) => (
             <div key={label}>
               <Icon size={16} className="mx-auto mb-2" style={{ color: '#e8442a' }} />
@@ -239,15 +234,15 @@ export default function LandingPage() {
               Publish Your Story<br />to the World
             </h2>
             <p className="text-base mb-8 leading-relaxed" style={{ color: '#666' }}>
-              Join hundreds of African authors already earning on AfroBooks. Upload your ebook, set your price, and keep 85% of every sale.
+              Share your writing on AfroBooks. Upload your ebook, set your price, and review your estimated earnings before publishing.
             </p>
             <ul className="space-y-3 mb-10">
               {[
-                'Keep 85% of every sale',
-                'In-app reading — zero piracy risk',
+                'Review fees and estimated earnings before publishing',
+                'In-app reading with protected paid chapters',
                 'Built-in audience of African literature fans',
                 'Real-time earnings and analytics dashboard',
-                'Co-author revenue sharing built in',
+                'Choose which chapters readers can preview',
               ].map((item) => (
                 <li key={item} className="flex items-center gap-3 text-sm" style={{ color: '#aaa' }}>
                   <CheckCircle size={14} style={{ color: '#f5b800', flexShrink: 0 }} />

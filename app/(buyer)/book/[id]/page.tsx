@@ -10,7 +10,6 @@ import StatusPill from '@/components/shared/StatusPill';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ReviewCard from '@/components/buyer/ReviewCard';
 import ReviewForm from '@/components/buyer/ReviewForm';
-import PromoCodeInput from '@/components/buyer/PromoCodeInput';
 import FollowButton from '@/components/shared/FollowButton';
 import { getBook, getBookReviews, isBookInLibrary, getSimilarBooks } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
@@ -19,6 +18,9 @@ import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 import type { Review } from '@/types/review';
+import { isBookInWishlist, toggleWishlist } from '@/lib/firebase/firestore';
+import { canReadWithSubscription } from '@/lib/utils/bookAccess';
+import { useCatalog } from '@/hooks/useCatalog';
 
 const REPORT_REASONS = [
   'Inappropriate or offensive content',
@@ -29,11 +31,12 @@ const REPORT_REASONS = [
 ];
 
 export default function BookDetailPage() {
+  const catalog = useCatalog();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const userProfile = useAuthStore((s) => s.userProfile);
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
-  const { addItem, isInCart, applyPromo, removePromo, promoCode, promoBookId } = useCartStore();
+  const { addItem, isInCart } = useCartStore();
   const addRecentlyViewedBook = useRecentlyViewedStore((state) => state.addBook);
 
   const [error, setError] = useState('');
@@ -42,12 +45,28 @@ export default function BookDetailPage() {
   const [similar, setSimilar] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [owned, setOwned] = useState(false);
-  const [appliedCode, setAppliedCode] = useState<string | null>(null);
-  const [discount, setDiscount] = useState(0);
   const [selectedOption, setSelectedOption] = useState<'buy' | 'subscribe'>('buy');
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
   const [reviewsError, setReviewsError] = useState('');
+  const [savedForLater, setSavedForLater] = useState(false);
+  const [wishlistMessage, setWishlistMessage] = useState('');
+  const [savingWishlist, setSavingWishlist] = useState(false);
   const authLoading = useAuthStore((s) => s.loading);
+
+  useEffect(() => {
+    let active = true;
+    setSavedForLater(false);
+    if (firebaseUser) isBookInWishlist(firebaseUser.uid, id).then(saved => { if (active) setSavedForLater(saved); }).catch(() => {});
+    return () => { active = false; };
+  }, [firebaseUser?.uid, id]);
+
+  async function saveForLater() {
+    if (!firebaseUser) { router.push('/login'); return; }
+    setSavingWishlist(true);
+    try { await toggleWishlist(firebaseUser.uid, id); setSavedForLater(!savedForLater); setWishlistMessage(''); }
+    catch { setWishlistMessage('Unable to update your wishlist. Please try again.'); }
+    finally { setSavingWishlist(false); }
+  }
   const [linkCopied, setLinkCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
 
@@ -85,14 +104,7 @@ export default function BookDetailPage() {
     return () => { active = false; };
   }, [id, authLoading, firebaseUser?.uid]);
 
-  useEffect(() => {
-    if (promoBookId === id && promoCode) {
-      setAppliedCode(promoCode);
-    } else {
-      setAppliedCode(null);
-      setDiscount(0);
-    }
-  }, [id, promoBookId, promoCode]);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -106,18 +118,19 @@ export default function BookDetailPage() {
     }
   }, [addRecentlyViewedBook, book?.id]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (loading || catalog.loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (catalog.error || !catalog.books.some(item => item.id === id)) return <div className="p-8"><p role="status">{catalog.error || 'This book is no longer available.'}</p><Link href="/browse">Back to catalog</Link></div>;
   if (error) return <div className="p-8"><p role="alert">{error}</p><Link href="/browse">Back to catalog</Link></div>;
   if (!book) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] text-[#444]">Book not found.</div>;
 
-  const effectivePrice = Math.max(0, book.price - discount);
+  const effectivePrice = Math.max(0, book.price);
   const isSubscriber = userProfile?.subscriptionStatus === 'active';
-  const canSubRead = isSubscriber && book.inSubscription;
-  const showBothOptions = book.subscriptionOptInType === 'sell_and_sub' && !isSubscriber;
+  const canSubRead = canReadWithSubscription(book, userProfile);
+  const showBothOptions = false;
 
   // Pre-order state
   const releaseDate = book.releaseDate?.toDate?.() ?? null;
-  const isPreorder = book.isPreorder && releaseDate && releaseDate > new Date();
+  const isPreorder = !!book.isPreorder && (!releaseDate || releaseDate > new Date());
 
   const ratingCounts = [5, 4, 3, 2, 1].map((s) => ({
     stars: s,
@@ -142,6 +155,7 @@ export default function BookDetailPage() {
           : centsToDisplay(isPreorder ? book.price : effectivePrice);
 
   function handleBuy() {
+    if (isPreorder) return;
     if (selectedOption === 'subscribe') { router.push('/subscription'); return; }
     if (!book) return;
     addItem(book);
@@ -235,28 +249,8 @@ export default function BookDetailPage() {
           </div>
         </div>
 
-        {/* Promo Code */}
-        {!owned && !isPreorder && book.subscriptionOptInType !== 'sub_only' && (
-          <PromoCodeInput
-            bookId={book.id}
-            sellerId={book.sellerId}
-            bookPrice={book.price}
-            onApply={(c, d, bookId) => {
-              setAppliedCode(c);
-              setDiscount(d);
-              applyPromo(c, d, bookId);
-            }}
-            onRemove={() => {
-              setAppliedCode(null);
-              setDiscount(0);
-              removePromo();
-            }}
-            appliedCode={appliedCode}
-          />
-        )}
-
         {/* Purchase / Pre-order Options */}
-        {!owned && !canSubRead && (
+        {!owned && !canSubRead && !isPreorder && (
           <div className="space-y-3">
             {!isPreorder && showBothOptions && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -277,7 +271,7 @@ export default function BookDetailPage() {
               </div>
             )}
 
-            <button type="button" onClick={handleBuy}
+            <button type="button" onClick={handleBuy} disabled={isPreorder}
               className="hidden w-full py-3.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-90 sm:block"
               style={{ background: isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a', color: '#fff' }}>
               {primaryCtaLabel}
@@ -311,7 +305,7 @@ export default function BookDetailPage() {
         )}
 
         {/* Already owned / subscriber */}
-        {(owned || canSubRead) && (
+        {(owned || canSubRead) && !isPreorder && (
           <button type="button" onClick={() => router.push(`/read/${book.id}`)}
             className="hidden w-full py-3.5 rounded-xl text-sm font-medium sm:block"
             style={{ background: owned ? '#e8442a' : '#7c3aed', color: '#fff' }}>
@@ -319,6 +313,9 @@ export default function BookDetailPage() {
           </button>
         )}
 
+        {isPreorder && <p className="text-sm text-[#aaa]">This book will be available on its release date. New preorders are unavailable.</p>}
+        <button type="button" onClick={saveForLater} disabled={savingWishlist} className="text-sm underline text-[#aaa]">{savedForLater ? 'Remove from wishlist' : 'Save for later'}</button>
+        {wishlistMessage && <p role="status">{wishlistMessage}</p>}
         {/* Share */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs flex items-center gap-1" style={{ color: '#555' }}><Share2 size={11} /> Share:</span>
@@ -403,7 +400,7 @@ export default function BookDetailPage() {
               className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
               style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
             >
-              {similar.map((b) => (
+              {similar.filter(book => catalog.books.some(item => item.id === book.id)).map((b) => (
                 <Link
                   key={b.id}
                   href={`/book/${b.id}`}
@@ -461,14 +458,14 @@ export default function BookDetailPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={handleBuy}
+                  onClick={handleBuy} disabled={isPreorder}
                   className="rounded-2xl px-4 py-3 text-sm font-medium"
                   style={{
                     background: isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a',
                     color: '#fff',
                   }}
                 >
-                  {selectedOption === 'subscribe' ? 'Subscribe' : isInCart(book.id) ? 'View cart' : 'Buy now'}
+                  {isPreorder ? 'Available on release' : isInCart(book.id) ? 'View cart' : 'Buy now'}
                 </button>
               )}
             </div>

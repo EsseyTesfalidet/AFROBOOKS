@@ -6,9 +6,7 @@ import { SlidersHorizontal, Search, Sparkles, X, Check } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCard from '@/components/buyer/BookCard';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { getLiveBooks } from '@/lib/firebase/firestore';
-import { orderBy } from 'firebase/firestore';
-import type { Book } from '@/types/book';
+import { useCatalog } from '@/hooks/useCatalog';
 
 const GENRES = ['Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 const LANGUAGES = ['English', 'French', 'Swahili', 'Yoruba', 'Amharic', 'Arabic', 'Portuguese'];
@@ -44,10 +42,8 @@ type SheetMode = 'filters' | 'sort' | null;
 
 export default function SearchPage() {
   const [collectionFilter, setCollectionFilter] = useState('');
-  const [error, setError] = useState('');
-  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const { books: allBooks, loading, error, retry } = useCatalog();
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
   const [sort, setSort] = useState('relevance');
@@ -59,24 +55,22 @@ export default function SearchPage() {
     setQuery(params.get('q') ?? '');
     if (params.get('genre')) setAppliedFilters({ ...EMPTY_FILTERS, genres: [params.get('genre')!] });
     if (params.get('collection') === 'new') setSort('newest');
-    getLiveBooks([orderBy('totalSales', 'desc')]).then((data) => {
-      setAllBooks(data);
-    }).catch(() => setError('Unable to load books. Please try again.')).finally(() => setLoading(false));
   }, []);
 
   const results = useMemo(() => {
     let next = [...allBooks];
     if (collectionFilter === 'featured') next = next.filter((book) => book.isFeatured);
-    if (collectionFilter === 'hidden') next = next.filter((book) => book.averageRating >= 4.5 && book.reviewCount < 10);
+    if (collectionFilter === 'hidden') next = next.filter((book) => book.averageRating >= 4.5 && book.reviewCount > 0 && book.reviewCount < 10);
+    if (collectionFilter === 'trending') next = next.filter((book) => book.totalSales > 0);
 
     if (query.trim()) {
-      const normalized = query.toLowerCase();
+      const normalized = query.trim().toLowerCase();
       next = next.filter(
         (book) =>
-          book.title.toLowerCase().includes(normalized) ||
-          book.authorName.toLowerCase().includes(normalized) ||
-          book.genre.toLowerCase().includes(normalized) ||
-          book.tags.some((tag) => tag.toLowerCase().includes(normalized))
+          (book.title ?? '').toLowerCase().includes(normalized) ||
+          (book.authorName ?? '').toLowerCase().includes(normalized) ||
+          (book.genre ?? '').toLowerCase().includes(normalized) ||
+          (book.tags ?? []).some((tag) => tag.toLowerCase().includes(normalized))
       );
     }
 
@@ -119,6 +113,8 @@ export default function SearchPage() {
         (left, right) =>
           (right.publishedAt?.toMillis?.() ?? 0) - (left.publishedAt?.toMillis?.() ?? 0)
       );
+    } else {
+      next.sort((left, right) => (right.totalSales ?? 0) - (left.totalSales ?? 0));
     }
 
     return next;
@@ -134,7 +130,6 @@ export default function SearchPage() {
     (appliedFilters.inSubscription ? 1 : 0);
 
   const quickCollections = [
-    { label: 'Subscriber titles', action: () => setAppliedFilters((current) => ({ ...current, inSubscription: true })) },
     { label: 'Verified authors', action: () => setAppliedFilters((current) => ({ ...current, verifiedOnly: true })) },
     { label: '4★ and up', action: () => setAppliedFilters((current) => ({ ...current, minRating: 4 })) },
     { label: 'New fiction', action: () => setAppliedFilters((current) => ({ ...current, genres: ['Fiction'] })) },
@@ -150,6 +145,7 @@ export default function SearchPage() {
   }
 
   function resetFilters() {
+    setCollectionFilter('');
     setFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
   }
@@ -188,7 +184,7 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
-      {error && <p role="alert" className="p-4 text-red-400">{error}</p>}
+      {error && <div role="alert" className="p-4 text-[14px] text-red-300">{error}<button type="button" onClick={retry} className="ml-4 min-h-11 underline">Try again</button></div>}
 
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
         <section
@@ -202,11 +198,11 @@ export default function SearchPage() {
           <div className="flex flex-col gap-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: '#666' }}>
-                Mobile-first search
+                The catalog
               </p>
               <h1 className="mt-2 font-display text-display-lg text-white">Find the exact next read</h1>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: '#777' }}>
-                Search by title, author, genre, or refine the catalog with sheet-based filters.
+                Search by title, author, or genre and find a story that suits you.
               </p>
             </div>
 
@@ -242,7 +238,7 @@ export default function SearchPage() {
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
             <button
               type="button"
-              onClick={() => setSheetMode('filters')}
+              onClick={() => { setFilters(appliedFilters); setSheetMode('filters'); }}
               className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
               style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
             >
@@ -339,7 +335,7 @@ export default function SearchPage() {
             <div>
               <h2 className="font-display text-display-sm text-white">Results</h2>
               <p className="text-sm" style={{ color: '#666' }}>
-                {results.length} title{results.length === 1 ? '' : 's'} found
+                {loading ? 'Loading books…' : error ? 'Catalog unavailable' : `${results.length} title${results.length === 1 ? '' : 's'} found`}
               </p>
             </div>
             <Link href="/browse" className="text-xs transition-colors hover:text-white" style={{ color: '#666' }}>
@@ -351,7 +347,7 @@ export default function SearchPage() {
             <div className="flex justify-center py-20">
               <LoadingSpinner size={36} />
             </div>
-          ) : results.length === 0 ? (
+          ) : error ? null : results.length === 0 ? (
             <div className="rounded-3xl border px-4 py-14 text-center" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <p className="text-sm" style={{ color: '#666' }}>
                 No books match that search. Try a broader query or reset the filters.
@@ -359,8 +355,7 @@ export default function SearchPage() {
             </div>
           ) : (
             <div
-              className="grid gap-3.5"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}
+              className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
             >
               {results.map((book) => (
                 <BookCard key={book.id} book={book} />

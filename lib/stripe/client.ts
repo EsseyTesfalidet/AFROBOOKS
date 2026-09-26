@@ -4,6 +4,7 @@ let stripePromise: Promise<Stripe | null> | null = null;
 
 export function getStripe(): Promise<Stripe | null> {
   if (typeof window === 'undefined') return Promise.resolve(null);
+  if (!/^pk_(live|test)_/.test(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '')) return Promise.resolve(null);
   if (!stripePromise) {
     stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
   }

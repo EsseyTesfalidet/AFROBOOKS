@@ -17,13 +17,13 @@ export async function DELETE(
 
     const adminDb = await getAdminDb();
     const bookRef = adminDb.collection('books').doc(bookId);
-    const bookSnap = await bookRef.get();
+    const [bookSnap, deletionSnap] = await Promise.all([bookRef.get(), adminDb.collection('bookDeletions').doc(bookId).get()]);
 
-    if (!bookSnap.exists) {
+    if (!bookSnap.exists && !deletionSnap.exists) {
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
     }
 
-    const book = bookSnap.data() as { sellerId?: string };
+    const book = (bookSnap.data() ?? deletionSnap.data()) as { sellerId?: string };
     const isOwner = book.sellerId === requestUser.uid;
     const isAdmin = requestUser.role === 'admin';
 

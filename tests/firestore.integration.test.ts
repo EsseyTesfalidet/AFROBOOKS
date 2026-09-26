@@ -2,11 +2,21 @@ import { after, before, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes } from 'firebase/storage';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { fulfillPayment } from '../lib/server/fulfillPayment';
 import { updateFollow, createPurchaseReview } from '../lib/server/social';
+import { publishBook } from '../lib/server/publishBook';
+import { validateBookContent } from '../lib/server/bookContent';
+import { paySeller } from '../functions/src/stripe/payoutLedger';
+import { syncSubscription } from '../lib/server/syncSubscription';
+import { cancelUserSubscription } from '../lib/server/cancelSubscription';
+import { deleteBookRecords } from '../lib/server/moderation';
+import { bookFilePrefixes } from '../lib/server/bookFiles';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import type Stripe from 'stripe';
 
 const projectId = 'demo-afrobooks-security';
 assert.match(process.env.FIRESTORE_EMULATOR_HOST ?? '', /^(127\.0\.0\.1|localhost):\d+$/, 'Integration tests require the local Firestore emulator');
@@ -16,7 +26,7 @@ const db = getFirestore(adminApp);
 const profile = { uid: 'reader', role: 'buyer', status: 'active', subscriptionStatus: 'none', subscriptionPlan: 'none', subscriptionId: null, stripeCustomerId: null, referralCredits: 0 };
 
 before(async () => {
-  env = await initializeTestEnvironment({ projectId, firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
+  env = await initializeTestEnvironment({ projectId, firestore: { rules: readFileSync('firestore.rules', 'utf8') }, storage: { rules: readFileSync('storage.rules', 'utf8') } });
 });
 beforeEach(async () => {
   await env.clearFirestore();
@@ -31,6 +41,131 @@ beforeEach(async () => {
   ]);
 });
 after(async () => { await env?.cleanup(); await deleteApp(adminApp); });
+
+test('subscription tiers, eligibility and preorder dates gate paid chapters', async () => {
+  const reader = env.authenticatedContext('reader').firestore();
+  const paid = doc(reader, 'books/book/chapters/locked');
+  await db.doc('users/reader').update({ subscriptionStatus: 'active', subscriptionPlan: 'basic' });
+  await db.doc('books/book').update({ subscriptionTiers: ['premium'] });
+  await assertFails(getDoc(paid));
+  await db.doc('users/reader').update({ subscriptionPlan: 'premium' });
+  await assertSucceeds(getDoc(paid));
+  await db.doc('books/book').update({ subscriptionEligibleFrom: Timestamp.fromMillis(Date.now() + 86400000) });
+  await assertFails(getDoc(paid));
+  await db.doc('library/reader_book').set({ userId: 'reader', bookId: 'book' });
+  await assertSucceeds(getDoc(paid));
+  await db.doc('books/book').update({ isPreorder: true, releaseDate: Timestamp.fromMillis(Date.now() + 86400000) });
+  await assertFails(getDoc(paid));
+  await assertSucceeds(getDoc(doc(reader, 'books/book/chapters/sample')));
+  await db.doc('books/book').update({ releaseDate: Timestamp.fromMillis(Date.now() - 1000) });
+  await assertSucceeds(getDoc(paid));
+});
+
+test('private archives stay private; payout and promo client mutations are disabled', async () => {
+  const author = env.authenticatedContext('author').firestore();
+  await assertSucceeds(setDoc(doc(author, 'privateBooks/book'), { sellerId: 'author', manuscriptPath: 'manuscripts/author/book/file.txt' }));
+  await assertSucceeds(getDoc(doc(author, 'privateBooks/book')));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'privateBooks/book')));
+  await assertFails(getDoc(doc(env.authenticatedContext('reader').firestore(), 'privateBooks/book')));
+  await assertFails(setDoc(doc(author, 'privateBooks/other'), { sellerId: 'author', manuscriptPath: 'other' }));
+  await assertFails(setDoc(doc(author, 'promoCodes/free'), { sellerId: 'author', discountType: 'free' }));
+  await db.doc('payouts/unconfirmed').set({ sellerId: 'author', status: 'pending', amountCents: 100 });
+  await assertFails(updateDoc(doc(env.authenticatedContext('admin').firestore(), 'payouts/unconfirmed'), { status: 'paid' }));
+});
+
+test('payout reservation survives new sales, concurrent runs and lost transfer responses', async () => {
+  await db.doc('sellers/author').update({ pendingBalance: 1000, stripeAccountId: 'acct_test', payoutsReconciledAt: new Date() });
+  const transfers = new Map<string, { id: string }>();
+  let failOnce = true;
+  const transfer: Parameters<typeof paySeller>[3] = async input => {
+    if (!transfers.has(input.idempotencyKey)) {
+      transfers.set(input.idempotencyKey, { id: 'tr_synthetic' });
+      await db.doc('sellers/author').update({ pendingBalance: FieldValue.increment(225) });
+    }
+    if (failOnce) { failOnce = false; throw new Error('Response lost after transfer'); }
+    return transfers.get(input.idempotencyKey)!;
+  };
+  await Promise.all([paySeller(db, 'author', '2026-09', transfer), paySeller(db, 'author', '2026-09', transfer)]);
+  await paySeller(db, 'author', '2026-09', transfer);
+  await paySeller(db, 'author', '2026-09', transfer);
+  assert.equal(transfers.size, 1);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 225);
+  const payout = (await db.doc('payouts/author_2026-09').get()).data();
+  assert.equal(payout?.amountCents, 1000);
+  assert.equal(payout?.stripeTransferId, 'tr_synthetic');
+  assert.equal(payout?.status, 'paid');
+  assert.equal((await db.collection('notifications').get()).size, 1);
+});
+
+test('old ambiguous payouts hold their funds and never reuse an expired idempotency key', async () => {
+  const now = Date.now();
+  await db.doc('sellers/author').update({ pendingBalance: 500, stripeAccountId: 'acct_test', payoutsReconciledAt: new Date() });
+  let calls = 0;
+  const transfer = async () => { calls++; throw new Error('Unknown transfer result'); };
+  await paySeller(db, 'author', '2026-09', transfer, now);
+  await paySeller(db, 'author', '2026-10', transfer, now + 25 * 3600000);
+  assert.equal(calls, 1);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+  assert.equal((await db.doc('payouts/author_2026-09').get()).data()?.status, 'needs_review');
+  assert.equal((await db.collection('payouts').get()).size, 1);
+});
+
+test('subscription sync preserves newer entitlements and never recreates deleted users', async () => {
+  await db.doc('users/reader').update({ stripeCustomerId: 'cus_reader', subscriptionId: 'sub_new', subscriptionStatus: 'active', subscriptionPlan: 'premium' });
+  const sub = { id: 'sub_old', customer: 'cus_reader', status: 'canceled', metadata: { userId: 'reader', plan: 'basic' }, items: { data: [{ price: { unit_amount: 499 }, quantity: 1 }] }, start_date: 1700000000, created: 1700000000, current_period_start: 1700000000, current_period_end: 1702592000, cancel_at_period_end: false } as unknown as Stripe.Subscription;
+  await syncSubscription(db, sub);
+  assert.equal((await db.doc('users/reader').get()).data()?.subscriptionId, 'sub_new');
+  assert.equal((await db.doc('subscriptions/sub_old').get()).data()?.status, 'cancelled');
+  await syncSubscription(db, { ...sub, id: 'sub_new' });
+  assert.equal((await db.doc('users/reader').get()).data()?.subscriptionId, null);
+  await db.doc('users/reader').delete();
+  await syncSubscription(db, { ...sub, status: 'active' });
+  assert.equal((await db.doc('users/reader').get()).exists, false);
+});
+
+test('cancellation verifies ownership and cancels billing before account deletion', async () => {
+  await db.doc('users/reader').update({ stripeCustomerId: 'cus_reader', subscriptionId: 'sub_reader', subscriptionStatus: 'active', subscriptionPlan: 'basic' });
+  const state = { id: 'sub_reader', customer: 'cus_reader', status: 'active', metadata: { userId: 'reader', plan: 'basic' }, items: { data: [] }, start_date: 1700000000, created: 1700000000, current_period_start: 1700000000, current_period_end: 1702592000, cancel_at_period_end: false };
+  let cancellations = 0;
+  const billing = { subscriptions: {
+    retrieve: async () => state,
+    update: async (_id: string, params: { cancel_at_period_end: boolean }) => { state.cancel_at_period_end = params.cancel_at_period_end; return state; },
+    cancel: async () => { cancellations++; state.status = 'canceled'; return state; },
+  } } as unknown as NonNullable<Parameters<typeof cancelUserSubscription>[3]>;
+  await cancelUserSubscription(db, 'reader', false, billing);
+  assert.equal(state.cancel_at_period_end, true);
+  assert.equal((await db.doc('users/reader').get()).data()?.subscriptionStatus, 'active');
+  state.customer = 'cus_someone_else';
+  await assert.rejects(cancelUserSubscription(db, 'reader', true, billing), /ownership/);
+  assert.equal(cancellations, 0);
+  state.customer = 'cus_reader';
+  await cancelUserSubscription(db, 'reader', true, billing);
+  assert.equal(cancellations, 1);
+  assert.equal((await db.doc('users/reader').get()).data()?.subscriptionStatus, 'cancelled');
+});
+
+test('publication rejects incomplete uploads and protects status transitions', async () => {
+  const draft = { sellerId: 'author', status: 'draft', copyrightReviewStatus: 'not_needed', publishedAt: null, totalSales: 0, totalBorrows: 0, reviewCount: 0, averageRating: 0, isFeatured: false, chapterCount: 2, price: 499, title: 'Draft', authorName: 'Author', genre: 'Fiction', copyrightBasis: 'original', copyrightAttestationAccepted: true };
+  const author = env.authenticatedContext('author').firestore();
+  await assertSucceeds(setDoc(doc(author, 'books/draft'), draft));
+  await assertFails(updateDoc(doc(author, 'books/draft'), { status: 'live' }));
+  await assertSucceeds(updateDoc(doc(author, 'books/draft'), { title: 'Edited draft' }));
+  await assert.rejects(publishBook(db, 'draft', 'author'), /missing chapters/);
+  await db.doc('books/draft/chapters/one').set({ chapterNumber: 1, content: '<p>First chapter</p>' });
+  await assert.rejects(publishBook(db, 'draft', 'author'), /missing chapters/);
+  await db.doc('books/draft/chapters/two').set({ chapterNumber: 2, content: '<p>&nbsp;</p><script>ignored</script>' });
+  await assert.rejects(publishBook(db, 'draft', 'author'), /readable text/);
+  await db.doc('books/draft/chapters/two').update({ content: '<p>Second chapter</p>' });
+  await assert.rejects(publishBook(db, 'draft', 'reader'), /not found/);
+  assert.equal(await publishBook(db, 'draft', 'author'), 'in_review');
+  await assertFails(updateDoc(doc(author, 'books/draft/chapters/one'), { content: '' }));
+  const complete = await db.doc('books/draft').get();
+  assert.equal(complete.data()?.title, 'Edited draft');
+  assert.equal((await db.collection('books').where('title', '==', 'Edited draft').get()).size, 1);
+  const chapters = await db.collection('books/draft/chapters').get();
+  assert.doesNotThrow(() => validateBookContent(complete.data()!, chapters.docs));
+  assert.throws(() => validateBookContent({ chapterCount: 16 }, []), /missing chapters/);
+});
 
 test('reader queries allow guest previews and authorized full books only', async () => {
   const guest = env.unauthenticatedContext().firestore();
@@ -131,4 +266,109 @@ test('only a purchaser can submit a verified review and retries do not inflate r
   assert.equal((await db.doc('books/book').get()).data()?.reviewCount, 1);
   assert.equal((await db.doc('books/book').get()).data()?.averageRating, 4);
   assert.equal((await db.doc('reviews/reader_book').get()).data()?.isVerifiedPurchase, true);
+});
+
+test('book deletion removes content and references, retaining financial history and unrelated books', async () => {
+  const linked: Record<string, object> = {
+    'library/reader_book': { userId: 'reader', bookId: 'book' },
+    'wishlist/saved': { userId: 'reader', bookId: 'book' },
+    'readingProgress/reader_book': { userId: 'reader', bookId: 'book' },
+    'borrowRecords/borrow': { bookId: 'book' },
+    'notifications/notice': { relatedBookId: 'book' },
+    'promoCodes/code': { specificBookId: 'book' },
+    'reviews/review': { bookId: 'book' },
+    'reports/book-report': { targetType: 'book', targetId: 'book' },
+    'reports/review-report': { targetType: 'review', targetId: 'review' },
+    'privateBooks/book': { sellerId: 'author', manuscriptPath: 'manuscripts/author/book/raw.txt' },
+    'privateBooks/book/archive/original': { text: 'private' },
+    'books/book/chapters/locked/notes/nested': { text: 'nested' },
+  };
+  await Promise.all(Object.entries(linked).map(([path, data]) => db.doc(path).set(data)));
+  await Promise.all([
+    db.doc('books/keep').set({ sellerId: 'author', status: 'live' }),
+    db.doc('wishlist/keep').set({ bookId: 'keep' }),
+    db.doc('orders/receipt').set({ bookId: 'book', status: 'completed', finalPrice: 1000 }),
+    db.doc('payouts/history').set({ sellerId: 'author', status: 'paid', amountCents: 800 }),
+  ]);
+  const fileCalls: string[][] = [];
+  const deleteFiles = async (sellerId: string, bookId: string) => {
+    fileCalls.push(bookFilePrefixes(sellerId, bookId));
+    assert.equal((await db.doc('books/book').get()).data()?.status, 'removed');
+    assert.equal((await db.doc('bookDeletions/book').get()).data()?.status, 'pending');
+  };
+  await deleteBookRecords(db, 'book', { deleteFiles });
+  assert.deepEqual(fileCalls, [['covers/author/book/', 'manuscripts/author/book/']]);
+  for (const path of ['books/book', 'books/book/chapters/locked', 'books/book/chapters/sample', ...Object.keys(linked)]) {
+    assert.equal((await db.doc(path).get()).exists, false, path);
+  }
+  for (const path of ['books/keep', 'wishlist/keep', 'orders/receipt', 'payouts/history']) assert.equal((await db.doc(path).get()).exists, true, path);
+  const marker = (await db.doc('bookDeletions/book').get()).data();
+  assert.equal(marker?.status, 'complete');
+  assert.equal(marker?.title, undefined);
+  await deleteBookRecords(db, 'book', { deleteFiles: async () => undefined });
+  assert.equal((await db.doc('bookDeletions/book').get()).data()?.status, 'complete');
+  assert.throws(() => bookFilePrefixes('author/other', 'book'));
+  assert.throws(() => bookFilePrefixes('author', ''));
+});
+
+test('interrupted deletion hides the book and blocks stale writes until cleanup resumes', async () => {
+  const reader = env.authenticatedContext('reader').firestore();
+  const author = env.authenticatedContext('author').firestore();
+  await db.doc('library/reader_book').set({ userId: 'reader', bookId: 'book' });
+  await assertSucceeds(setDoc(doc(reader, 'reports/before'), { reporterId: 'reader', targetType: 'book', targetId: 'book' }));
+  await assertFails(deleteDoc(doc(author, 'books/book')));
+  await assert.rejects(deleteBookRecords(db, 'book', { deleteFiles: async () => { throw new Error('Storage unavailable'); } }), /Storage unavailable/);
+  assert.equal((await db.doc('bookDeletions/book').get()).data()?.status, 'pending');
+  await assertFails(getDoc(doc(reader, 'books/book')));
+  await assertFails(getDoc(doc(reader, 'books/book/chapters/locked')));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'books/book/chapters/sample')));
+  await assertFails(setDoc(doc(reader, 'wishlist/stale'), { userId: 'reader', bookId: 'book' }));
+  await assertFails(setDoc(doc(reader, 'readingProgress/reader_book'), { userId: 'reader', bookId: 'book' }));
+  await assertFails(setDoc(doc(reader, 'reports/late'), { reporterId: 'reader', targetType: 'book', targetId: 'book' }));
+  await assertFails(updateDoc(doc(author, 'books/book'), { title: 'Restored' }));
+  await assert.rejects(publishBook(db, 'book', 'author'), /not found/i);
+  await deleteBookRecords(db, 'book', { deleteFiles: async () => undefined });
+  const draft = { sellerId: 'author', status: 'draft', copyrightReviewStatus: 'not_needed', publishedAt: null, totalSales: 0, totalBorrows: 0, reviewCount: 0, averageRating: 0, isFeatured: false };
+  await assertFails(setDoc(doc(author, 'books/book'), draft));
+  await assertFails(setDoc(doc(author, 'privateBooks/book'), { sellerId: 'author', manuscriptPath: 'manuscripts/author/book/raw.txt' }));
+  await assertFails(setDoc(doc(author, 'books/book/chapters/stale'), { content: 'Restored' }));
+  await assertSucceeds(setDoc(doc(author, 'books/new'), draft));
+});
+
+test('late and concurrent payments never resurrect a deleted book or duplicate earnings', async () => {
+  await seedOrder();
+  await deleteBookRecords(db, 'book', { deleteFiles: async () => undefined });
+  await Promise.all([fulfillPayment(db, payment), fulfillPayment(db, payment)]);
+  assert.equal((await db.doc('orders/order').get()).data()?.status, 'needs_review');
+  assert.equal((await db.doc('books/book').get()).exists, false);
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+  assert.equal((await db.collection('notifications').get()).size, 1);
+  assert.equal((await db.doc('paymentFulfillments/pi_test').get()).data()?.status, 'needs_review');
+
+  // Fresh identifier exercises either ordering of payment and deletion.
+  await db.doc('books/race').set({ sellerId: 'author', status: 'live', totalSales: 0 });
+  await db.doc('orders/race').set({ buyerId: 'reader', sellerId: 'author', bookId: 'race', bookTitle: 'Race', finalPrice: 1000, sellerEarnings: 800, stripePaymentIntentId: 'pi_race', status: 'pending' });
+  await Promise.all([fulfillPayment(db, { ...payment, id: 'pi_race' }), deleteBookRecords(db, 'race', { deleteFiles: async () => undefined })]);
+  await fulfillPayment(db, { ...payment, id: 'pi_race' });
+  assert.equal((await db.doc('books/race').get()).exists, false);
+  assert.equal((await db.doc('library/reader_race').get()).exists, false);
+  const order = (await db.doc('orders/race').get()).data();
+  assert.ok(['completed', 'needs_review'].includes(order?.status));
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, order?.status === 'completed' ? 800 : 0);
+});
+
+test('book file uploads require an existing draft owned by the uploader', async () => {
+  const storage = env.authenticatedContext('author').storage();
+  const file = (bookId: string, folder = 'covers') => ref(storage, `${folder}/author/${bookId}/file`);
+  const bytes = new Uint8Array([1, 2, 3]);
+  await assertFails(uploadBytes(file('missing'), bytes, { contentType: 'image/png' }));
+  await assertFails(uploadBytes(file('book'), bytes, { contentType: 'image/png' }));
+  await db.doc('books/upload').set({ sellerId: 'author', status: 'draft' });
+  await assertSucceeds(uploadBytes(file('upload'), bytes, { contentType: 'image/png' }));
+  await assertSucceeds(uploadBytes(file('upload', 'manuscripts'), bytes, { contentType: 'text/plain' }));
+  await assertFails(uploadBytes(ref(env.authenticatedContext('reader').storage(), 'covers/author/upload/other'), bytes, { contentType: 'image/png' }));
+  await deleteBookRecords(db, 'upload', { deleteFiles: async () => undefined });
+  await assertFails(uploadBytes(file('upload'), bytes, { contentType: 'image/png' }));
+  await assertFails(uploadBytes(file('upload', 'manuscripts'), bytes, { contentType: 'text/plain' }));
 });

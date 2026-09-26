@@ -3,7 +3,9 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
+  getDocsFromServer,
   addDoc,
   setDoc,
   updateDoc,
@@ -33,13 +35,25 @@ export async function getLiveBooks(constraints: QueryConstraint[] = []): Promise
     where('status', '==', 'live'),
     ...constraints
   );
-  const snap = await getDocs(q);
+  const snap = await getDocsFromServer(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Book));
+}
+
+export function subscribeLiveBooks(onBooks: (books: Book[]) => void, onError: () => void) {
+  let active = true;
+  let serverConfirmed = false;
+  const stop = onSnapshot(query(collection(db, 'books'), where('status', '==', 'live')), { includeMetadataChanges: true }, snapshot => {
+    if (!active || snapshot.metadata.fromCache) return;
+    serverConfirmed = true;
+    onBooks(snapshot.docs.map(item => ({ ...item.data(), id: item.id } as Book)));
+  }, () => { if (active) onError(); });
+  getLiveBooks().catch(() => { if (active && !serverConfirmed) onError(); });
+  return () => { active = false; stop(); };
 }
 
 export async function getBook(bookId: string): Promise<Book | null> {
   try {
-    const snap = await getDoc(doc(db, 'books', bookId));
+    const snap = await getDocFromServer(doc(db, 'books', bookId));
     if (!snap.exists()) return null;
 
     const book = { id: snap.id, ...snap.data() } as Book;
@@ -200,6 +214,10 @@ export async function isBookInLibrary(userId: string, bookId: string): Promise<b
   return snap.exists();
 }
 
+export async function isBookInWishlist(userId: string, bookId: string): Promise<boolean> {
+  return (await getDoc(doc(db, 'wishlist', `${userId}_${bookId}`))).exists();
+}
+
 export async function getUserWishlist(userId: string): Promise<WishlistItem[]> {
   const q = query(collection(db, 'wishlist'), where('userId', '==', userId));
   const snap = await getDocs(q);
@@ -219,6 +237,10 @@ export async function toggleWishlist(userId: string, bookId: string): Promise<vo
       addedAt: serverTimestamp(),
     });
   }
+}
+
+export async function removeWishlistItem(itemId: string): Promise<void> {
+  await deleteDoc(doc(db, 'wishlist', itemId));
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────
@@ -286,14 +308,7 @@ export async function getUserOrders(userId: string): Promise<Order[]> {
   );
   const snap = await getDocs(q);
   const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
-  const visibility = await Promise.all(
-    orders.map(async (order) => ({
-      order,
-      exists: (await getDoc(doc(db, 'books', order.bookId)).catch(() => null))?.exists() ?? false,
-    }))
-  );
-
-  return visibility.filter(({ exists }) => exists).map(({ order }) => order);
+  return orders;
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────

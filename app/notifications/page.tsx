@@ -179,7 +179,7 @@ export default function NotificationsPage() {
                 </button>
               ) : null}
               <Link href="/profile/preferences" className="text-xs transition-colors hover:text-white" style={{ color: '#666' }}>
-                Notification settings →
+                Reading preferences →
               </Link>
             </div>
           </div>
@@ -195,14 +195,6 @@ export default function NotificationsPage() {
                       : 'Nothing urgent right now. Good time to keep reading.',
                   href: unreadNotifications[0]?.actionUrl ?? '/library',
                   accent: '#e8442a',
-                },
-                {
-                  title: userProfile?.notificationPreferences.weeklyDigest ? 'Weekly digest enabled' : 'Weekly digest is off',
-                  body: userProfile?.notificationPreferences.weeklyDigest
-                    ? 'You will keep getting roundup updates automatically.'
-                    : 'Turn on weekly digest to bring readers back every week.',
-                  href: '/profile/preferences',
-                  accent: '#0ea5e9',
                 },
                 {
                   title: reminderNotifications.length > 0 ? 'Reading reminders active' : 'No reminder pressure',

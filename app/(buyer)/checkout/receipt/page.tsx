@@ -2,11 +2,13 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import { db } from '@/lib/firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { useAuthStore } from '@/store/authStore';
+import { receiptStatus } from '@/lib/utils/receiptStatus';
 import { getBook } from '@/lib/firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
@@ -15,27 +17,36 @@ import type { Order } from '@/types/order';
 function ReceiptContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const orderIds = searchParams.get('orders')?.split(',') ?? [];
+  const orderKey = searchParams.get('orders') ?? '';
+  const orderIds = [...new Set(orderKey.split(',').filter(Boolean))];
+  const { firebaseUser, loading: authLoading } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [books, setBooks] = useState<Record<string, Book>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!orderIds.length) { router.replace('/library'); return; }
-
-    Promise.all(
-      orderIds.map((id) => getDoc(doc(db, 'orders', id)).then((s) => s.data() as Order))
-    ).then(async (orderData) => {
-      setOrders(orderData.filter(Boolean));
-      const bookMap: Record<string, Book> = {};
-      for (const order of orderData.filter(Boolean)) {
-        const b = await getBook(order.bookId);
-        if (b) bookMap[order.bookId] = b;
+    if (authLoading) return;
+    if (!firebaseUser) { router.replace(`/login?redirect=${encodeURIComponent(`/checkout/receipt?orders=${orderKey}`)}`); return; }
+    const ids = [...new Set(orderKey.split(',').filter(Boolean))];
+    if (!ids.length) { router.replace('/library'); return; }
+    if (ids.length > 20 || ids.some(id => id.includes('/'))) { setError('Invalid receipt link.'); setLoading(false); return; }
+    let active = true;
+    const current = new Map<string, Order>();
+    setOrders([]); setLoading(true); setError('');
+    const unsubscribe = ids.map(id => onSnapshot(doc(db, 'orders', id), snapshot => {
+      if (!active) return;
+      if (!snapshot.exists() || snapshot.data().buyerId !== firebaseUser.uid) {
+        setError('This receipt is unavailable for your account.'); setLoading(false); return;
       }
-      setBooks(bookMap);
-      setLoading(false);
-    });
-  }, []);
+      const order = { ...snapshot.data(), id: snapshot.id } as Order;
+      current.set(id, order);
+      setOrders(ids.flatMap(key => current.has(key) ? [current.get(key)!] : []));
+      setLoading(current.size !== ids.length);
+      getBook(order.bookId).then(book => { if (active && book) setBooks(prev => ({ ...prev, [book.id]: book })); }).catch(() => {});
+    }, () => { if (active) { setError('Unable to confirm your order. Reload this page or check your library.'); setLoading(false); } }));
+    return () => { active = false; unsubscribe.forEach(stop => stop()); };
+  }, [orderKey, firebaseUser?.uid, authLoading, router]);
 
   if (loading) return (
     <div className="flex justify-center pt-16">
@@ -44,14 +55,18 @@ function ReceiptContent() {
   );
 
   const total = orders.reduce((s, o) => s + o.finalPrice, 0);
+  const status = receiptStatus(orderIds.length, orders);
+  const completed = !error && status === 'completed';
+  const needsReview = orders.some(order => order.status === 'needs_review');
+  const StatusIcon = completed ? CheckCircle : Clock;
 
   return (
     <main className="max-w-lg mx-auto px-4 py-10">
       <div className="rounded-2xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
         <div className="px-6 py-8 text-center" style={{ background: '#0f2e1a' }}>
-          <CheckCircle size={40} style={{ color: '#4ade80' }} className="mx-auto mb-3" />
-          <h1 className="font-display text-display-lg" style={{ color: '#4ade80' }}>Payment Successful!</h1>
-          <p className="text-sm mt-1" style={{ color: '#4ade80', opacity: 0.7 }}>Your books are ready to read.</p>
+          <StatusIcon size={40} style={{ color: completed ? '#4ade80' : '#f5b800' }} className="mx-auto mb-3" />
+          <h1 className="font-display text-display-lg text-white">{completed ? 'Purchase confirmed' : error || status === 'unavailable' ? 'Order needs attention' : 'Confirming your purchase'}</h1>
+          <p role="status" className="text-sm mt-2 text-[#aaa]">{error || (needsReview ? 'A book became unavailable while your payment was processing. Your payment has been recorded for staff review. Please do not pay again.' : completed ? 'Your purchase has been recorded. Available books can be opened from your library.' : status === 'unavailable' ? 'Check your order status before trying to read.' : 'Payment is still being confirmed. This page updates automatically; please do not pay again.')}</p>
         </div>
 
         <div className="p-6 space-y-5">
@@ -74,14 +89,14 @@ function ReceiptContent() {
           </div>
 
           <div className="border-t pt-4 flex justify-between items-center" style={{ borderColor: '#222' }}>
-            <span className="text-sm text-[#aaa]">Total charged</span>
+            <span className="text-sm text-[#aaa]">{completed ? 'Total charged' : 'Order total'}</span>
             <span className="font-display text-xl" style={{ color: '#f5b800' }}>{centsToDisplay(total)}</span>
           </div>
 
-          <p className="text-xs text-center text-[#555]">A receipt has been sent to your email.</p>
+          {completed && <p className="text-xs text-center text-[#888]">{orders.every(order => order.receiptEmailSent) ? 'A receipt has been sent to your email.' : 'Your receipt is available here. Email delivery has not been confirmed.'}</p>}
 
           <div className="flex gap-3">
-            {orders.length === 1 && (
+            {completed && orders.length === 1 && books[orders[0].bookId] && (
               <Link
                 href={`/read/${orders[0].bookId}`}
                 className="flex-1 py-3 rounded-xl text-sm font-medium text-center"

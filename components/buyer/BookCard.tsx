@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import BookCover from '@/components/shared/BookCover';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 
@@ -8,116 +9,28 @@ interface BookCardProps {
   book: Book;
   rank?: number;
   badge?: { label: string; color: string; bg: string };
+  eager?: boolean;
 }
 
-export default function BookCard({ book, rank, badge }: BookCardProps) {
+export default function BookCard({ book, rank, badge, eager }: BookCardProps) {
   const releaseDate = book.releaseDate?.toDate?.() ?? null;
   const isPreorder = book.isPreorder && releaseDate && releaseDate > new Date();
-
   return (
-    <Link
-      href={`/${isPreorder ? 'book' : 'read'}/${book.id}`}
-      className="surface-panel-muted group block overflow-hidden rounded-[24px] transition-all hover:-translate-y-1"
-    >
-      {/* Cover */}
-      <div
-        className="relative"
-        style={{
-          height: 168,
-          background: book.coverBgColor || '#1a1040',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Top accent stripe */}
-        <div
-          className="absolute top-0 left-0 right-0"
-          style={{ height: 5, background: book.coverAccentColor || '#7c3aed' }}
-        />
-
-        {/* Gradient overlay */}
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85))' }}
-        />
-
-        {/* SUB tag — top left */}
-        {book.inSubscription && (
-          <span
-            className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-xs font-bold"
-            style={{ background: '#7c3aed', color: '#fff', fontSize: 8 }}
-          >
-            SUB
-          </span>
-        )}
-
-        {isPreorder && (
-          <span
-            className="absolute top-7 left-2 px-1.5 py-0.5 rounded text-xs font-bold"
-            style={{ background: '#0ea5e9', color: '#fff', fontSize: 8 }}
-          >
-            PRE-ORDER
-          </span>
-        )}
-
-        {/* EBOOK tag — top right */}
-        <span
-          className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-bold"
-          style={{ background: '#f5b800', color: '#000', fontSize: 8 }}
-        >
-          EBOOK
-        </span>
-
-        {/* Rank badge */}
-        {rank && (
-          <span
-            className="absolute top-7 left-2 w-5 h-5 flex items-center justify-center rounded-full font-display text-xs"
-            style={{ background: '#e8442a', color: '#fff' }}
-          >
-            {rank}
-          </span>
-        )}
-
-        {/* Custom badge (e.g. NEW) */}
-        {badge && (
-          <span
-            className="absolute top-7 right-2 px-1.5 py-0.5 rounded text-xs font-bold"
-            style={{ background: badge.bg, color: badge.color, fontSize: 9 }}
-          >
-            {badge.label}
-          </span>
-        )}
-
-        {/* Bottom text */}
-        <div className="absolute bottom-0 left-0 right-0 p-2">
-          <p
-            className="text-xs uppercase tracking-wider font-medium mb-0.5"
-            style={{ color: book.coverAccentColor || '#7c3aed', fontSize: 9 }}
-          >
-            {book.genre}
-          </p>
-          <p
-            className="font-display leading-tight text-white"
-            style={{ fontSize: 15 }}
-          >
-            {book.title}
-          </p>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10 }}>
-            {book.authorName}
-          </p>
-        </div>
+    <Link href={`/${isPreorder ? 'book' : 'read'}/${encodeURIComponent(book.id)}`} aria-label={`${book.title} by ${book.authorName}`} className="group block min-w-0 rounded-lg">
+      <div className="relative transition-transform duration-200 group-hover:-translate-y-1">
+        <BookCover book={book} eager={eager} />
+        {(rank || badge || isPreorder) && <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+          {rank && <span className="rounded bg-black/80 px-2 py-1 text-[11px] font-semibold text-white">#{rank}</span>}
+          {badge && <span className="rounded px-2 py-1 text-[11px] font-semibold" style={{background:badge.bg,color:badge.color}}>{badge.label}</span>}
+          {isPreorder && <span className="rounded bg-black/80 px-2 py-1 text-[11px] text-white">Pre-order</span>}
+        </div>}
       </div>
-
-      {/* Info */}
-      <div className="px-3 pb-3 pt-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium" style={{ color: '#f5b800' }}>
-            {centsToDisplay(book.price)}
-          </span>
-          {book.averageRating > 0 && (
-            <span className="text-xs" style={{ color: '#9a9aa3' }}>
-              <span style={{ color: '#f5b800' }}>★</span> {book.averageRating.toFixed(1)}
-            </span>
-          )}
+      <div className="pt-3">
+        <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-[#f5f2eb] group-hover:text-[#ffad91]">{book.title}</p>
+        <p className="mt-1 truncate text-[12px] text-[#a8a49c]">{book.authorName}</p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+          <span className="font-medium text-[#dec18e]">{centsToDisplay(book.price ?? 0)}</span>
+          {book.averageRating > 0 && book.reviewCount > 0 && <span aria-label={`Rated ${book.averageRating.toFixed(1)} out of 5`} className="text-[#b4b1a9]"><span className="text-[#dec18e]" aria-hidden="true">★</span> {book.averageRating.toFixed(1)}</span>}
         </div>
       </div>
     </Link>

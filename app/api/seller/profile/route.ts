@@ -7,6 +7,7 @@ import { DEFAULT_SELLER_VERIFICATION_STATUS, hasCompletedSellerVerification } fr
 const schema = z.object({
   becomeSeller: z.boolean().optional(),
   penName: z.string().max(120).nullable().optional(),
+  bio: z.string().max(5000).optional(),
   website: z.string().max(500).optional(),
   socialLinks: z.object({ twitter: z.string().max(500), instagram: z.string().max(500), linkedin: z.string().max(500), goodreads: z.string().max(500) }).optional(),
 }).strict();
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
     const user = await requireRequestUser(req);
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: 'Invalid profile fields' }, { status: 400 });
-    const { becomeSeller, ...profile } = parsed.data;
+    const { becomeSeller, bio, ...profile } = parsed.data;
     if (user.role === 'buyer' && !becomeSeller) return NextResponse.json({ error: 'Author account required' }, { status: 403 });
     const db = await getAdminDb();
     const authUser = await (await getAdminAuth()).getUser(user.uid);
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
         ...DEFAULT_SELLER_VERIFICATION_STATUS,
         ...existing.verificationStatus,
         emailVerified: authUser.emailVerified,
-        bioAdded: (userSnap.data()?.bio ?? '').trim().length >= 50,
+        bioAdded: (bio ?? userSnap.data()?.bio ?? '').trim().length >= 50,
         firstBookPublished: books.docs.some((book) => book.data().status === 'live'),
         tenSalesReached: (existing.totalSales ?? 0) >= 10,
       };
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
       if (becomeSeller && userSnap.data()?.role === 'buyer') {
         tx.update(userSnap.ref, { role: 'both', updatedAt: new Date() });
       }
+      if (bio !== undefined) tx.update(userSnap.ref, { bio, updatedAt: new Date() });
     });
     return NextResponse.json({ ok: true });
   } catch (error) {

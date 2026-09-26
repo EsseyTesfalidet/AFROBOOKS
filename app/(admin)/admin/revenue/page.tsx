@@ -21,12 +21,18 @@ export default function AdminRevenuePage() {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<RevenueData[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [reviewOrders, setReviewOrders] = useState<Order[]>([]);
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   const [totals, setTotals] = useState({ revenue: 0, platformFee: 0, sellerPayouts: 0, orders: 0 });
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
 
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setError('');
+      const reviewSnap = await getDocs(query(collection(db, 'orders'), where('status', '==', 'needs_review')));
+      setReviewOrders(reviewSnap.docs.map(item => ({ ...item.data(), id: item.id } as Order)));
       const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
       const since = new Date();
       since.setDate(since.getDate() - days);
@@ -43,7 +49,8 @@ export default function AdminRevenuePage() {
       const byDay: Record<string, RevenueData> = {};
       let totalRev = 0, totalFee = 0, totalPayout = 0;
 
-      orders.forEach((o) => {
+      const completedOrders = orders.filter(order => order.status === 'completed');
+      completedOrders.forEach((o) => {
         const date = o.createdAt?.toDate?.()?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? '';
         if (!byDay[date]) byDay[date] = { date, revenue: 0, platformFee: 0, sellerPayouts: 0, orders: 0 };
         byDay[date].revenue += o.finalPrice ?? 0;
@@ -55,12 +62,12 @@ export default function AdminRevenuePage() {
         totalPayout += o.sellerEarnings ?? 0;
       });
 
-      setTotals({ revenue: totalRev, platformFee: totalFee, sellerPayouts: totalPayout, orders: orders.length });
+      setTotals({ revenue: totalRev, platformFee: totalFee, sellerPayouts: totalPayout, orders: completedOrders.length });
       setChartData(Object.values(byDay).reverse());
       setLoading(false);
     }
-    load();
-  }, [period]);
+    load().catch(() => { setError('Unable to load payment records. Please try again.'); setLoading(false); });
+  }, [period, attempt]);
 
   const stats = [
     { label: 'Gross Revenue', value: centsToDisplay(totals.revenue), color: '#f5b800' },
@@ -86,7 +93,13 @@ export default function AdminRevenuePage() {
           </div>
         </div>
 
-        {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
+        {error && <div role="alert" className="mb-5 text-[14px] text-red-300">{error}<button type="button" onClick={() => setAttempt(value => value + 1)} className="ml-4 min-h-11 underline">Try again</button></div>}
+        {!loading && reviewOrders.length > 0 && <section className="mb-6 rounded-xl border border-amber-400/30 p-5">
+          <h2 className="text-[18px] font-semibold text-amber-200">Payments needing review</h2>
+          <p className="mt-2 text-[14px] text-[#aaa]">These payments arrived after a book became unavailable. Access and author earnings were not granted. Review the payment in Stripe and resolve the buyer’s payment before closing the case.</p>
+          <ul className="mt-4 divide-y divide-white/10">{reviewOrders.map(order => <li key={order.id} className="space-y-1 py-3 text-[13px]"><p>{order.bookTitle} · {centsToDisplay(order.finalPrice)}</p><p className="break-all text-[#aaa]">Order: {order.id} · Payment: {order.stripePaymentIntentId}</p></li>)}</ul>
+        </section>}
+        {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : error ? null : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {stats.map((s) => (

@@ -2,7 +2,7 @@
 
 import { authenticatedPost } from '@/lib/firebase/request';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
@@ -11,9 +11,9 @@ import ChapterEditor from '@/components/seller/ChapterEditor';
 import { useAuthStore } from '@/store/authStore';
 import { uploadCoverImage, uploadManuscript } from '@/lib/firebase/storage';
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { calculateEarnings } from '@/lib/utils/calculateEarnings';
-import { getPlatformSettings, getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
+import { getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
 import {
   DEFAULT_SELLER_VERIFICATION_STATUS,
   SELLER_BOOKS_BEFORE_ID_VERIFICATION,
@@ -75,11 +75,42 @@ export default function PublishPage() {
   const [manuscriptError, setManuscriptError] = useState('');
   const [price, setPrice] = useState(PRICE_TIERS[2]);
   const [customPrice, setCustomPrice] = useState('');
-  const [subscriptionType, setSubscriptionType] = useState<'sell_only' | 'sell_and_sub' | 'sub_only'>('sell_only');
-  const [subTiers, setSubTiers] = useState<string[]>([]);
-  const [previewPct, setPreviewPct] = useState(20);
+  const subscriptionType: 'sell_only' | 'sell_and_sub' | 'sub_only' = 'sell_only';
+  const subTiers: string[] = [];
+  const [directSaleFee, setDirectSaleFee] = useState(15);
   const [publishMode, setPublishMode] = useState<'now' | 'draft' | 'preorder'>('now');
   const [releaseDate, setReleaseDate] = useState('');
+  const savedBookId = useRef<string | null>(null);
+  const [editingBook, setEditingBook] = useState(false);
+  const [editLoading, setEditLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/platform/public').then(response => response.json()).then(settings => {
+      if (Number.isFinite(settings.directSaleFee) && settings.directSaleFee >= 0 && settings.directSaleFee <= 100) setDirectSaleFee(settings.directSaleFee);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    const editId = new URL(window.location.href).searchParams.get('edit');
+    if (!editId) { setEditLoading(false); return; }
+    let active = true;
+    Promise.all([getDoc(doc(db, 'books', editId)), getDocs(collection(db, 'books', editId, 'chapters'))]).then(([snapshot, items]) => {
+      if (!active) return;
+      const book = snapshot.data();
+      if (!book || book.sellerId !== userProfile.uid) throw new Error('This book is not in your listings.');
+      savedBookId.current = editId;
+      setEditingBook(true);
+      setTitle(book.title ?? ''); setAuthorName(book.authorName ?? ''); setDescription(book.description ?? '');
+      setGenre(book.genre ?? ''); setLanguage(book.language ?? 'English'); setAgeGroup(book.targetAgeGroup ?? 'all');
+      setIsbn(book.isbn ?? ''); setPrice(book.price ?? 699); setBgColor(book.coverBgColor ?? BG_COLORS[0]);
+      setAccentColor(book.coverAccentColor ?? ACCENT_COLORS[0]); setCopyrightBasis(book.copyrightBasis ?? 'original');
+      setCopyrightDetails(book.copyrightDetails ?? ''); setCopyrightAttested(book.copyrightAttestationAccepted === true);
+      setChapters(items.docs.map(item => item.data() as DraftChapter).sort((a,b) => a.chapterNumber-b.chapterNumber));
+    }).catch(error => { if (active) setPublishError(error.message ?? 'Unable to load this book.'); })
+      .finally(() => { if (active) setEditLoading(false); });
+    return () => { active = false; };
+  }, [userProfile?.uid]);
 
   useEffect(() => {
     if (!userProfile?.uid) {
@@ -95,13 +126,13 @@ export default function PublishPage() {
       if (snap.exists()) setSeller(snap.data() as Seller);
       setPublishedBooksCount(bookCount);
       setSellerLoading(false);
-    });
+    }).catch(() => { if (active) { setPublishError('Unable to check your author verification. Please reload to retry.'); setSellerLoading(false); } });
     return () => {
       active = false;
     };
   }, [userProfile?.uid]);
 
-  const earnings = calculateEarnings(price);
+  const earnings = calculateEarnings(Number.isSafeInteger(price) && price >= 0 ? price : 0, directSaleFee);
 
   function nextStep() { if (step < 4) setStep(step + 1); }
   function prevStep() { if (step > 0) setStep(step - 1); }
@@ -157,29 +188,30 @@ export default function PublishPage() {
   }
 
   async function handlePublish() {
-    if (!userProfile) return;
+    if (!userProfile || editLoading) return;
+    if (new URL(window.location.href).searchParams.has('edit') && !savedBookId.current) return;
     setPublishError('');
     if (!title.trim()) {
       setPublishError('Add a book title before publishing.');
       return;
     }
-    if (!authorName.trim()) {
+    if (publishMode !== 'draft' && !authorName.trim()) {
       setPublishError('Add the author name before publishing.');
       return;
     }
-    if (!genre.trim()) {
+    if (publishMode !== 'draft' && !genre.trim()) {
       setPublishError('Choose a genre before publishing.');
       return;
     }
-    if (chapters.length === 0) {
+    if (publishMode !== 'draft' && chapters.length === 0) {
       setPublishError('Add at least one chapter or import a manuscript before publishing.');
       return;
     }
-    if (!copyrightAttested) {
+    if (publishMode !== 'draft' && !copyrightAttested) {
       setPublishError('Confirm that you own the rights or are legally allowed to publish this book.');
       return;
     }
-    if (requiresManualCopyrightReview(copyrightBasis) && !copyrightDetails.trim()) {
+    if (publishMode !== 'draft' && requiresManualCopyrightReview(copyrightBasis) && !copyrightDetails.trim()) {
       setPublishError('Add copyright or licensing details so the review team can verify this book.');
       return;
     }
@@ -191,16 +223,17 @@ export default function PublishPage() {
     }
     setPublishing(true);
     try {
-      const settings = await getPlatformSettings();
       const shouldCreatePublicListing = publishMode !== 'draft';
       const requiresRightsReview = requiresManualCopyrightReview(copyrightBasis);
-      const nextBookStatus =
-        shouldCreatePublicListing
-          ? ((settings.autoApproveBooks && !requiresRightsReview) ? 'live' : 'in_review')
-          : 'draft';
+      let nextBookStatus = 'draft';
 
       // Create book document
-      const bookRef = await addDoc(collection(db, 'books'), {
+      const bookRef = savedBookId.current ? doc(db, 'books', savedBookId.current) : doc(collection(db, 'books'));
+      const existingBook = savedBookId.current ? await getDoc(bookRef) : null;
+      if (savedBookId.current && !existingBook?.exists()) throw new Error('This book was deleted. Return to your books to create a new draft.');
+      if (existingBook?.exists()) await authenticatedPost(`/api/books/${bookRef.id}/draft`, {});
+      savedBookId.current = bookRef.id;
+      await setDoc(bookRef, {
         sellerId: userProfile.uid,
         sellerName: `${userProfile.firstName} ${userProfile.lastName}`,
         sellerHandle: userProfile.username,
@@ -208,7 +241,7 @@ export default function PublishPage() {
         title,
         authorName,
         description,
-        coverUrl: '',
+        coverUrl: existingBook?.data()?.coverUrl ?? '',
         coverBgColor: bgColor,
         coverAccentColor: accentColor,
         genre,
@@ -217,17 +250,16 @@ export default function PublishPage() {
         isbn: isbn || null,
         price,
         status: nextBookStatus,
-        isFeatured: false,
-        inSubscription: subscriptionType !== 'sell_only',
+        isFeatured: existingBook?.data()?.isFeatured ?? false,
+        inSubscription: false,
         subscriptionTiers: subTiers,
         subscriptionOptInType: subscriptionType,
         subscriptionEligibleFrom: null,
-        previewPercentage: previewPct,
-        totalSales: 0,
-        totalBorrows: 0,
-        averageRating: 0,
-        reviewCount: 0,
-        publishedAt: shouldCreatePublicListing ? serverTimestamp() : null,
+        totalSales: existingBook?.data()?.totalSales ?? 0,
+        totalBorrows: existingBook?.data()?.totalBorrows ?? 0,
+        averageRating: existingBook?.data()?.averageRating ?? 0,
+        reviewCount: existingBook?.data()?.reviewCount ?? 0,
+        publishedAt: null,
         isPreorder: publishMode === 'preorder',
         releaseDate: publishMode === 'preorder' && releaseDate ? new Date(releaseDate) : null,
         flagReason: null,
@@ -239,12 +271,10 @@ export default function PublishPage() {
         copyrightBasis,
         copyrightDetails: copyrightDetails.trim() || null,
         copyrightAttestationAccepted: copyrightAttested,
-        copyrightReviewStatus: shouldCreatePublicListing
-          ? (requiresRightsReview || !settings.autoApproveBooks ? 'pending' : 'approved')
-          : 'not_needed',
-        createdAt: serverTimestamp(),
+        copyrightReviewStatus: 'not_needed',
+        createdAt: existingBook?.data()?.createdAt ?? serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      }, { merge: true });
 
       // Upload cover and manuscript if provided
       const { updateDoc } = await import('firebase/firestore');
@@ -254,15 +284,18 @@ export default function PublishPage() {
         storageUpdates.coverUrl = await uploadCoverImage(userProfile.uid, bookRef.id, coverFile);
       }
       if (manuscriptFile) {
-        storageUpdates.manuscriptUrl = await uploadManuscript(userProfile.uid, bookRef.id, manuscriptFile);
+        const manuscriptPath = await uploadManuscript(userProfile.uid, bookRef.id, manuscriptFile);
+        await setDoc(doc(db, 'privateBooks', bookRef.id), { sellerId: userProfile.uid, manuscriptPath }, { merge: true });
       }
       if (Object.keys(storageUpdates).length > 0) {
         await updateDoc(doc(db, 'books', bookRef.id), storageUpdates);
       }
 
       // Save chapters as subcollection
-      for (const ch of chapters) {
-        await addDoc(collection(db, 'books', bookRef.id, 'chapters'), {
+      const oldChapters = await getDocs(collection(db, 'books', bookRef.id, 'chapters'));
+      // Keep chunks below Firestore's write limit. The book stays a draft until
+      // all chunks finish and the server validates the complete collection.
+      const chapterWrites = chapters.map(ch => ({ ref: doc(collection(db, 'books', bookRef.id, 'chapters')), data: {
           bookId: bookRef.id,
           chapterNumber: ch.chapterNumber,
           title: ch.title,
@@ -272,7 +305,19 @@ export default function PublishPage() {
           isLocked: !(ch.isPreview ?? ch.chapterNumber === 1),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        } }));
+      const writes = [...oldChapters.docs.map(ch => ({ ref: ch.ref, data: null })), ...chapterWrites];
+      for (let offset = 0; offset < writes.length; offset += 400) {
+        const batch = writeBatch(db);
+        for (const write of writes.slice(offset, offset + 400)) {
+          if (write.data) batch.set(write.ref, write.data); else batch.delete(write.ref);
+        }
+        await batch.commit();
+      }
+
+      if (shouldCreatePublicListing) {
+        const result = await authenticatedPost<{ status: string }>(`/api/books/${bookRef.id}/publish`, {});
+        nextBookStatus = result.status;
       }
 
       await authenticatedPost('/api/seller/profile', {});
@@ -316,7 +361,7 @@ export default function PublishPage() {
   );
   const publishActionBlocked = publishMode !== 'draft' && requiresIdVerificationForPublishingNow;
 
-  if (sellerLoading) return (
+  if (sellerLoading || editLoading) return (
     <div className="min-h-screen bg-[#0e0e0e]"><SellerHeader />
       <div className="flex justify-center pt-16"><LoadingSpinner size={32} /></div>
     </div>
@@ -329,6 +374,9 @@ export default function PublishPage() {
 
         {/* Main form */}
         <div className="flex-1 min-w-0 space-y-6">
+          <h1 className="font-display text-2xl text-white">{editingBook ? 'Edit book' : 'Publish a book'}</h1>
+          {editingBook && <p className="text-sm text-[#aaa]">Saving updates this existing book. It becomes a private draft while the changes are saved, then returns through publication review. Existing purchase records are preserved.</p>}
+          {publishError && <p role="alert" className="text-sm text-[#e8442a]">{publishError}</p>}
           {/* Steps bar */}
           <div className="-mx-1 flex items-center gap-0 overflow-x-auto px-1 pb-1">
             {STEPS.map((s, i) => {
@@ -645,7 +693,7 @@ export default function PublishPage() {
                   <p className="text-sm font-medium text-white mb-3">Earnings Breakdown</p>
                   {[
                     { label: 'List Price', value: `$${(price / 100).toFixed(2)}`, color: '#f5f2eb' },
-                    { label: 'AfroBooks fee (15%)', value: `-${earnings.platformFeeDisplay}`, color: '#e8442a' },
+                    { label: `AfroBooks fee (${directSaleFee}%)`, value: `-${earnings.platformFeeDisplay}`, color: '#e8442a' },
                     { label: 'Stripe fee (2.9% + $0.30)', value: `-${earnings.stripeFeeDisplay}`, color: '#f5b800' },
                     { label: 'Your earnings', value: earnings.sellerEarningsDisplay, color: '#4ade80' },
                   ].map(({ label, value, color }) => (
@@ -656,40 +704,7 @@ export default function PublishPage() {
                   ))}
                 </div>
 
-                {/* Subscription opt-in */}
-                <div>
-                  <p className="text-sm font-medium text-white mb-3">Subscription Opt-In</p>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'sell_only', label: 'Sell Only', desc: 'Readers must purchase to access.' },
-                      { value: 'sell_and_sub', label: 'Sell + Subscription', desc: 'Available for both purchase and subscription.' },
-                      { value: 'sub_only', label: 'Subscription Only', desc: 'Only accessible to subscribers.' },
-                    ].map(({ value, label, desc }) => (
-                      <label key={value} className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all"
-                        style={{ border: subscriptionType === value ? '1.5px solid #e8442a' : '1.5px solid #2a2a2a', background: subscriptionType === value ? '#1f0e0c' : '#1a1a1a' }}>
-                        <input type="radio" name="subType" value={value} checked={subscriptionType === value} onChange={() => setSubscriptionType(value as typeof subscriptionType)} className="mt-0.5 accent-[#e8442a]" />
-                        <div>
-                          <p className="text-sm font-medium text-white">{label}</p>
-                          <p className="text-xs text-[#666]">{desc}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Preview length */}
-                <div>
-                  <p className="text-sm font-medium text-white mb-2">Free Preview Length</p>
-                  <div className="flex gap-2">
-                    {[10, 20, 30, 50].map((p) => (
-                      <button key={p} type="button" onClick={() => setPreviewPct(p)}
-                        className="flex-1 py-2 rounded-lg text-sm transition-all"
-                        style={{ background: previewPct === p ? '#e8442a' : '#1a1a1a', color: previewPct === p ? '#fff' : '#888', border: `1px solid ${previewPct === p ? '#e8442a' : '#333'}` }}>
-                        {p}%
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <p className="text-sm text-[#aaa]">Choose free preview chapters in Book Content. All other chapters require purchase.</p>
               </div>
             )}
 
@@ -714,7 +729,6 @@ export default function PublishPage() {
                   <div className="space-y-2">
                     {[
                       { value: 'now', label: 'Publish immediately', desc: 'Goes live right away (or enters review).' },
-                      { value: 'preorder', label: 'Set as pre-order', desc: 'Readers can purchase now and unlock access on release date.' },
                       { value: 'draft', label: 'Save as draft', desc: 'Not visible to readers yet.' },
                     ].map(({ value, label, desc }) => (
                       <label key={value} className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all"
@@ -750,7 +764,7 @@ export default function PublishPage() {
                 </div>
 
                 <button type="button" onClick={handlePublish}
-                  disabled={publishing || (publishMode === 'preorder' && !releaseDate) || publishActionBlocked}
+                  disabled={editLoading || publishing || (publishMode === 'preorder' && !releaseDate) || publishActionBlocked}
                   className="w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40"
                   style={{ background: '#4ade80', color: '#000' }}>
                   {publishing ? <LoadingSpinner size={16} color="#000" /> : <Check size={16} />}

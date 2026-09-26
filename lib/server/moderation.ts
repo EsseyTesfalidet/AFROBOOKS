@@ -2,6 +2,8 @@ import type { User } from '@/types/user';
 import type { Book } from '@/types/book';
 import { countsTowardSellerVerificationBookLimit } from '@/lib/sellerVerification';
 import type { Auth } from 'firebase-admin/auth';
+import { cancelUserSubscription } from './cancelSubscription';
+import { deleteBookFiles } from './bookFiles';
 import type {
   DocumentReference,
   Firestore,
@@ -124,18 +126,25 @@ export async function recalculateBookReviewStats(adminDb: Firestore, bookId: str
 export async function deleteBookRecords(
   adminDb: Firestore,
   bookId: string,
-  options?: { skipSellerVerificationSync?: boolean }
+  options?: { skipSellerVerificationSync?: boolean; deleteFiles?: typeof deleteBookFiles; requiredStatus?: string }
 ) {
   const bookRef = adminDb.collection('books').doc(bookId);
-  const bookSnap = await bookRef.get();
+  const deletionRef = adminDb.collection('bookDeletions').doc(bookId);
+  const book = await adminDb.runTransaction(async tx => {
+    const [snapshot, deletion] = await Promise.all([tx.get(bookRef), tx.get(deletionRef)]);
+    if (!snapshot.exists && !deletion.exists) return null;
+    if (snapshot.exists && options?.requiredStatus && snapshot.data()?.status !== options.requiredStatus) throw new Error('Book status changed; cleanup stopped.');
+    const sellerId = snapshot.data()?.sellerId ?? deletion.data()?.sellerId;
+    if (typeof sellerId !== 'string' || !sellerId || sellerId.includes('/')) throw new Error('Book owner is missing; deletion needs review.');
+    tx.set(deletionRef, { sellerId, status: 'pending', requestedAt: deletion.data()?.requestedAt ?? new Date(), updatedAt: new Date() }, { merge: true });
+    if (snapshot.exists) tx.update(bookRef, { status: 'removed', deletionPending: true, updatedAt: new Date() });
+    return { sellerId, title: (snapshot.data()?.title as string | undefined) ?? null };
+  });
+  if (!book) return { deleted: false, sellerId: null as string | null, title: null as string | null };
 
-  if (!bookSnap.exists) {
-    return { deleted: false, sellerId: null as string | null, title: null as string | null };
-  }
-
-  const book = bookSnap.data() as Pick<Book, 'sellerId' | 'title'>;
-
-  await deleteQueryDocuments(adminDb, bookRef.collection('chapters'));
+  // The book is hidden before cleanup starts. A failed cleanup keeps its
+  // deletion marker so the same request can resume, even if the parent is gone.
+  await (options?.deleteFiles ?? deleteBookFiles)(book.sellerId, bookId);
   await deleteQueryDocuments(adminDb, adminDb.collection('library').where('bookId', '==', bookId));
   await deleteQueryDocuments(adminDb, adminDb.collection('wishlist').where('bookId', '==', bookId));
   await deleteQueryDocuments(
@@ -158,19 +167,25 @@ export async function deleteBookRecords(
 
   const reviewsSnap = await adminDb.collection('reviews').where('bookId', '==', bookId).get();
   const reviewIds = reviewsSnap.docs.map((doc) => doc.id);
-  await deleteDocumentRefs(adminDb, reviewsSnap.docs.map((doc) => doc.ref));
   await deleteReportsForTargets(adminDb, reviewIds, 'review');
+  await deleteDocumentRefs(adminDb, reviewsSnap.docs.map((doc) => doc.ref));
 
-  await bookRef.delete();
+  await adminDb.recursiveDelete(adminDb.collection('privateBooks').doc(bookId));
+  await adminDb.recursiveDelete(bookRef);
 
   if (!options?.skipSellerVerificationSync) {
     await syncSellerVerificationStatus(adminDb, book.sellerId);
   }
 
+  // Minimal deletion receipt, without a title, cover, or manuscript. It stops
+  // stale editors and delayed callbacks from resurrecting this identifier.
+  await deletionRef.set({ sellerId: book.sellerId, status: 'complete', completedAt: new Date(), updatedAt: new Date() }, { merge: true });
+
   return { deleted: true, sellerId: book.sellerId, title: book.title };
 }
 
 export async function deleteUserRecords(adminDb: Firestore, adminAuth: Auth, uid: string) {
+  await cancelUserSubscription(adminDb, uid, true);
   const userRef = adminDb.collection('users').doc(uid);
   const userSnap = await userRef.get();
 

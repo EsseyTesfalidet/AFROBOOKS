@@ -5,6 +5,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   paid: { bg: '#0f2e1a', text: '#4ade80' },
   draft: { bg: '#1a1a1a', text: '#888' },
   pending: { bg: '#2e1a0f', text: '#f5b800' },
+  needs_review: { bg: '#2e1a0f', text: '#f5b800' },
   in_review: { bg: '#1a1a2e', text: '#0ea5e9' },
   processing: { bg: '#1a1a2e', text: '#0ea5e9' },
   flagged: { bg: '#2e1a0f', text: '#f5b800' },

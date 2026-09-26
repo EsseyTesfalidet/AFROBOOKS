@@ -23,10 +23,15 @@ service firebase.storage {
              request.resource.contentType == 'application/pdf';
     }
 
+    function canUploadBook(sellerId, bookId) {
+      let book = firestore.get(/databases/(default)/documents/books/$(bookId)).data;
+      return isOwner(sellerId) && book.sellerId == sellerId && book.status == 'draft';
+    }
+
     // Book covers — sellerId in path so ownership can be enforced
     match /covers/{sellerId}/{bookId}/{filename} {
       allow read: if true;
-      allow create, update: if isOwner(sellerId) &&
+      allow create, update: if canUploadBook(sellerId, bookId) &&
         request.resource.size < 5 * 1024 * 1024 &&
         isImage();
       allow delete: if isOwner(sellerId) || isAdmin();
@@ -35,7 +40,7 @@ service firebase.storage {
     // Raw manuscript files — stored alongside parsed Firestore chapters for copyright records
     match /manuscripts/{sellerId}/{bookId}/{filename} {
       allow read: if isOwner(sellerId) || isAdmin();
-      allow create, update: if isOwner(sellerId) &&
+      allow create, update: if canUploadBook(sellerId, bookId) &&
         request.resource.size < 50 * 1024 * 1024 &&
         (request.resource.contentType == 'text/plain' ||
          request.resource.contentType == 'text/markdown' ||

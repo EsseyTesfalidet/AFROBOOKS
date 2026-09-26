@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function AvatarUpload({ size = 56 }: Props) {
-  const { userProfile, setUserProfile } = useAuthStore();
+  const userProfile = useAuthStore(s => s.userProfile);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -24,16 +24,20 @@ export default function AvatarUpload({ size = 56 }: Props) {
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !userProfile || uploading) return;
+    const uid = userProfile.uid;
+    e.target.value = '';
     setError('');
-    if (file.size > 2 * 1024 * 1024) { setError('Image must be under 2MB.'); return; }
+    if (!file.type.startsWith('image/')) { setError('Choose an image file.'); return; }
+    if (file.size >= 2 * 1024 * 1024) { setError('Image must be under 2MB.'); return; }
     setUploading(true);
     try {
-      const storageRef = ref(storage, `avatars/${userProfile!.uid}/${Date.now()}_${file.name}`);
+      const storageRef = ref(storage, `avatars/${uid}/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      await updateUserProfile(userProfile!.uid, { avatarUrl: url });
-      setUserProfile({ ...userProfile!, avatarUrl: url });
+      await updateUserProfile(uid, { avatarUrl: url });
+      const current = useAuthStore.getState().userProfile;
+      if (current?.uid === uid) useAuthStore.getState().setUserProfile({ ...current, avatarUrl: url });
     } catch {
       setError('Upload failed. Try again.');
     } finally {
@@ -43,8 +47,8 @@ export default function AvatarUpload({ size = 56 }: Props) {
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative inline-block" style={{ width: size, height: size }}>
+    <div className="flex shrink-0 flex-col items-center" style={{ width: size }}>
+      <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} aria-label={uploading ? 'Uploading profile photo' : 'Change profile photo'} title="Change profile photo" className="relative inline-block rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f5b800] disabled:opacity-60" style={{ width: size, height: size }}>
         {userProfile.avatarUrl ? (
           <img
             src={userProfile.avatarUrl}
@@ -59,19 +63,15 @@ export default function AvatarUpload({ size = 56 }: Props) {
             {initials}
           </div>
         )}
-        <button
-          type="button"
-          title="Upload profile picture"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
+        <span
           className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
           style={{ background: '#1a1a1a', border: '2px solid #0e0e0e' }}
         >
           {uploading ? <LoadingSpinner size={10} color="#aaa" /> : <Camera size={10} style={{ color: '#aaa' }} />}
-        </button>
-        <input ref={inputRef} type="file" accept="image/*" title="Upload profile picture" className="hidden" onChange={handleFile} />
-      </div>
-      {error && <p className="text-xs mt-1" style={{ color: '#e8442a' }}>{error}</p>}
+        </span>
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" aria-label="Upload profile picture" className="hidden" onChange={handleFile} />
+      {error && <p role="alert" className="mt-2 text-center text-xs text-red-300">{error}</p>}
     </div>
   );
 }

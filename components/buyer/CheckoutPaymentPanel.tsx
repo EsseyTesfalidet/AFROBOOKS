@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { ShieldCheck } from 'lucide-react';
@@ -26,7 +26,7 @@ function CheckoutForm() {
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
-  const { items, promoCode, promoBookId, discountAmount, getTotal, clearCart } = useCartStore();
+  const { items, getTotal, clearCart } = useCartStore();
   const userProfile = useAuthStore((s) => s.userProfile);
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const [cardName, setCardName] = useState('');
@@ -50,9 +50,6 @@ function CheckoutForm() {
         },
         body: JSON.stringify({
           items: items.map((item) => ({ bookId: item.bookId })),
-          promoCode,
-          promoBookId,
-          discountAmount,
         }),
       });
       const { clientSecret, orderIds, amount, error: apiError } = await res.json();
@@ -130,6 +127,17 @@ function CheckoutForm() {
 }
 
 export default function CheckoutPaymentPanel() {
+  const [available, setAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (!/^pk_(live|test)_/.test(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '')) { setAvailable(false); return; }
+    fetch('/api/stripe/status', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
+      .then(data => { if (active) setAvailable(data?.available === true); })
+      .catch(() => { if (active) setAvailable(false); });
+    return () => { active = false; };
+  }, []);
+  if (available === null) return <div role="status" className="flex justify-center gap-3 py-6 text-sm text-[#aaa]"><LoadingSpinner size={20} />Checking payment availability…</div>;
+  if (!available) return <p role="status" className="text-sm leading-relaxed text-[#aaa]">Payments are temporarily unavailable. Your books are still in your cart. Please try again later.</p>;
   return (
     <Elements stripe={getStripe()}>
       <CheckoutForm />

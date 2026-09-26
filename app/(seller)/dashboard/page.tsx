@@ -2,126 +2,86 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PlusCircle } from 'lucide-react';
+import { ArrowUpRight, Plus } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
-import StatusPill from '@/components/shared/StatusPill';
+import BookList from '@/components/seller/BookList';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
-import { getSellerBooks } from '@/lib/firebase/firestore';
+import { useSellerBooks } from '@/hooks/useSellerBooks';
 import { db } from '@/lib/firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
-import type { Book } from '@/types/book';
 import type { Seller } from '@/types/user';
 
 export default function SellerDashboardPage() {
-  const userProfile = useAuthStore((s) => s.userProfile);
-  const [books, setBooks] = useState<Book[]>([]);
-  const [sellerData, setSellerData] = useState<Seller | null>(null);
-  const [loading, setLoading] = useState(true);
+  const userProfile = useAuthStore((state) => state.userProfile);
+  const { books, loading, error, retry } = useSellerBooks();
+  const [account, setAccount] = useState<{ uid: string; seller: Seller | null; error: boolean } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const uid = userProfile?.uid;
 
   useEffect(() => {
-    if (!userProfile) return;
-    Promise.all([
-      getSellerBooks(userProfile.uid),
-      getDoc(doc(db, 'sellers', userProfile.uid)),
-    ]).then(([bks, sellerSnap]) => {
-      setBooks(bks);
-      if (sellerSnap.exists()) setSellerData(sellerSnap.data() as Seller);
-      setLoading(false);
-    });
-  }, [userProfile?.uid]);
+    if (!uid) return;
+    let active = true;
+    setAccount(null);
+    getDoc(doc(db, 'sellers', uid)).then((snapshot) => {
+      if (active) setAccount({ uid, seller: snapshot.exists() ? snapshot.data() as Seller : null, error: !snapshot.exists() });
+    }).catch(() => { if (active) setAccount({ uid, seller: null, error: true }); });
+    return () => { active = false; };
+  }, [uid, attempt]);
 
-  const totalSales = books.reduce((s, b) => s + b.totalSales, 0);
-  const totalRevenue = sellerData?.totalEarnings ?? 0;
-  const pending = sellerData?.pendingBalance ?? 0;
-  const liveCount = books.filter((b) => b.status === 'live').length;
-
-  const statCards = [
-    { label: 'Total Sales', value: totalSales.toString(), color: '#f5b800' },
-    { label: 'Books Listed', value: books.length.toString(), color: '#fff' },
-    { label: 'Total Revenue', value: centsToDisplay(totalRevenue), color: '#4ade80' },
-    { label: 'Pending Payout', value: centsToDisplay(pending), color: '#f5b800' },
-  ];
-
-  if (loading) return (
-    <div className="min-h-screen bg-[#0e0e0e]">
-      <SellerHeader />
-      <div className="flex justify-center pt-16"><LoadingSpinner size={36} /></div>
-    </div>
-  );
+  const seller = account?.uid === uid ? account?.seller : null;
+  const accountError = account?.uid === uid && account?.error;
+  const live = books.filter((book) => book.status === 'live').length;
+  const drafts = books.filter((book) => book.status === 'draft').length;
+  const attention = books.filter((book) => book.status === 'flagged' || book.status === 'removed').length;
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e]">
+    <div className="min-h-screen bg-[#10100f]">
       <SellerHeader />
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-7">
-        <div className="flex items-start justify-between gap-4">
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">Author studio</p>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-5">
           <div>
-            <h1 className="font-display text-display-lg text-white">Dashboard</h1>
-            <p className="text-sm text-[#666]">Welcome back, {userProfile?.firstName}</p>
+            <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[#f5f2eb] sm:text-[36px]">Welcome back{userProfile?.firstName ? `, ${userProfile.firstName}` : ''}.</h1>
+            <p className="mt-3 text-[14px] leading-relaxed text-[#a8a49c]">A home for your books and the readers they reach.</p>
           </div>
-          <Link href="/publish" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
-            <PlusCircle size={15} />
-            <span className="hidden sm:inline">Publish New Ebook</span>
-            <span className="sm:hidden">Publish</span>
-          </Link>
+          <Link href="/publish" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#ed6647] px-4 text-[14px] font-semibold text-[#160e0b] hover:bg-[#ff8b6f]"><Plus size={17} /> New book</Link>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {statCards.map(({ label, value, color }) => (
-            <div key={label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <p className="text-xs text-[#555] mb-1">{label}</p>
-              <p className="font-display text-2xl" style={{ color }}>{value}</p>
+        <dl className="my-9 grid grid-cols-2 gap-x-6 gap-y-7 border-y border-white/10 py-7 lg:grid-cols-4">
+          {[
+            { label: 'Published books', value: loading || error ? '—' : String(live), note: loading || error ? 'Your catalog' : `${drafts} ${drafts === 1 ? 'draft' : 'drafts'} in progress` },
+            { label: 'Copies sold', value: loading || error ? '—' : books.reduce((sum, book) => sum + (book.totalSales ?? 0), 0).toLocaleString(), note: 'Across your catalog' },
+            { label: 'Lifetime earnings', value: seller ? centsToDisplay(seller.totalEarnings ?? 0) : '—', note: 'Recorded author earnings' },
+            { label: 'Unpaid balance', value: seller ? centsToDisplay(seller.pendingBalance ?? 0) : '—', note: 'Subject to payout review' },
+          ].map((stat) => <div key={stat.label} className="min-w-0">
+            <dt className="text-[12px] text-[#b4b1a9]">{stat.label}</dt>
+            <dd className="mt-2 break-words text-[26px] font-semibold tracking-tight text-[#f5f2eb] sm:text-[32px]">{stat.value}</dd>
+            <p className="mt-1 text-[11px] text-[#96938b]">{stat.note}</p>
+          </div>)}
+        </dl>
+        {accountError && <div role="alert" className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] text-[#ffc2ad]">Earnings could not be loaded.<button type="button" onClick={() => setAttempt((value) => value + 1)} className="min-h-11 underline">Try again</button></div>}
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-12">
+          <section aria-labelledby="recent-books-title" className="min-w-0">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <h2 id="recent-books-title" className="text-[20px] font-semibold">Recent books</h2>
+              <Link href="/listings" className="inline-flex min-h-11 items-center gap-1 text-[13px] text-[#b4b1a9] hover:text-white">All books <ArrowUpRight size={15} /></Link>
             </div>
-          ))}
-        </div>
-
-        {/* Recent Books */}
-        <div>
-          <h2 className="font-display text-display-sm text-white mb-3">Your Books</h2>
-          {books.length === 0 ? (
-            <div className="text-center py-12 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <p className="text-[#555] mb-4 text-sm">You haven't published any books yet.</p>
-              <Link href="/publish" className="px-5 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
-                Publish Your First Book
-              </Link>
+            {loading ? <div role="status" className="flex items-center gap-3 py-12 text-[14px] text-[#b4b1a9]"><LoadingSpinner size={22} /> Loading your books…</div>
+              : error ? <div role="alert" className="py-8 text-[14px]"><p className="text-[#ffc2ad]">{error}</p><button type="button" onClick={retry} className="mt-3 min-h-11 text-[#ff9e83] underline">Try again</button></div>
+              : books.length ? <BookList books={books.slice(0, 5)} />
+              : <div className="py-12"><h3 className="text-[20px] font-medium">Your first story starts here.</h3><p className="mt-3 max-w-md text-[14px] leading-relaxed text-[#a8a49c]">Use New book to begin a private draft. Add your manuscript and cover, then publish when you’re ready.</p></div>}
+          </section>
+          <aside className="border-t border-white/10 pt-6 lg:border-l lg:border-t-0 lg:pl-7 lg:pt-0">
+            <h2 className="text-[16px] font-semibold">Your workspace</h2>
+            <p className="mt-3 text-[13px] leading-relaxed text-[#a8a49c]">Manage your catalog, follow your sales, and keep your author details up to date.</p>
+            <div className="mt-5 divide-y divide-white/10 text-[14px]">
+              <Link href="/listings" className="flex min-h-14 items-center justify-between gap-3 hover:text-[#ff9e83]">Manage books <ArrowUpRight size={16} /></Link>
+              <Link href="/analytics" className="flex min-h-14 items-center justify-between gap-3 hover:text-[#ff9e83]">Sales & earnings <ArrowUpRight size={16} /></Link>
+              <Link href="/seller/profile/identity" className="flex min-h-14 items-center justify-between gap-3 hover:text-[#ff9e83]">Author profile <ArrowUpRight size={16} /></Link>
             </div>
-          ) : (
-            <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <table className="w-full text-sm min-w-[500px]">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                    {['Book', 'Price', 'Sales', 'Rating', 'Status', ''].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {books.slice(0, 8).map((book) => (
-                    <tr key={book.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-7 h-9 rounded flex-shrink-0" style={{ background: book.coverBgColor }} />
-                          <div>
-                            <p className="font-medium text-white truncate max-w-[160px]">{book.title}</p>
-                            <p className="text-xs text-[#555]">{book.genre}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(book.price)}</td>
-                      <td className="px-4 py-3 text-[#aaa]">{book.totalSales}</td>
-                      <td className="px-4 py-3 text-[#aaa]">{book.averageRating.toFixed(1)}</td>
-                      <td className="px-4 py-3"><StatusPill status={book.status} /></td>
-                      <td className="px-4 py-3">
-                        <Link href={`/listings?edit=${book.id}`} className="text-xs text-[#e8442a] hover:underline">Edit</Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+            {!loading && !error && attention > 0 && <p className="mt-6 text-[13px] leading-relaxed text-amber-200">{attention} {attention === 1 ? 'book needs' : 'books need'} attention. Open your books to see the feedback.</p>}
+          </aside>
         </div>
       </main>
     </div>

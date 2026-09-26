@@ -27,14 +27,19 @@ service cloud.firestore {
     }
 
     function hasBookAccess(bookId) {
-      return isSignedIn() && (
+      let book = get(/databases/$(database)/documents/books/$(bookId)).data;
+      return isSignedIn() && !book.get('deletionPending', false) && (
         isAdmin() ||
-        get(/databases/$(database)/documents/books/$(bookId)).data.sellerId == request.auth.uid ||
+        book.sellerId == request.auth.uid ||
+        ((!book.get('isPreorder', false) || (book.get('releaseDate', null) != null && book.releaseDate <= request.time)) && (
         exists(/databases/$(database)/documents/library/$(request.auth.uid + '_' + bookId)) ||
         (
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionStatus == 'active' &&
-          get(/databases/$(database)/documents/books/$(bookId)).data.inSubscription == true
+          book.inSubscription == true &&
+          (book.get('subscriptionTiers', []).size() == 0 || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionPlan in book.subscriptionTiers) &&
+          (book.get('subscriptionEligibleFrom', null) == null || book.subscriptionEligibleFrom <= request.time)
         )
+        ))
       );
     }
 
@@ -63,23 +68,46 @@ service cloud.firestore {
       allow read: if resource.data.status == 'live' || isAdmin() ||
         (isSignedIn() && resource.data.sellerId == request.auth.uid);
       allow create: if isSeller() && request.resource.data.sellerId == request.auth.uid &&
+        !exists(/databases/$(database)/documents/bookDeletions/$(bookId)) &&
+        request.resource.data.status == 'draft' &&
+        request.resource.data.copyrightReviewStatus == 'not_needed' &&
+        request.resource.data.publishedAt == null &&
+        !request.resource.data.keys().hasAny(['manuscriptUrl', 'coAuthors']) &&
         request.resource.data.totalSales == 0 && request.resource.data.totalBorrows == 0 &&
         request.resource.data.reviewCount == 0 && request.resource.data.averageRating == 0 &&
         request.resource.data.isFeatured == false;
-      allow update: if isAdmin() ||
-        (isSeller() && resource.data.sellerId == request.auth.uid &&
+      allow update: if !exists(/databases/$(database)/documents/bookDeletions/$(bookId)) && (isAdmin() ||
+        (isSeller() && resource.data.sellerId == request.auth.uid && resource.data.status == 'draft' &&
          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-           'sellerId', 'totalSales', 'totalBorrows', 'averageRating', 'reviewCount'
-         ]));
-      allow delete: if isAdmin();
+           'sellerId', 'totalSales', 'totalBorrows', 'averageRating', 'reviewCount',
+           'status', 'copyrightReviewStatus', 'publishedAt', 'isFeatured', 'manuscriptUrl', 'coAuthors'
+         ])));
+      // Permanent deletion uses the server cleanup workflow.
+      allow delete: if false;
 
       // Chapters
       match /chapters/{chapterId} {
         allow read: if (resource.data.isPreview == true &&
           get(/databases/$(database)/documents/books/$(bookId)).data.status == 'live') || hasBookAccess(bookId);
-        allow write: if isAdmin() ||
-          (isSignedIn() && get(/databases/$(database)/documents/books/$(bookId)).data.sellerId == request.auth.uid);
+        allow write: if !exists(/databases/$(database)/documents/bookDeletions/$(bookId)) && (isAdmin() ||
+          (isSignedIn() && get(/databases/$(database)/documents/books/$(bookId)).data.sellerId == request.auth.uid &&
+           get(/databases/$(database)/documents/books/$(bookId)).data.status == 'draft'));
       }
+    }
+
+    // Manuscript archives are never part of a public catalog record.
+    match /privateBooks/{bookId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      allow create, update: if isSignedIn() && request.resource.data.sellerId == request.auth.uid &&
+        !exists(/databases/$(database)/documents/bookDeletions/$(bookId)) &&
+        get(/databases/$(database)/documents/books/$(bookId)).data.sellerId == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['sellerId', 'manuscriptPath']);
+      allow delete: if isAdmin();
+    }
+
+    // Server-owned deletion receipts block reuse of deleted identifiers.
+    match /bookDeletions/{bookId} {
+      allow read, write: if false;
     }
 
     // Orders
@@ -103,7 +131,8 @@ service cloud.firestore {
     match /wishlist/{itemId} {
       allow get: if isSignedIn() && resource == null;
       allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        get(/databases/$(database)/documents/books/$(request.resource.data.bookId)).data.status == 'live';
     }
 
     // Reading progress
@@ -111,6 +140,7 @@ service cloud.firestore {
       allow get: if isSignedIn() && resource == null;
       allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        get(/databases/$(database)/documents/books/$(request.resource.data.bookId)).data.status == 'live' &&
         progressId == request.auth.uid + '_' + request.resource.data.bookId;
     }
 
@@ -144,13 +174,17 @@ service cloud.firestore {
     match /payouts/{payoutId} {
       allow read: if isSignedIn() &&
         (resource.data.sellerId == request.auth.uid || isAdmin());
-      allow write: if isAdmin();
+      allow write: if false;
     }
 
     // Reports
     match /reports/{reportId} {
       allow read: if isAdmin();
-      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid && (
+        (request.resource.data.targetType == 'book' && get(/databases/$(database)/documents/books/$(request.resource.data.targetId)).data.status == 'live') ||
+        (request.resource.data.targetType == 'review' && get(/databases/$(database)/documents/books/$(get(/databases/$(database)/documents/reviews/$(request.resource.data.targetId)).data.bookId)).data.status == 'live') ||
+        (request.resource.data.targetType == 'user' && exists(/databases/$(database)/documents/users/$(request.resource.data.targetId)))
+      );
       allow update: if isAdmin();
     }
 
@@ -163,8 +197,7 @@ service cloud.firestore {
     // Promo codes
     match /promoCodes/{codeId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() ||
-        (isSeller() && resource.data.sellerId == request.auth.uid);
+      allow write: if false;
     }
 
     // Platform settings
@@ -183,7 +216,8 @@ service cloud.firestore {
     // ID Verification requests
     match /verificationRequests/{reqId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.sellerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.sellerId == request.auth.uid &&
+        request.resource.data.status == 'pending' && request.resource.data.reviewedAt == null;
       allow update: if isAdmin();
     }
 
