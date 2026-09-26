@@ -12,7 +12,7 @@ Implemented in priority order:
 
 ## Verification
 
-- `npm test`: chapter HTML and reading-completion regression tests.
+- `npm test`: chapter HTML, reading-completion, and Firebase authentication runtime regression tests.
 - `npm run test:rules`: local Firestore rules, fulfillment concurrency/retry, follows, and review tests. Requires Java 11 or newer and network access on the first run to download the pinned test-only emulator tooling. Uses `demo-afrobooks-security`; never a production project.
 - `npm run lint`: correctness errors fail the command. Existing React Compiler migration and markup diagnostics remain warnings; React Compiler is not enabled in this app.
 - `npm run build` and `functions/node_modules/.bin/tsc -p functions/tsconfig.json --noEmit`.
@@ -20,6 +20,8 @@ Implemented in priority order:
 ## Release
 
 These changes require deploying both the Next.js app and `firestore.rules`. The new server endpoints must be available when the restrictive rules go live. Existing browser tabs may need a refresh. No production deployment is performed by the tests.
+
+The `jwks-rsa` dependency uses a scoped `jose` 5 override so Firebase Admin authentication can load in Vercel runtimes where native `require(ESM)` is disabled. The runtime test exercises key retrieval and signature verification with that Node option disabled.
 
 Rules changes do not repair historical data. Before enabling production payouts, review existing administrator roles, seller balances, subscription states, and library entitlements against trusted auth/payment records. Orders left partly fulfilled by the previous webhook need reconciliation; automatically crediting all historical completed orders would risk duplicate payments.
 
