@@ -1,5 +1,5 @@
-const { test } = require('node:test');
-const { execFileSync } = require('node:child_process');
+import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
 
 test('Firebase auth and JWKS verification work without native require(ESM)', () => {
   execFileSync(process.execPath, ['--no-experimental-require-module', '-e', `
