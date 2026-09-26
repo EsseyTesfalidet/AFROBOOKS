@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedPost } from '@/lib/firebase/request';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -273,26 +275,7 @@ export default function PublishPage() {
         });
       }
 
-      if (publishMode !== 'draft') {
-        const { setDoc } = await import('firebase/firestore');
-        const nextVerificationStatus = {
-          ...DEFAULT_SELLER_VERIFICATION_STATUS,
-          ...(seller?.verificationStatus ?? {}),
-          emailVerified: seller?.verificationStatus?.emailVerified ?? true,
-          bioAdded: (userProfile.bio?.trim().length ?? 0) >= 50,
-          firstBookPublished: true,
-          tenSalesReached: (seller?.totalSales ?? 0) >= 10,
-        };
-        await setDoc(
-          doc(db, 'sellers', userProfile.uid),
-          {
-            verificationStatus: nextVerificationStatus,
-            isVerified: hasCompletedSellerVerification(nextVerificationStatus),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
+      await authenticatedPost('/api/seller/profile', {});
 
       const resultParams = new URLSearchParams({
         published: nextBookStatus,

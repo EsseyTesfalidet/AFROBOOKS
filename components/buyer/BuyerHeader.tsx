@@ -31,7 +31,7 @@ export default function BuyerHeader() {
 
   const initials = userProfile
     ? `${userProfile.firstName[0] ?? ''}${userProfile.lastName[0] ?? ''}`.toUpperCase()
-    : '?';
+    : 'In';
 
   const isProfileActive = pathname.startsWith('/profile');
 
@@ -111,7 +111,8 @@ export default function BuyerHeader() {
             <NotificationBell />
             <button
               type="button"
-              onClick={() => openDrawer('account')}
+              onClick={() => userProfile ? openDrawer('account') : router.push('/login')}
+              aria-label={userProfile ? 'Open account' : 'Sign in'}
               className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border font-display text-sm shadow-lg transition-all"
               style={{
                 background: isProfileActive ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'rgba(255,255,255,0.05)',
@@ -163,7 +164,8 @@ export default function BuyerHeader() {
           })}
             <button
               type="button"
-              onClick={() => openDrawer('account')}
+              onClick={() => userProfile ? openDrawer('account') : router.push('/login')}
+              aria-label={userProfile ? 'Open account' : 'Sign in'}
               className="inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-medium transition-all"
               style={{
                 background: isProfileActive ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'rgba(255,255,255,0.04)',

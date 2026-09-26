@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { updateUserProfile, logOutAndRedirect, changePassword, getUserProfile } from '@/lib/firebase/auth';
 import { db } from '@/lib/firebase/config';
-import { doc, setDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc, orderBy } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, deleteDoc, orderBy } from 'firebase/firestore';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import Toggle from '@/components/shared/Toggle';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -13,7 +13,6 @@ import AvatarUpload from '@/components/shared/AvatarUpload';
 import PasswordInput from '@/components/shared/PasswordInput';
 import ProgressBar from '@/components/shared/ProgressBar';
 import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
-import { DEFAULT_SELLER_VERIFICATION_STATUS } from '@/lib/sellerVerification';
 import { useState, useEffect } from 'react';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { getWorkspaceDestination, getWorkspaceLabel, hasAuthorWorkspace, type WorkspaceRole } from '@/lib/utils/workspace';
@@ -172,32 +171,7 @@ export default function BuyerProfilePage() {
 
   async function handleBecomeSeller() {
     if (!userProfile) return;
-    await Promise.all([
-      updateUserProfile(userProfile.uid, { role: 'both', activeRole: 'buyer' }),
-      setDoc(doc(db, 'sellers', userProfile.uid), {
-        uid: userProfile.uid,
-        penName: null,
-        website: '',
-        socialLinks: { twitter: '', instagram: '', linkedin: '', goodreads: '' },
-        stripeAccountId: null,
-        stripeAccountStatus: 'not_connected',
-        isVerified: false,
-        verificationStatus: {
-          ...DEFAULT_SELLER_VERIFICATION_STATUS,
-          bioAdded: userProfile.bio.trim().length >= 50,
-        },
-        taxFormType: null,
-        taxFormStatus: 'not_submitted',
-        pendingBalance: 0,
-        totalEarnings: 0,
-        payoutSchedule: 'monthly',
-        nextPayoutDate: serverTimestamp(),
-        followersCount: 0,
-        totalSales: 0,
-        averageRating: 0,
-        createdAt: serverTimestamp(),
-      }, { merge: true }),
-    ]);
+    await updateUserProfile(userProfile.uid, { role: 'both', activeRole: 'buyer' });
     setUserProfile({ ...userProfile, role: 'both', activeRole: 'buyer' });
   }
 

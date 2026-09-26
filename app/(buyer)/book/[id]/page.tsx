@@ -36,6 +36,7 @@ export default function BookDetailPage() {
   const { addItem, isInCart, applyPromo, removePromo, promoCode, promoBookId } = useCartStore();
   const addRecentlyViewedBook = useRecentlyViewedStore((state) => state.addBook);
 
+  const [error, setError] = useState('');
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [similar, setSimilar] = useState<Book[]>([]);
@@ -65,8 +66,8 @@ export default function BookDetailPage() {
       setOwned(o);
       setLoading(false);
       setReviewsLoaded(true);
-      if (b) getSimilarBooks(b.genre, id).then(setSimilar);
-    });
+      if (b) getSimilarBooks(b.genre, id).then(setSimilar).catch(() => setSimilar([]));
+    }).catch(() => { setError('Unable to load this book. Please try again.'); setLoading(false); });
   }, [id, userProfile?.uid]);
 
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function BookDetailPage() {
   }, [addRecentlyViewedBook, book?.id]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (error) return <div className="p-8"><p role="alert">{error}</p><Link href="/browse">Back to catalog</Link></div>;
   if (!book) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] text-[#444]">Book not found.</div>;
 
   const effectivePrice = Math.max(0, book.price - discount);

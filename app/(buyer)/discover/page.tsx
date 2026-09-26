@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCard from '@/components/buyer/BookCard';
@@ -23,6 +23,7 @@ interface Section {
 export default function DiscoverPage() {
   const userProfile = useAuthStore((s) => s.userProfile);
   const [sections, setSections] = useState<Section[]>([]);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,8 +60,7 @@ export default function DiscoverPage() {
           books: genreTop.sort((a, b) => b.averageRating - a.averageRating).slice(0, 5),
         },
       ]);
-      setLoading(false);
-    });
+    }).catch(() => setError('Unable to load recommendations. Please try again.')).finally(() => setLoading(false));
   }, [userProfile?.uid]);
 
   if (loading) return (
@@ -75,6 +75,7 @@ export default function DiscoverPage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
+      {error && <p role="alert" className="p-4 text-red-400">{error}</p>}
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
 
         {/* Hero */}
@@ -123,9 +124,9 @@ export default function DiscoverPage() {
                   {section.badge}
                 </span>
               </div>
-              <button type="button" className="flex items-center gap-1 text-xs text-[#555] hover:text-[#aaa]">
+              <Link href={`/search?collection=${section.id}${section.id === 'genre' ? `&genre=${encodeURIComponent(userProfile?.favoriteGenre || 'Fiction')}` : ''}`} className="flex items-center gap-1 text-xs text-[#555] hover:text-[#aaa]">
                 See all <ChevronRight size={12} />
-              </button>
+              </Link>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2">
               {section.books.map((book, i) => (

@@ -16,6 +16,7 @@ import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firest
 import { auth, db } from './config';
 import { clearAuthSession, setClientAuthHints, syncAuthSession } from './session';
 import type { User as UserProfile } from '@/types/user';
+import { authenticatedPost } from './request';
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -85,6 +86,7 @@ export async function signUp(
   };
 
   await setDoc(doc(db, 'users', credential.user.uid), userDoc);
+  if (role === 'seller') await authenticatedPost('/api/seller/profile', {});
   return credential.user;
 }
 
@@ -218,8 +220,13 @@ export async function updateUserProfile(
   uid: string,
   data: Partial<UserProfile>
 ): Promise<void> {
+  if (data.role) {
+    if (data.role !== 'both' || auth.currentUser?.uid !== uid) throw new Error('Invalid role change');
+    await authenticatedPost('/api/seller/profile', { becomeSeller: true });
+  }
+  const { role: _role, ...profileData } = data;
   await updateDoc(doc(db, 'users', uid), {
-    ...data,
+    ...profileData,
     updatedAt: serverTimestamp(),
   });
 

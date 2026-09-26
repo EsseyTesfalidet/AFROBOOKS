@@ -1,5 +1,8 @@
 'use client';
 
+import { sanitizeChapter } from '@/lib/utils/sanitizeChapter';
+import { calculateReadingProgress } from '@/lib/utils/readingProgress';
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Type, X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
@@ -17,7 +20,8 @@ import {
   type ReaderTheme,
   type FontFamily,
 } from '@/store/readerStore';
-import { getChapters, saveReadingProgress } from '@/lib/firebase/firestore';
+import { getChapters, getPreviewChapters, getReadingProgress, saveReadingProgress } from '@/lib/firebase/firestore';
+import type { ReadingProgress } from '@/types/order';
 import type { Book, Chapter } from '@/types/book';
 
 const WPM = 238;
@@ -35,8 +39,10 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
   const router = useRouter();
   const {
     theme, fontSize, lineSpacing, fontFamily, marginSize,
-    currentChapter, setCurrentChapter,
   } = useReaderStore();
+
+  const [currentChapter, setCurrentChapter] = useState(1);
+  const [error, setError] = useState('');
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,13 +58,57 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
   const lastScrollY = useRef(0);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const restoreScroll = useRef<number | null>(null);
+  const pendingProgress = useRef<Partial<ReadingProgress> | null>(null);
+
+  const flushProgress = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    const progress = pendingProgress.current;
+    if (!progress) return;
+    pendingProgress.current = null;
+    void saveReadingProgress(userId, book.id, progress).catch(() => {
+      setError('Your reading progress could not be saved.');
+    });
+  }, [userId, book.id]);
 
   useEffect(() => {
-    getChapters(book.id).then((chs) => {
-      setChapters(chs as Chapter[]);
-      setLoading(false);
-    });
-  }, [book.id]);
+    let active = true;
+    setLoading(true);
+    setError('');
+    setShowPreviewGate(false);
+    Promise.all([
+      hasAccess ? getChapters(book.id) : getPreviewChapters(book.id),
+      getReadingProgress(userId, book.id),
+    ]).then(([items, progress]) => {
+      if (!active) return;
+      const chs = items as Chapter[];
+      const savedChapter = chs.find((chapter) => chapter.chapterNumber === progress?.currentChapter);
+      setChapters(chs);
+      setCurrentChapter(savedChapter?.chapterNumber ?? chs[0]?.chapterNumber ?? 1);
+      restoreScroll.current = savedChapter ? progress?.scrollPosition ?? 0 : 0;
+      setPercent(0);
+    }).catch(() => { if (active) setError('Unable to load this book. Please try again.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [book.id, userId, hasAccess]);
+
+  useEffect(() => {
+    if (loading || restoreScroll.current === null || !contentRef.current) return;
+    contentRef.current.scrollTop = restoreScroll.current;
+    lastScrollY.current = restoreScroll.current;
+    restoreScroll.current = null;
+  }, [loading, currentChapter]);
+
+  useEffect(() => {
+    const onHidden = () => { if (document.visibilityState === 'hidden') flushProgress(); };
+    document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', flushProgress);
+    return () => {
+      document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', flushProgress);
+      flushProgress();
+    };
+  }, [flushProgress]);
 
   const activeChapter = chapters.find((c) => c.chapterNumber === currentChapter);
   const isPreviewChapter = activeChapter?.isPreview ?? false;
@@ -93,18 +143,16 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
 
     if (isPreviewChapter && !hasAccess && pct >= 90) setShowPreviewGate(true);
 
+    pendingProgress.current = {
+      currentChapter, scrollPosition: scrolled,
+      ...calculateReadingProgress(chapters.findIndex((chapter) => chapter.chapterNumber === currentChapter), hasAccess ? chapters.length : book.chapterCount || chapters.length, pct, hasAccess),
+    };
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      saveReadingProgress(userId, book.id, {
-        currentChapter,
-        scrollPosition: scrolled,
-        percentComplete: pct,
-        isFinished: pct >= 95,
-      });
-    }, 30000);
-  }, [currentChapter, isPreviewChapter, hasAccess, userId, book.id]);
+    saveTimerRef.current = setTimeout(flushProgress, 1000);
+  }, [currentChapter, isPreviewChapter, hasAccess, chapters, book, flushProgress]);
 
   function changeChapter(num: number) {
+    flushProgress();
     if (!hasAccess && chapters.find((c) => c.chapterNumber === num)?.isLocked) {
       setShowPreviewGate(true);
       return;
@@ -112,11 +160,16 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
     setFadeIn(false);
     setTimeout(() => {
       setCurrentChapter(num);
+      restoreScroll.current = 0;
       setShowPreviewGate(false);
-      contentRef.current?.scrollTo({ top: 0 });
       lastScrollY.current = 0;
       setPercent(0);
       setFadeIn(true);
+      pendingProgress.current = {
+        currentChapter: num, scrollPosition: 0,
+        ...calculateReadingProgress(chapters.findIndex((chapter) => chapter.chapterNumber === num), hasAccess ? chapters.length : book.chapterCount || chapters.length, 0, hasAccess),
+      };
+      flushProgress();
     }, 160);
   }
 
@@ -145,6 +198,13 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
 
   const isReading = hasAccess || isPreviewChapter;
 
+  if (error && !chapters.length && !loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
+      <p role="alert">{error}</p>
+      <Link href={`/book/${book.id}`} className="underline">Back to book</Link>
+    </div>
+  );
+
   const dotRange = chapters.slice(
     Math.max(0, currentChapter - 3),
     Math.min(totalChapters, currentChapter + 2)
@@ -152,6 +212,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: th.bg }}>
+      {error && <p role="alert" className="px-4 py-2 text-sm text-red-400">{error}</p>}
 
       {/* ── Top bar ─────────────────────────────────────────── */}
       <div
@@ -267,7 +328,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
                 color: th.text,
                 fontFamily: FONT_FAMILIES[fontFamily],
               }}
-              dangerouslySetInnerHTML={{ __html: activeChapter.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeChapter(activeChapter.content) }}
             />
 
             {showPreviewGate && (

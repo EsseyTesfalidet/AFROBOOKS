@@ -16,7 +16,7 @@ export function calculateFees(amountCents: number): {
   platformFee: number;
   sellerEarnings: number;
 } {
-  const stripeFee = Math.round(amountCents * 0.029) + 30;
+  const stripeFee = Math.min(amountCents, Math.round(amountCents * 0.029) + 30);
   const afterStripe = amountCents - stripeFee;
   const platformFee = Math.round(afterStripe * 0.15);
   const sellerEarnings = afterStripe - platformFee;

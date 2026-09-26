@@ -55,13 +55,17 @@ function CheckoutForm() {
           discountAmount,
         }),
       });
-      const { clientSecret, orderIds, error: apiError } = await res.json();
+      const { clientSecret, orderIds, amount, error: apiError } = await res.json();
       if (apiError) {
         setError(apiError);
         setLoading(false);
         return;
       }
 
+      if (amount !== total) {
+        setError(`The total has changed to ${centsToDisplay(amount)}. Refresh your cart before paying.`);
+        return;
+      }
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) return;
 

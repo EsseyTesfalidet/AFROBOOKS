@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const BUYER_PATHS = [
-  '/browse', '/book', '/read', '/cart', '/checkout',
-  '/library', '/discover', '/search', '/subscription',
+  '/read', '/checkout', '/library', '/profile', '/notifications',
 ];
-const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics'];
+const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller'];
 const ADMIN_PATHS = ['/admin'];
 const AUTH_PATHS = ['/login', '/signup'];
 

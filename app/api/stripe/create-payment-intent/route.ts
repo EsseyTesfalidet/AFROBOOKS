@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripeServer, calculateFees } from '@/lib/stripe/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { requireRequestUser } from '@/lib/server/auth';
+import { z } from 'zod';
+
+const checkoutSchema = z.object({
+  items: z.array(z.object({ bookId: z.string().min(1).max(128).regex(/^[^/]+$/) })).min(1).max(20),
+  promoCode: z.string().max(100).nullable().optional(),
+  promoBookId: z.string().max(128).nullable().optional(),
+  discountAmount: z.number().finite().nonnegative().optional(),
+});
 
 function distributeDiscounts(amounts: number[], totalDiscount: number) {
   if (totalDiscount <= 0 || !amounts.length) {
@@ -33,9 +41,11 @@ function distributeDiscounts(amounts: number[], totalDiscount: number) {
 export async function POST(req: NextRequest) {
   try {
     const requestUser = await requireRequestUser(req);
-    const { items, promoCode, promoBookId, discountAmount = 0 } = await req.json();
+    const parsed = checkoutSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid checkout' }, { status: 400 });
+    const { items, promoCode, promoBookId, discountAmount = 0 } = parsed.data;
 
-    if (!items?.length) {
+    if (!Array.isArray(items) || !items.length || items.length > 20 || items.some((item) => typeof item?.bookId !== 'string' || item.bookId.includes('/')) || new Set(items.map((item) => item.bookId)).size !== items.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest) {
         status: string;
       };
 
-      if (book.status !== 'live') {
+      if (book.status !== 'live' || !Number.isSafeInteger(book.price) || book.price < 0) {
         return NextResponse.json({ error: `Book ${item.bookId} not available` }, { status: 400 });
       }
 
@@ -84,6 +94,7 @@ export async function POST(req: NextRequest) {
 
     const bundleDiscount = bookDetails.length >= 3 ? Math.round(subtotal * 0.05) : 0;
     let promoDiscount = 0;
+    let appliedPromoId = "";
 
     if (promoCode && promoBookId && discountAmount > 0) {
       const promoSnap = await adminDb
@@ -122,16 +133,21 @@ export async function POST(req: NextRequest) {
               : promo.discountType === 'fixed'
                 ? promo.discountValue
                 : targetBook.originalPrice;
-          promoDiscount = Math.min(targetBook.originalPrice, rawPromoDiscount, discountAmount);
+          promoDiscount = Math.max(0, Math.min(targetBook.originalPrice, rawPromoDiscount));
+          appliedPromoId = promoDoc.id;
         }
       }
     }
 
-    const finalAmount = Math.max(0, subtotal - bundleDiscount - promoDiscount);
+    // Allocate the bundle discount over prices after the promo so no line goes
+    // negative and the sum of orders always equals the actual Stripe charge.
+    const effectiveBundleDiscount = Math.min(bundleDiscount, subtotal - promoDiscount);
     const bundleShares = distributeDiscounts(
-      bookDetails.map((book) => book.originalPrice),
-      bundleDiscount
+      bookDetails.map((book) => book.originalPrice - (book.bookId === promoBookId ? promoDiscount : 0)),
+      effectiveBundleDiscount
     );
+    const finalAmount = subtotal - effectiveBundleDiscount - promoDiscount;
+    if (finalAmount < 50) return NextResponse.json({ error: 'The checkout total must be at least $0.50.' }, { status: 400 });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: finalAmount,
@@ -140,13 +156,15 @@ export async function POST(req: NextRequest) {
         userId: requestUser.uid,
         bookIds: bookDetails.map((book) => book.bookId).join(','),
         promoCode: promoCode ?? '',
+        promoId: appliedPromoId,
         promoBookId: promoBookId ?? '',
         promoDiscount: String(promoDiscount),
-        bundleDiscount: String(bundleDiscount),
+        bundleDiscount: String(effectiveBundleDiscount),
       },
     });
 
     const orderIds: string[] = [];
+    const orderBatch = adminDb.batch();
 
     for (const [index, book] of bookDetails.entries()) {
       const promoShare = book.bookId === promoBookId ? promoDiscount : 0;
@@ -154,7 +172,8 @@ export async function POST(req: NextRequest) {
       const finalPrice = Math.max(0, book.originalPrice - lineDiscount);
       const { stripeFee, platformFee, sellerEarnings } = calculateFees(finalPrice);
 
-      const orderRef = await adminDb.collection('orders').add({
+      const orderRef = adminDb.collection('orders').doc();
+      orderBatch.create(orderRef, {
         buyerId: requestUser.uid,
         buyerEmail: requestUser.email,
         bookId: book.bookId,
@@ -177,6 +196,7 @@ export async function POST(req: NextRequest) {
 
       orderIds.push(orderRef.id);
     }
+    await orderBatch.commit();
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,

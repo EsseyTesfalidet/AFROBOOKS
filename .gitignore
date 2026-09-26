@@ -38,6 +38,11 @@ functions/lib/
 # Environment variables (secrets)
 .env.local
 .env*.local
+.env*
+!.env.example
+lint-results.json
+firestore-debug.log
+firebase-debug.log
 
 # Claude Code
 .claude/

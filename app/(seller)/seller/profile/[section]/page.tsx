@@ -1,5 +1,7 @@
 'use client';
 
+import { authenticatedPost } from '@/lib/firebase/request';
+
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense, useEffect, useRef, useState } from 'react';
@@ -72,6 +74,7 @@ function SellerProfilePageContent() {
     penName: '', website: '', bio: '',
     twitter: '', instagram: '', linkedin: '', goodreads: '',
   });
+  const [profileError, setProfileError] = useState('');
   const [saving, setSaving] = useState(false);
   const [idRequest, setIdRequest] = useState<{ status: string; submittedAt?: unknown } | null>(null);
   const [idUploading, setIdUploading] = useState(false);
@@ -239,40 +242,19 @@ function SellerProfilePageContent() {
 
   async function saveProfile() {
     if (!userProfile) return;
-    const bioAdded = form.bio.trim().length >= 50;
-    const nextVerificationStatus = {
-      ...DEFAULT_SELLER_VERIFICATION_STATUS,
-      ...(seller?.verificationStatus ?? {}),
-      emailVerified: seller?.verificationStatus?.emailVerified ?? true,
-      bioAdded,
-      tenSalesReached: (seller?.totalSales ?? 0) >= 10,
-    };
-    setSaving(true);
-    await Promise.all([
-      updateUserProfile(userProfile.uid, { bio: form.bio }),
-      setDoc(doc(db, 'sellers', userProfile.uid), {
-        uid: userProfile.uid,
+    setProfileError('');
+    try {
+      setSaving(true);
+      await updateUserProfile(userProfile.uid, { bio: form.bio });
+      await authenticatedPost('/api/seller/profile', {
         penName: form.penName || null,
         website: form.website,
         socialLinks: { twitter: form.twitter, instagram: form.instagram, linkedin: form.linkedin, goodreads: form.goodreads },
-        stripeAccountId: seller?.stripeAccountId ?? null,
-        stripeAccountStatus: seller?.stripeAccountStatus ?? 'not_connected',
-        isVerified: hasCompletedSellerVerification(nextVerificationStatus),
-        verificationStatus: nextVerificationStatus,
-        taxFormType: seller?.taxFormType ?? null,
-        taxFormStatus: seller?.taxFormStatus ?? 'not_submitted',
-        pendingBalance: seller?.pendingBalance ?? 0,
-        totalEarnings: seller?.totalEarnings ?? 0,
-        payoutSchedule: 'monthly',
-        nextPayoutDate: seller?.nextPayoutDate ?? serverTimestamp(),
-        followersCount: seller?.followersCount ?? 0,
-        totalSales: seller?.totalSales ?? 0,
-        averageRating: seller?.averageRating ?? 0,
-        createdAt: seller?.createdAt ?? serverTimestamp(),
-      }, { merge: true }),
-    ]);
-    setUserProfile({ ...userProfile, bio: form.bio });
-    setSaving(false);
+      });
+      setUserProfile({ ...userProfile, bio: form.bio });
+      setSaving(false);
+    } catch { setProfileError('Unable to save your profile. Please try again.'); }
+    finally { setSaving(false); }
   }
 
   async function submitIdVerification() {
@@ -507,6 +489,7 @@ function SellerProfilePageContent() {
                     ))}
                   </div>
                 </div>
+                {profileError && <p role="alert" className="text-sm text-red-400">{profileError}</p>}
                 <button type="button" onClick={saveProfile} disabled={saving}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium"
                   style={{ background: '#e8442a', color: '#fff' }}>

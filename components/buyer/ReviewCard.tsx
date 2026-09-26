@@ -1,8 +1,10 @@
 'use client';
 
+import { authenticatedPost } from '@/lib/firebase/request';
+
 import { useState } from 'react';
 import { ThumbsUp, Flag, ChevronDown, ChevronUp } from 'lucide-react';
-import { doc, updateDoc, increment, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import StarRating from '@/components/shared/StarRating';
 import type { Review } from '@/types/review';
@@ -23,6 +25,8 @@ interface Props {
 }
 
 export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
+  const [error, setError] = useState('');
+  const [helpful, setHelpful] = useState(false);
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [posting, setPosting] = useState(false);
@@ -40,7 +44,10 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
   }
 
   async function markHelpful() {
-    await updateDoc(doc(db, 'reviews', review.id), { helpfulCount: increment(1) });
+    try {
+      await authenticatedPost('/api/reviews/helpful', { reviewId: review.id });
+      setHelpful(true);
+    } catch { setError('Please sign in and try again.'); }
   }
 
   return (
@@ -48,6 +55,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
       className="rounded-xl border p-5"
       style={{ background: '#161616', borderColor: '#2a2a2a' }}
     >
+      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -86,6 +94,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
         <button
           type="button"
           onClick={markHelpful}
+          disabled={helpful}
           className="flex items-center gap-1.5 text-xs text-[#555] hover:text-[#aaa] transition-colors"
         >
           <ThumbsUp size={12} />

@@ -15,6 +15,8 @@ export default function FollowButton({ sellerId, initialFollowerCount = 0, size 
   const userProfile = useAuthStore((s) => s.userProfile);
   const [following, setFollowing] = useState(false);
   const [count, setCount] = useState(initialFollowerCount);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -22,30 +24,32 @@ export default function FollowButton({ sellerId, initialFollowerCount = 0, size 
     isFollowingAuthor(userProfile.uid, sellerId).then((v) => {
       setFollowing(v);
       setReady(true);
-    });
+    }).catch(() => setReady(true));
   }, [userProfile?.uid, sellerId]);
 
   if (!userProfile || userProfile.uid === sellerId || !ready) return null;
 
   async function toggle() {
-    if (!userProfile) return;
-    if (following) {
-      setFollowing(false);
-      setCount((c) => Math.max(0, c - 1));
-      await unfollowAuthor(userProfile.uid, sellerId);
-    } else {
-      setFollowing(true);
-      setCount((c) => c + 1);
-      await followAuthor(userProfile.uid, sellerId);
-    }
+    if (!userProfile || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      if (following) await unfollowAuthor(userProfile.uid, sellerId);
+      else await followAuthor(userProfile.uid, sellerId);
+      setFollowing(!following);
+      setCount((count) => Math.max(0, count + (following ? -1 : 1)));
+    } catch { setError('Could not update follow. Try again.'); }
+    finally { setBusy(false); }
   }
 
   const isMd = size === 'md';
 
   return (
+    <>
     <button
       type="button"
       onClick={toggle}
+      disabled={busy}
       className="flex items-center gap-1.5 rounded-lg font-medium border transition-all"
       style={{
         padding: isMd ? '8px 16px' : '5px 10px',
@@ -63,5 +67,7 @@ export default function FollowButton({ sellerId, initialFollowerCount = 0, size 
         </span>
       )}
     </button>
+    {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+    </>
   );
 }

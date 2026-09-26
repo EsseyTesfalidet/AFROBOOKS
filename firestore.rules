@@ -7,20 +7,20 @@ service cloud.firestore {
     }
 
     function isOwner(uid) {
-      return request.auth.uid == uid;
+      return isSignedIn() && request.auth.uid == uid;
     }
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.role == 'admin' ||
+        request.auth.token.get('role', '') == 'admin' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
 
     function isSeller() {
       return isSignedIn() && (
-        request.auth.token.role == 'seller' ||
-        request.auth.token.role == 'both' ||
+        request.auth.token.get('role', '') == 'seller' ||
+        request.auth.token.get('role', '') == 'both' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'both'
       );
@@ -40,9 +40,21 @@ service cloud.firestore {
 
     // Users
     match /users/{uid} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid) || isAdmin();
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && request.resource.data.uid == uid &&
+        request.resource.data.role in ['buyer', 'seller'] &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.subscriptionStatus == 'none' &&
+        request.resource.data.subscriptionPlan == 'none' &&
+        request.resource.data.subscriptionId == null &&
+        request.resource.data.stripeCustomerId == null &&
+        request.resource.data.referralCredits == 0;
+      allow update: if isAdmin() || (isOwner(uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'firstName', 'lastName', 'username', 'avatarUrl', 'bio', 'phone',
+          'country', 'dateOfBirth', 'activeRole', 'notificationPreferences',
+          'readerPreferences', 'favoriteGenre', 'language', 'currency', 'updatedAt'
+        ]));
       allow delete: if isAdmin();
     }
 
@@ -50,14 +62,21 @@ service cloud.firestore {
     match /books/{bookId} {
       allow read: if resource.data.status == 'live' || isAdmin() ||
         (isSignedIn() && resource.data.sellerId == request.auth.uid);
-      allow create: if isSeller();
+      allow create: if isSeller() && request.resource.data.sellerId == request.auth.uid &&
+        request.resource.data.totalSales == 0 && request.resource.data.totalBorrows == 0 &&
+        request.resource.data.reviewCount == 0 && request.resource.data.averageRating == 0 &&
+        request.resource.data.isFeatured == false;
       allow update: if isAdmin() ||
-        (isSignedIn() && resource.data.sellerId == request.auth.uid);
+        (isSeller() && resource.data.sellerId == request.auth.uid &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+           'sellerId', 'totalSales', 'totalBorrows', 'averageRating', 'reviewCount'
+         ]));
       allow delete: if isAdmin();
 
       // Chapters
       match /chapters/{chapterId} {
-        allow read: if resource.data.isPreview == true || hasBookAccess(bookId);
+        allow read: if (resource.data.isPreview == true &&
+          get(/databases/$(database)/documents/books/$(bookId)).data.status == 'live') || hasBookAccess(bookId);
         allow write: if isAdmin() ||
           (isSignedIn() && get(/databases/$(database)/documents/books/$(bookId)).data.sellerId == request.auth.uid);
       }
@@ -69,43 +88,48 @@ service cloud.firestore {
         (resource.data.buyerId == request.auth.uid ||
          resource.data.sellerId == request.auth.uid ||
          isAdmin());
-      allow create: if isSignedIn();
-      allow update: if isAdmin();
+      // Fulfillment and financial records are written only by the Admin SDK.
+      allow write: if false;
     }
 
     // Library
     match /library/{itemId} {
+      allow get: if isSignedIn() && resource == null;
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow delete: if isAdmin();
+      allow write: if false;
     }
 
     // Wishlist
     match /wishlist/{itemId} {
-      allow read, write: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource == null;
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     // Reading progress
     match /readingProgress/{progressId} {
-      allow read, write: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource == null;
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        progressId == request.auth.uid + '_' + request.resource.data.bookId;
     }
 
     // Reviews
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.reviewerId == request.auth.uid;
-      allow update: if isAdmin() ||
-        (isSignedIn() && resource.data.reviewerId == request.auth.uid);
+      allow create: if false;
+      allow update: if isAdmin() || (isSignedIn() &&
+        get(/databases/$(database)/documents/books/$(resource.data.bookId)).data.sellerId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sellerReply', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
     // Notifications
     match /notifications/{notifId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isSignedIn();
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
+      allow create: if isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -163,12 +187,21 @@ service cloud.firestore {
       allow update: if isAdmin();
     }
 
-    // Sellers (public profile data)
+    // Public author fields are exposed by /api/authors; financial data is private.
     match /sellers/{sellerId} {
-      allow read: if true;
-      allow create: if isOwner(sellerId) || isAdmin();
-      allow update: if isOwner(sellerId) || isAdmin();
+      allow read: if isOwner(sellerId) || isAdmin();
+      allow create: if false;
+      allow update: if isAdmin() || (isOwner(sellerId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['taxFormType', 'taxFormStatus']) &&
+        request.resource.data.taxFormStatus in ['not_submitted', 'submitted'] &&
+        request.resource.data.taxFormType in [null, 'W-9', 'W-8BEN']);
       allow delete: if isAdmin();
+    }
+
+    match /follows/{followId} {
+      allow get: if isSignedIn() && resource == null;
+      allow read: if isSignedIn() && resource.data.followerId == request.auth.uid;
+      allow write: if false;
     }
   }
 }

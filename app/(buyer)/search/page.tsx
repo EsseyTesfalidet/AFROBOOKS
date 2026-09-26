@@ -43,6 +43,8 @@ const EMPTY_FILTERS: Filters = {
 type SheetMode = 'filters' | 'sort' | null;
 
 export default function SearchPage() {
+  const [collectionFilter, setCollectionFilter] = useState('');
+  const [error, setError] = useState('');
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -52,14 +54,20 @@ export default function SearchPage() {
   const [sheetMode, setSheetMode] = useState<SheetMode>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setCollectionFilter(params.get('collection') ?? '');
+    setQuery(params.get('q') ?? '');
+    if (params.get('genre')) setAppliedFilters({ ...EMPTY_FILTERS, genres: [params.get('genre')!] });
+    if (params.get('collection') === 'new') setSort('newest');
     getLiveBooks([orderBy('totalSales', 'desc')]).then((data) => {
       setAllBooks(data);
-      setLoading(false);
-    });
+    }).catch(() => setError('Unable to load books. Please try again.')).finally(() => setLoading(false));
   }, []);
 
   const results = useMemo(() => {
-    let next = allBooks;
+    let next = [...allBooks];
+    if (collectionFilter === 'featured') next = next.filter((book) => book.isFeatured);
+    if (collectionFilter === 'hidden') next = next.filter((book) => book.averageRating >= 4.5 && book.reviewCount < 10);
 
     if (query.trim()) {
       const normalized = query.toLowerCase();
@@ -114,7 +122,7 @@ export default function SearchPage() {
     }
 
     return next;
-  }, [allBooks, appliedFilters, query, sort]);
+  }, [allBooks, appliedFilters, query, sort, collectionFilter]);
 
   const activeFilterCount =
     appliedFilters.genres.length +
@@ -180,6 +188,7 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
+      {error && <p role="alert" className="p-4 text-red-400">{error}</p>}
 
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
         <section

@@ -1,5 +1,7 @@
 'use client';
 
+import { sanitizeChapter } from '@/lib/utils/sanitizeChapter';
+
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -23,8 +25,7 @@ export default function SampleReaderPage() {
     Promise.all([getBook(id), getPreviewChapters(id)]).then(([b, chs]) => {
       setBook(b);
       setChapters(chs);
-      setLoading(false);
-    });
+    }).catch(() => setBook(null)).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return (
@@ -78,7 +79,7 @@ export default function SampleReaderPage() {
             </h2>
             <div
               className="text-[#ccc] leading-relaxed text-base space-y-4 whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: ch.content.replace(/\n/g, '<br/>') }}
+              dangerouslySetInnerHTML={{ __html: sanitizeChapter(ch.content.replace(/\n/g, '<br/>')) }}
             />
             {i < chapters.length - 1 && (
               <div className="my-8 border-t" style={{ borderColor: '#1a1a1a' }} />

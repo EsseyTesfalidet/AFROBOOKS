@@ -1,3 +1,4 @@
+import { authenticatedPost } from './request';
 import {
   collection,
   doc,
@@ -13,7 +14,6 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
-  increment,
   writeBatch,
   type QueryConstraint,
   type DocumentData,
@@ -158,21 +158,11 @@ export async function getBooksBySellerIds(sellerIds: string[], max = 12): Promis
 }
 
 export async function followAuthor(userId: string, sellerId: string): Promise<void> {
-  const batch = writeBatch(db);
-  batch.set(doc(db, 'follows', `${userId}_${sellerId}`), {
-    followerId: userId,
-    sellerId,
-    createdAt: serverTimestamp(),
-  });
-  batch.update(doc(db, 'sellers', sellerId), { followersCount: increment(1) });
-  await batch.commit();
+  await authenticatedPost('/api/follows', { sellerId, following: true });
 }
 
 export async function unfollowAuthor(userId: string, sellerId: string): Promise<void> {
-  const batch = writeBatch(db);
-  batch.delete(doc(db, 'follows', `${userId}_${sellerId}`));
-  batch.update(doc(db, 'sellers', sellerId), { followersCount: increment(-1) });
-  await batch.commit();
+  await authenticatedPost('/api/follows', { sellerId, following: false });
 }
 
 export async function isFollowingAuthor(userId: string, sellerId: string): Promise<boolean> {
@@ -209,25 +199,6 @@ export async function isBookInLibrary(userId: string, bookId: string): Promise<b
   const snap = await getDoc(doc(db, 'library', `${userId}_${bookId}`));
   return snap.exists();
 }
-
-export async function addToLibrary(
-  userId: string,
-  bookId: string,
-  purchaseType: LibraryItem['purchaseType'],
-  orderId: string | null
-): Promise<void> {
-  const item: Omit<LibraryItem, 'addedAt'> & { addedAt: ReturnType<typeof serverTimestamp> } = {
-    id: `${userId}_${bookId}`,
-    userId,
-    bookId,
-    purchaseType,
-    orderId,
-    addedAt: serverTimestamp() as unknown as import('firebase/firestore').Timestamp,
-  };
-  await setDoc(doc(db, 'library', `${userId}_${bookId}`), item, { merge: true });
-}
-
-// ── Wishlist ───────────────────────────────────────────────────────────────
 
 export async function getUserWishlist(userId: string): Promise<WishlistItem[]> {
   const q = query(collection(db, 'wishlist'), where('userId', '==', userId));
@@ -266,19 +237,11 @@ export async function getBookReviews(bookId: string): Promise<Review[]> {
 export async function createReview(
   reviewData: Omit<Review, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> {
-  const ref = await addDoc(collection(db, 'reviews'), {
-    ...reviewData,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+  const { id } = await authenticatedPost<{ id: string }>('/api/reviews', {
+    bookId: reviewData.bookId, title: reviewData.title, body: reviewData.body, stars: reviewData.stars,
   });
-  await updateDoc(doc(db, 'books', reviewData.bookId), {
-    reviewCount: increment(1),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
+  return id;
 }
-
-// ── Reading Progress ───────────────────────────────────────────────────────
 
 export async function getReadingProgress(
   userId: string,
@@ -305,7 +268,7 @@ export async function saveReadingProgress(
       scrollPosition: 0,
       percentComplete: 0,
       isFinished: false,
-      finishedAt: null,
+      finishedAt: data.isFinished ? serverTimestamp() : null,
       ...data,
       lastReadAt: serverTimestamp(),
     },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getBook, isBookInLibrary } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
@@ -15,6 +16,7 @@ export default function ReadPage() {
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const authLoading = useAuthStore((s) => s.loading);
 
+  const [error, setError] = useState('');
   const [book, setBook] = useState<Book | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,10 +44,11 @@ export default function ReadPage() {
       }
 
       setLoading(false);
-    });
+    }).catch(() => { setError('Unable to load this book. Please try again.'); setLoading(false); });
   }, [id, authLoading, firebaseUser?.uid, userProfile?.subscriptionStatus]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (error) return <div className="p-8"><p role="alert">{error}</p><Link href={`/book/${id}`}>Back to book</Link></div>;
   if (!book || !firebaseUser) return null;
 
   return (

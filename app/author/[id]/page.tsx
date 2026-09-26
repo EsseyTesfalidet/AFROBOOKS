@@ -8,7 +8,7 @@ import BuyerHeader from '@/components/buyer/BuyerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import FollowButton from '@/components/shared/FollowButton';
 import { db } from '@/lib/firebase/config';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 import type { Seller } from '@/types/user';
@@ -29,15 +29,13 @@ export default function AuthorPage() {
 
   useEffect(() => {
     Promise.all([
-      getDoc(doc(db, 'users', id)),
-      getDoc(doc(db, 'sellers', id)),
+      fetch(`/api/authors/${encodeURIComponent(id)}`).then((response) => response.ok ? response.json() : null),
       getDocs(query(collection(db, 'books'), where('sellerId', '==', id), where('status', '==', 'live'))),
-    ]).then(([userSnap, sellerSnap, booksSnap]) => {
-      if (userSnap.exists()) setAuthor(userSnap.data() as AuthorProfile);
-      if (sellerSnap.exists()) setSeller(sellerSnap.data() as Seller);
+    ]).then(([profile, booksSnap]) => {
+      setAuthor(profile?.author ?? null);
+      setSeller(profile?.seller ?? null);
       setBooks(booksSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Book)));
-      setLoading(false);
-    });
+    }).catch(() => setAuthor(null)).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return (

@@ -32,6 +32,7 @@ export default function BrowsePage() {
   const [followedAuthorBooks, setFollowedAuthorBooks] = useState<Book[]>([]);
   const [followingCount, setFollowingCount] = useState(0);
   const [libraryCount, setLibraryCount] = useState(0);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('All');
@@ -65,7 +66,7 @@ export default function BrowsePage() {
       setLoading(false);
     }
 
-    loadHome();
+    loadHome().catch(() => { if (active) { setError('Unable to load your books. Please try again.'); setLoading(false); } });
 
     return () => {
       active = false;
@@ -113,6 +114,7 @@ export default function BrowsePage() {
   return (
     <div className="min-h-screen" style={{ background: '#0e0e0e' }}>
       <BuyerHeader />
+      {error && <p role="alert" className="p-4 text-red-400">{error}</p>}
 
       <main className="mx-auto max-w-5xl px-4 py-6 space-y-8">
         <section
@@ -128,9 +130,9 @@ export default function BrowsePage() {
                 Personalized experience
               </p>
               <h1 className="mt-2 font-display text-5xl leading-none text-white sm:text-6xl">
-                Welcome back,
+                {userProfile ? 'Welcome back,' : 'Discover African stories,'}
                 <br />
-                <span style={{ color: '#f5b800' }}>{firstName}.</span>
+                <span style={{ color: '#f5b800' }}>{userProfile ? `${firstName}.` : 'your next great read.'}</span>
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-relaxed sm:text-base" style={{ color: '#888' }}>
                 Continue where you left off, discover new releases from authors you follow, and explore more titles in {favoriteGenre}.

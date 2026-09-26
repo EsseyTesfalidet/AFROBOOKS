@@ -24,6 +24,7 @@ interface Props {
 
 export default function ReviewForm({ bookId, user, onSuccess }: Props) {
   const [stars, setStars] = useState(5);
+  const [submitError, setSubmitError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const {
@@ -34,6 +35,8 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
 
   async function onSubmit({ title, body }: FormData) {
     const initials = `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
+    setSubmitError('');
+    try {
     await createReview({
       bookId,
       reviewerId: user.uid,
@@ -52,6 +55,7 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
     });
     setSuccess(true);
     onSuccess();
+    } catch (error) { setSubmitError(error instanceof Error ? error.message : 'Unable to save review.'); }
   }
 
   if (success) {
@@ -110,6 +114,7 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
         {errors.body && <p className="mt-1 text-xs text-[#e8442a]">{errors.body.message}</p>}
       </div>
 
+      {submitError && <p role="alert" className="text-sm text-red-400">{submitError}</p>}
       <button
         type="submit"
         disabled={isSubmitting}
