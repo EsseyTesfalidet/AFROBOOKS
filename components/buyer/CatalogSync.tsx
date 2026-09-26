@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useCartStore } from '@/store/cartStore';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
+import { retainReaderPositions } from '@/lib/utils/readerPosition';
 
 export default function CatalogSync() {
   const { books, loading, error } = useCatalog();
@@ -13,6 +14,7 @@ export default function CatalogSync() {
     if (loading || error) return;
     useCartStore.getState().reconcileBooks(books);
     useRecentlyViewedStore.getState().retainBooks(books.map(book => book.id));
+    retainReaderPositions(books.map(book => book.id));
   }, [books, loading, error, items, recent]);
   return null;
 }

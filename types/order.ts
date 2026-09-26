@@ -43,6 +43,9 @@ export interface ReadingProgress {
   bookId: string;
   currentChapter: number;
   scrollPosition: number;
+  scrollFraction?: number;
+  positionAnchor?: { block: number; fraction: number } | null;
+  positionUpdatedAt?: number;
   percentComplete: number;
   lastReadAt: Timestamp;
   isFinished: boolean;

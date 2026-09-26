@@ -1,658 +1,109 @@
 'use client';
 
+import './reader.css';
+
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, ArrowRight, List, Type, Check } from 'lucide-react';
 import { sanitizeChapter } from '@/lib/utils/sanitizeChapter';
 import { calculateReadingProgress } from '@/lib/utils/readingProgress';
-
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Type, X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { useReaderSession } from '@/hooks/useReaderSession';
+import { useReaderStore, THEME_STYLES, FONT_SIZE_PX, LINE_SPACING_VALUE, FONT_FAMILIES, MARGIN_MAX_WIDTH, MARGIN_PADDING_X } from '@/store/readerStore';
+import type { Book } from '@/types/book';
+import ReaderPanel from './ReaderPanel';
+import ReaderAppearance from './ReaderAppearance';
 import PreviewGate from './PreviewGate';
-import Link from 'next/link';
-import {
-  useReaderStore,
-  THEME_STYLES,
-  FONT_SIZE_PX,
-  LINE_SPACING_VALUE,
-  FONT_FAMILIES,
-  FONT_LABELS,
-  MARGIN_MAX_WIDTH,
-  MARGIN_PADDING_X,
-  type ReaderTheme,
-  type FontFamily,
-} from '@/store/readerStore';
-import { getChapters, getPreviewChapters, getReadingProgress, saveReadingProgress } from '@/lib/firebase/firestore';
-import type { ReadingProgress } from '@/types/order';
-import type { Book, Chapter } from '@/types/book';
 
-const WPM = 238;
-function countWords(html: string): number {
-  return html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
-}
-
-interface Props {
-  book: Book;
-  userId: string | null;
-  hasAccess: boolean;
-}
+interface Props { book: Book; userId: string | null; hasAccess: boolean }
 
 export default function InAppReader({ book, userId, hasAccess }: Props) {
-  const router = useRouter();
-  const {
-    theme, fontSize, lineSpacing, fontFamily, marginSize,
-  } = useReaderStore();
+  const prefs = useReaderStore();
+  const { chapters, chapter: chapterNumber, loading, loadError, saveError, percent, scrollerRef, bodyRef, changeChapter, onScroll, retry, retrySave } = useReaderSession(book.id, userId, hasAccess, `${prefs.fontSize}:${prefs.lineSpacing}:${prefs.fontFamily}:${prefs.marginSize}`);
+  const [panel, setPanel] = useState<'chapters' | 'appearance' | null>(null);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const lastScroll = useRef(0);
+  const toolbarRef = useRef<HTMLElement>(null);
+  const index = chapters.findIndex(chapter => chapter.chapterNumber === chapterNumber);
+  const chapter = chapters[index];
+  const previous = chapters[index - 1];
+  const next = chapters[index + 1];
+  const content = useMemo(() => sanitizeChapter(chapter?.content ?? ''), [chapter?.content]);
+  const wordCount = useMemo(() => content.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length, [content]);
+  const minutesLeft = Math.ceil(wordCount * (1 - percent / 100) / 238);
+  const totalProgress = calculateReadingProgress(index, chapters.length, percent, hasAccess).percentComplete;
+  const theme = THEME_STYLES[prefs.theme];
+  const style = {
+    '--reader-bg': theme.bg, '--reader-text': theme.text, '--reader-muted': theme.muted,
+    '--reader-surface': theme.surface, '--reader-border': theme.border, '--reader-accent': theme.accent,
+    '--reader-font': FONT_FAMILIES[prefs.fontFamily], '--reader-size': FONT_SIZE_PX[prefs.fontSize],
+    '--reader-leading': LINE_SPACING_VALUE[prefs.lineSpacing], '--reader-width': MARGIN_MAX_WIDTH[prefs.marginSize], '--reader-gutter': MARGIN_PADDING_X[prefs.marginSize],
+    colorScheme: prefs.theme === 'paper' || prefs.theme === 'sepia' ? 'light' : 'dark',
+  } as CSSProperties;
 
-  const [currentChapter, setCurrentChapter] = useState(1);
-  const [error, setError] = useState('');
-
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [percent, setPercent] = useState(0);
-  const [showPreviewGate, setShowPreviewGate] = useState(false);
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const [footerVisible, setFooterVisible] = useState(true);
-  const [fadeIn, setFadeIn] = useState(true);
-
-  const contentRef = useRef<HTMLDivElement>(null);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastScrollY = useRef(0);
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const restoreScroll = useRef<number | null>(null);
-  const pendingProgress = useRef<Partial<ReadingProgress> | null>(null);
-
-  const flushProgress = useCallback(() => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    const progress = pendingProgress.current;
-    if (!progress || !userId) return;
-    pendingProgress.current = null;
-    void saveReadingProgress(userId, book.id, progress).catch(() => {
-      setError('Your reading progress could not be saved.');
-    });
-  }, [userId, book.id]);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    setChapters([]);
-    setShowPreviewGate(false);
-    Promise.all([
-      hasAccess ? getChapters(book.id) : getPreviewChapters(book.id),
-      userId ? getReadingProgress(userId, book.id).catch(() => {
-        if (active) setError('Your saved position could not be loaded. Starting from the first chapter.');
-        return null;
-      }) : Promise.resolve(null),
-    ]).then(([items, progress]) => {
-      if (!active) return;
-      const chs = items as Chapter[];
-      const savedChapter = chs.find((chapter) => chapter.chapterNumber === progress?.currentChapter);
-      setChapters(chs);
-      setCurrentChapter(savedChapter?.chapterNumber ?? chs[0]?.chapterNumber ?? 1);
-      restoreScroll.current = savedChapter ? progress?.scrollPosition ?? 0 : 0;
-      setPercent(0);
-    }).catch(() => { if (active) setError('Unable to load this book. Please try again.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [book.id, userId, hasAccess]);
-
-  useEffect(() => {
-    if (loading || restoreScroll.current === null || !contentRef.current) return;
-    contentRef.current.scrollTop = restoreScroll.current;
-    lastScrollY.current = restoreScroll.current;
-    restoreScroll.current = null;
-  }, [loading, currentChapter]);
-
-  useEffect(() => {
-    const onHidden = () => { if (document.visibilityState === 'hidden') flushProgress(); };
-    document.addEventListener('visibilitychange', onHidden);
-    window.addEventListener('pagehide', flushProgress);
-    return () => {
-      document.removeEventListener('visibilitychange', onHidden);
-      window.removeEventListener('pagehide', flushProgress);
-      flushProgress();
-    };
-  }, [flushProgress]);
-
-  const activeChapter = chapters.find((c) => c.chapterNumber === currentChapter);
-  const isPreviewChapter = activeChapter?.isPreview ?? false;
-  const totalChapters = chapters.length;
-  const prevChapter = chapters.find((c) => c.chapterNumber === currentChapter - 1);
-  const nextChapter = chapters.find((c) => c.chapterNumber === currentChapter + 1);
-  const previewGateVisible = !hasAccess && (showPreviewGate || !nextChapter);
-  const wordCount = activeChapter ? countWords(activeChapter.content) : 0;
-  const readingMins = Math.max(1, Math.ceil(wordCount / WPM));
-  const remainingMins = Math.max(0, Math.ceil((wordCount * (1 - percent / 100)) / WPM));
-
-  const th = THEME_STYLES[theme];
-
-  const handleScroll = useCallback(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    const scrolled = el.scrollTop;
-    const total = el.scrollHeight - el.clientHeight;
-    const pct = total > 0 ? Math.round((scrolled / total) * 100) : 0;
-    setPercent(pct);
-
-    const delta = scrolled - lastScrollY.current;
-    if (Math.abs(delta) > 6) {
-      if (delta > 0 && scrolled > 60) {
-        setHeaderVisible(false);
-        setFooterVisible(false);
-      } else {
-        setHeaderVisible(true);
-        setFooterVisible(true);
-      }
-    }
-    lastScrollY.current = scrolled;
-
-    if (isPreviewChapter && !hasAccess && pct >= 90) setShowPreviewGate(true);
-
-    pendingProgress.current = {
-      currentChapter, scrollPosition: scrolled,
-      ...calculateReadingProgress(chapters.findIndex((chapter) => chapter.chapterNumber === currentChapter), hasAccess ? chapters.length : book.chapterCount || chapters.length, pct, hasAccess),
-    };
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(flushProgress, 1000);
-  }, [currentChapter, isPreviewChapter, hasAccess, chapters, book, flushProgress]);
-
-  function changeChapter(num: number) {
-    flushProgress();
-    if (!hasAccess && chapters.find((c) => c.chapterNumber === num)?.isLocked) {
-      setShowPreviewGate(true);
-      return;
-    }
-    setFadeIn(false);
-    setTimeout(() => {
-      setCurrentChapter(num);
-      restoreScroll.current = 0;
-      setShowPreviewGate(false);
-      lastScrollY.current = 0;
-      setPercent(0);
-      setFadeIn(true);
-      pendingProgress.current = {
-        currentChapter: num, scrollPosition: 0,
-        ...calculateReadingProgress(chapters.findIndex((chapter) => chapter.chapterNumber === num), hasAccess ? chapters.length : book.chapterCount || chapters.length, 0, hasAccess),
-      };
-      flushProgress();
-    }, 160);
+  function navigate(number: number) {
+    changeChapter(number); setPanel(null); setControlsVisible(true); lastScroll.current = 0;
+    requestAnimationFrame(() => scrollerRef.current?.focus({ preventScroll: true }));
   }
 
-  function onContentClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (settingsOpen) return;
-    const tag = (e.target as HTMLElement).tagName;
-    if (tag === 'A' || tag === 'BUTTON') return;
-    const sel = window.getSelection();
-    if (sel && sel.toString().length > 0) return;
-    setHeaderVisible((v) => !v);
-    setFooterVisible((v) => !v);
-  }
+  return <div className="reader-shell" style={style}>
+    <header ref={toolbarRef} className="reader-toolbar" data-hidden={!controlsVisible && !panel} aria-label="Reader controls">
+      <Link href={`/book/${book.id}`} aria-label="Back to book" title="Back to book" className="reader-icon-button"><ArrowLeft size={20} /></Link>
+      <div className="reader-book-identity"><p>{book.title}</p><span>{book.authorName}</span></div>
+      <button type="button" className="reader-icon-button" aria-label="Chapters" title="Chapters" aria-haspopup="dialog" onClick={() => setPanel('chapters')}><List size={21} /></button>
+      <button type="button" className="reader-icon-button" aria-label="Reading appearance" title="Reading appearance" aria-haspopup="dialog" onClick={() => setPanel('appearance')}><Type size={21} /></button>
+    </header>
 
-  function onTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }
-
-  function onTouchEnd(e: React.TouchEvent) {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-    if (dx < 0 && nextChapter) changeChapter(currentChapter + 1);
-    else if (dx > 0 && prevChapter) changeChapter(currentChapter - 1);
-  }
-
-  const isReading = hasAccess || isPreviewChapter;
-
-  if (error && !chapters.length && !loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
-      <p role="alert">{error}</p>
-      <Link href={`/book/${book.id}`} className="underline">Back to book</Link>
+    <div ref={scrollerRef} className="reader-viewport" role="main" aria-label="Book reader" tabIndex={0}
+      onScroll={() => {
+        if (!onScroll()) return;
+        const top = scrollerRef.current?.scrollTop ?? 0;
+        if (Math.abs(top - lastScroll.current) > 8 && !toolbarRef.current?.contains(document.activeElement)) setControlsVisible(top < lastScroll.current || top < 80);
+        lastScroll.current = top;
+      }}
+      onClick={event => {
+        if ((event.target as HTMLElement).closest('a, button, input, select, dialog') || window.getSelection()?.toString()) return;
+        setControlsVisible(visible => !visible);
+      }}
+      onKeyDown={event => {
+        if (event.key === 'Escape') setControlsVisible(true);
+        if (event.target !== event.currentTarget || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || window.getSelection()?.toString()) return;
+        if (event.key === 'ArrowRight' && next) { event.preventDefault(); navigate(next.chapterNumber); }
+        if (event.key === 'ArrowLeft' && previous) { event.preventDefault(); navigate(previous.chapterNumber); }
+      }}>
+      {loading ? <div className="reader-state" role="status"><span className="reader-loader" />Opening your book…</div>
+        : loadError ? <div className="reader-state"><p role="alert">{loadError}</p><button type="button" className="reader-text-button" onClick={retry}>Try again</button></div>
+        : !chapter ? <div className="reader-state"><p>{hasAccess ? 'No chapters are available for this book yet.' : 'The author has not made a free preview available for this book.'}</p><Link href={`/book/${book.id}`} className="reader-text-button">Back to book</Link></div>
+        : <article className="reader-page" aria-labelledby="reader-chapter-title">
+          <header className="reader-chapter-heading">
+            <p className="reader-eyebrow">{!hasAccess && <span>Free sample <span aria-hidden="true">·</span> </span>}Chapter {chapter.chapterNumber}</p>
+            <h1 id="reader-chapter-title">{chapter.title}</h1>
+            <span className="reader-chapter-rule" aria-hidden="true" />
+          </header>
+          <div ref={bodyRef} className="reader-content" dangerouslySetInnerHTML={{ __html: content }} />
+          {!next && !hasAccess && <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />}
+          {!next && hasAccess && <div className="reader-book-end"><span aria-hidden="true">✦</span><p>You’ve reached the end of this book.</p><Link href={`/book/${book.id}`} className="reader-text-button">Return to book</Link></div>}
+          {(previous || next) && <nav className="reader-chapter-navigation" aria-label="Chapter navigation">
+            {previous ? <button type="button" className="reader-chapter-link" onClick={() => navigate(previous.chapterNumber)}><ArrowLeft size={18} /><span><small>Previous chapter</small><span>{previous.title}</span></span></button> : <span />}
+            {next && <button type="button" className="reader-chapter-link reader-chapter-next" onClick={() => navigate(next.chapterNumber)}><span><small>Next chapter</small><span>{next.title}</span></span><ArrowRight size={18} /></button>}
+          </nav>}
+        </article>}
     </div>
-  );
 
-  const dotRange = chapters.slice(
-    Math.max(0, currentChapter - 3),
-    Math.min(totalChapters, currentChapter + 2)
-  );
+    {chapter && !loading && !loadError && <footer className="reader-progress" aria-label="Reading progress">
+      {saveError && <div className="reader-sync-message" role="status">{saveError}<button type="button" onClick={retrySave}>Retry save</button></div>}
+      <div className="reader-progress-track" aria-hidden="true"><span style={{ width: `${totalProgress}%` }} /></div>
+      <div className="reader-progress-labels"><span>{hasAccess ? `Chapter ${index + 1} of ${chapters.length}` : `Preview ${index + 1} of ${chapters.length}`}<span aria-hidden="true"> · </span>{totalProgress}%</span><span>{minutesLeft ? `About ${minutesLeft} min left in chapter` : 'Chapter complete'}</span></div>
+    </footer>}
+    <p className="sr-only" role="status">{chapter ? `Chapter ${chapter.chapterNumber}: ${chapter.title}` : ''}</p>
 
-  return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: th.bg }}>
-      {error && <p role="alert" className="px-4 py-2 text-sm text-red-400">{error}</p>}
-
-      {/* ── Top bar ─────────────────────────────────────────── */}
-      <div
-        className="flex items-center justify-between flex-shrink-0 z-20 transition-transform duration-300 select-none"
-        style={{
-          height: 52,
-          background: th.headerBg,
-          borderBottom: `1px solid ${th.border}`,
-          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
-          paddingLeft: 12, paddingRight: 12,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 transition-opacity hover:opacity-60"
-          style={{ color: th.muted }}
-        >
-          <ArrowLeft size={16} />
-          <span className="text-sm hidden sm:inline" style={{ color: th.muted }}>Back</span>
-        </button>
-
-        <div className="flex-1 text-center min-w-0 mx-3">
-          <p className="text-xs font-medium truncate" style={{ color: th.text, opacity: 0.75 }}>
-            {book.title}
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: th.muted, fontSize: 10 }}>
-            {loading ? 'Loading chapters…' : totalChapters === 0 ? 'No chapters available' : <>
-              {hasAccess ? 'Chapter' : 'Preview chapter'} {currentChapter}/{totalChapters}
-              {percent > 0 && remainingMins > 0 ? ` · ${remainingMins}m left` : ` · ${readingMins}m read`}
-            </>}
-          </p>
-        </div>
-
-        <Link href={`/book/${book.id}`} className="text-xs px-2 py-1.5" style={{ color: th.muted }}>
-          Book details
-        </Link>
-
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="flex items-center justify-center rounded-xl px-3 py-1.5 transition-opacity hover:opacity-60"
-          style={{ color: th.muted }}
-        >
-          <Type size={16} />
-        </button>
-      </div>
-
-      {/* ── Progress bar ────────────────────────────────────── */}
-      <div className="w-full flex-shrink-0" style={{ height: 2, background: th.border }}>
-        <div
-          className="h-full transition-all duration-700 ease-out"
-          style={{ width: `${Math.min(100, percent)}%`, background: th.accent }}
-        />
-      </div>
-
-      {/* ── Scrollable content ──────────────────────────────── */}
-      <div
-        ref={contentRef}
-        onScroll={handleScroll}
-        onClick={onContentClick}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        className="flex-1 overflow-y-auto"
-        style={{ paddingBottom: 72 }}
-      >
-        {loading ? (
-          <div className="flex justify-center pt-24">
-            <div
-              className="animate-spin rounded-full"
-              style={{ width: 32, height: 32, border: `2px solid ${th.border}`, borderTopColor: th.accent }}
-            />
-          </div>
-        ) : chapters.length === 0 ? (
-          <div className="max-w-xl mx-auto px-4 pt-12 text-center space-y-4" style={{ color: th.text }}>
-            <p>{hasAccess ? 'This book does not have any chapters available yet.' : 'The author has not made a free preview available for this book.'}</p>
-            <Link href={`/book/${book.id}`} className="underline">View book details</Link>
-          </div>
-        ) : !isReading ? (
-          <div className="max-w-xl mx-auto px-4 pt-12">
-            <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />
-          </div>
-        ) : activeChapter ? (
-          <div
-            className="mx-auto transition-opacity duration-150"
-            style={{
-              maxWidth: MARGIN_MAX_WIDTH[marginSize],
-              paddingLeft: MARGIN_PADDING_X[marginSize],
-              paddingRight: MARGIN_PADDING_X[marginSize],
-              paddingTop: 48,
-              paddingBottom: 64,
-              opacity: fadeIn ? 1 : 0,
-            }}
-          >
-            {/* Chapter header */}
-            <div className="mb-10">
-              <p
-                className="uppercase tracking-widest mb-2"
-                style={{ fontSize: 10, color: th.accent, fontFamily: "'DM Sans', sans-serif" }}
-              >
-                Chapter {activeChapter.chapterNumber}
-              </p>
-              <h2
-                style={{
-                  fontSize: '1.45em',
-                  fontWeight: 700,
-                  lineHeight: 1.25,
-                  color: th.text,
-                  fontFamily: FONT_FAMILIES[fontFamily],
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                {activeChapter.title}
-              </h2>
-              <div style={{ marginTop: 14, height: 2, width: 40, background: th.accent, borderRadius: 1, opacity: 0.6 }} />
-            </div>
-
-            {/* Chapter body */}
-            <div
-              className="reader-content"
-              style={{
-                fontSize: FONT_SIZE_PX[fontSize],
-                lineHeight: LINE_SPACING_VALUE[lineSpacing],
-                color: th.text,
-                fontFamily: FONT_FAMILIES[fontFamily],
-              }}
-              dangerouslySetInnerHTML={{ __html: sanitizeChapter(activeChapter.content) }}
-            />
-
-            {previewGateVisible && (
-              <div className="mt-10">
-                <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />
-              </div>
-            )}
-
-            {/* End-of-chapter nav */}
-            {!previewGateVisible && (
-              <>
-                <div
-                  className="flex items-center justify-between mt-14 pt-6 select-none"
-                  style={{ borderTop: `1px solid ${th.border}` }}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); prevChapter && changeChapter(currentChapter - 1); }}
-                    disabled={!prevChapter}
-                    className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
-                    style={{ background: th.surface, color: th.text }}
-                  >
-                    <ChevronLeft size={14} /> Prev
-                  </button>
-                  <span style={{ fontSize: 12, color: th.muted }}>{currentChapter} / {totalChapters}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); nextChapter && changeChapter(currentChapter + 1); }}
-                    disabled={!nextChapter}
-                    className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl transition-opacity disabled:opacity-25 hover:opacity-70"
-                    style={{ background: th.accent, color: '#fff' }}
-                  >
-                    Next <ChevronRight size={14} />
-                  </button>
-                </div>
-
-                {/* About the author — shown after last chapter */}
-                {!nextChapter && (
-                  <div
-                    className="mt-8 p-5 rounded-2xl select-none"
-                    style={{ background: th.surface, border: `1px solid ${th.border}` }}
-                  >
-                    <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>
-                      About the Author
-                    </p>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                        style={{ background: th.border, color: th.accent }}
-                      >
-                        {book.authorName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: th.text }}>{book.authorName}</p>
-                        <p className="text-xs" style={{ color: th.muted }}>Author of "{book.title}"</p>
-                      </div>
-                    </div>
-                    <Link
-                      href={`/author/${book.sellerId}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-xl transition-opacity hover:opacity-75"
-                      style={{ background: th.accent, color: '#fff' }}
-                    >
-                      View author profile <ChevronRight size={12} />
-                    </Link>
-                  </div>
-                )}
-
-                {/* Subtle author link mid-book */}
-                {nextChapter && currentChapter % 3 === 0 && (
-                  <div className="mt-6 flex justify-center">
-                    <Link
-                      href={`/author/${book.sellerId}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs transition-opacity hover:opacity-75"
-                      style={{ color: th.muted }}
-                    >
-                      More by {book.authorName} →
-                    </Link>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          <p className="text-center py-16 text-sm" style={{ color: th.muted }}>No content available.</p>
-        )}
-      </div>
-
-      {/* ── Bottom chapter nav ───────────────────────────────── */}
-      {totalChapters > 0 && <div
-        className="fixed bottom-0 left-0 right-0 flex items-center justify-between flex-shrink-0 z-20 transition-transform duration-300 select-none"
-        style={{
-          height: 52,
-          background: th.headerBg,
-          borderTop: `1px solid ${th.border}`,
-          transform: footerVisible ? 'translateY(0)' : 'translateY(100%)',
-          paddingLeft: 12, paddingRight: 12,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => prevChapter && changeChapter(currentChapter - 1)}
-          disabled={!prevChapter}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-opacity disabled:opacity-25 hover:opacity-70"
-          style={{ color: th.text, maxWidth: '30%' }}
-        >
-          <ChevronLeft size={14} />
-          <span className="truncate">{prevChapter ? prevChapter.title : 'Previous'}</span>
-        </button>
-
-        <div className="flex items-center gap-1.5">
-          {dotRange.map((ch) => (
-            <button
-              key={ch.id}
-              type="button"
-              onClick={() => changeChapter(ch.chapterNumber)}
-              className="rounded-full transition-all duration-200"
-              style={{
-                width: ch.chapterNumber === currentChapter ? 22 : 6,
-                height: 6,
-                background: ch.chapterNumber === currentChapter ? th.accent : th.border,
-              }}
-            />
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => nextChapter && changeChapter(currentChapter + 1)}
-          disabled={!nextChapter}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-opacity disabled:opacity-25 hover:opacity-70"
-          style={{ color: th.text, maxWidth: '30%' }}
-        >
-          <span className="truncate">{nextChapter ? nextChapter.title : 'Next'}</span>
-          <ChevronRight size={14} />
-        </button>
-      </div>}
-
-      {/* ── Settings bottom sheet ────────────────────────────── */}
-      {settingsOpen && (
-        <div
-          className="fixed inset-0 z-30 flex flex-col justify-end"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setSettingsOpen(false)}
-        >
-          <div
-            className="rounded-t-2xl space-y-5 overflow-y-auto"
-            style={{ background: th.headerBg, border: `1px solid ${th.border}`, padding: '20px 20px 32px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Handle */}
-            <div className="flex justify-center -mt-1 mb-1">
-              <div className="rounded-full" style={{ width: 36, height: 4, background: th.border }} />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold" style={{ color: th.text }}>Reading settings</p>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(false)}
-                className="p-1.5 rounded-lg"
-                style={{ background: th.surface }}
-              >
-                <X size={14} style={{ color: th.muted }} />
-              </button>
-            </div>
-
-            {/* Theme */}
-            <div>
-              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Theme</p>
-              <div className="grid grid-cols-4 gap-2.5">
-                {(Object.entries(THEME_STYLES) as [ReaderTheme, typeof THEME_STYLES[ReaderTheme]][]).map(([t, s]) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => useReaderStore.getState().setTheme(t)}
-                    className="py-4 rounded-xl relative transition-all"
-                    style={{
-                      background: s.bg,
-                      border: `2px solid ${theme === t ? s.accent : s.border}`,
-                    }}
-                  >
-                    {theme === t && (
-                      <Check size={10} className="absolute top-1.5 right-1.5" style={{ color: s.accent }} />
-                    )}
-                    <p className="text-xs font-medium" style={{ color: s.text }}>{s.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Font family */}
-            <div>
-              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Font</p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {(Object.entries(FONT_FAMILIES) as [FontFamily, string][]).map(([f, fam]) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => useReaderStore.getState().setFontFamily(f)}
-                    className="py-3.5 rounded-xl transition-all text-sm"
-                    style={{
-                      fontFamily: fam,
-                      background: fontFamily === f ? th.accent : th.surface,
-                      color: fontFamily === f ? '#fff' : th.text,
-                      border: `1.5px solid ${fontFamily === f ? th.accent : th.border}`,
-                    }}
-                  >
-                    {FONT_LABELS[f]}
-                    <span className="block text-xs mt-0.5 opacity-60">{f === 'serif' ? 'Classic reading' : 'Modern clean'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Font size */}
-            <div>
-              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>
-                Text size
-              </p>
-              <div className="flex items-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const s = ['small', 'medium', 'large', 'xlarge'] as const;
-                    const i = s.indexOf(fontSize);
-                    if (i > 0) useReaderStore.getState().setFontSize(s[i - 1]);
-                  }}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center font-bold select-none"
-                  style={{ background: th.surface, color: th.text, fontSize: 16 }}
-                >
-                  A
-                </button>
-                <div className="flex-1 flex items-end gap-1.5 pb-1">
-                  {(['small', 'medium', 'large', 'xlarge'] as const).map((s, i) => (
-                    <div
-                      key={s}
-                      onClick={() => useReaderStore.getState().setFontSize(s)}
-                      className="flex-1 rounded-full cursor-pointer transition-all"
-                      style={{
-                        height: 4 + i * 3,
-                        background: fontSize === s ? th.accent : th.border,
-                      }}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const s = ['small', 'medium', 'large', 'xlarge'] as const;
-                    const i = s.indexOf(fontSize);
-                    if (i < s.length - 1) useReaderStore.getState().setFontSize(s[i + 1]);
-                  }}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center font-bold select-none"
-                  style={{ background: th.surface, color: th.text, fontSize: 22 }}
-                >
-                  A
-                </button>
-              </div>
-            </div>
-
-            {/* Line spacing */}
-            <div>
-              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Line spacing</p>
-              <div className="flex gap-2.5">
-                {(['compact', 'normal', 'relaxed'] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => useReaderStore.getState().setLineSpacing(s)}
-                    className="flex-1 py-3 rounded-xl text-xs capitalize font-medium transition-all"
-                    style={{
-                      background: lineSpacing === s ? th.accent : th.surface,
-                      color: lineSpacing === s ? '#fff' : th.text,
-                      border: `1.5px solid ${lineSpacing === s ? th.accent : th.border}`,
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Margins */}
-            <div>
-              <p className="uppercase tracking-widest mb-3" style={{ fontSize: 10, color: th.muted }}>Margins</p>
-              <div className="flex gap-2.5">
-                {(['narrow', 'normal', 'wide'] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => useReaderStore.getState().setMarginSize(s)}
-                    className="flex-1 py-3 rounded-xl text-xs capitalize font-medium transition-all"
-                    style={{
-                      background: marginSize === s ? th.accent : th.surface,
-                      color: marginSize === s ? '#fff' : th.text,
-                      border: `1.5px solid ${marginSize === s ? th.accent : th.border}`,
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    {panel && <ReaderPanel title={panel === 'chapters' ? 'Chapters' : 'Reading appearance'} onClose={() => setPanel(null)}>
+      {panel === 'appearance' ? <ReaderAppearance /> : <>
+        <p className="reader-panel-book-title">{book.title}</p>
+        {!hasAccess && <p className="reader-panel-note">Showing the chapters available in your free sample.</p>}
+        {loading ? <p role="status">Loading chapters…</p> : loadError ? <p role="alert">{loadError}</p> : !chapters.length ? <p>No chapters available.</p> : <ol className="reader-contents">
+          {chapters.map(item => <li key={item.id}><button type="button" aria-current={item.chapterNumber === chapterNumber ? 'location' : undefined} onClick={() => navigate(item.chapterNumber)}><span className="reader-contents-number">{String(item.chapterNumber).padStart(2, '0')}</span><span>{item.title}</span>{item.chapterNumber === chapterNumber && <Check size={17} aria-hidden="true" />}</button></li>)}
+        </ol>}
+      </>}
+    </ReaderPanel>}
+  </div>;
 }

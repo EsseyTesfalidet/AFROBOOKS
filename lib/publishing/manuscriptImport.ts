@@ -1,3 +1,5 @@
+import { decodeManuscriptBytes } from './manuscriptEncoding';
+
 export interface ImportedChapterDraft {
   chapterNumber: number;
   title: string;
@@ -117,7 +119,7 @@ function flushSection(sections: ImportedChapterDraft[], buffer: SectionBuffer | 
   });
 }
 
-function extractSectionsFromText(text: string) {
+export function extractSectionsFromText(text: string) {
   const normalized = text.replace(/\r\n?/g, '\n').trim();
   if (!normalized) {
     return [];
@@ -180,7 +182,7 @@ export function validateManuscriptFile(file: File) {
 export async function importManuscriptFile(file: File) {
   validateManuscriptFile(file);
 
-  const rawText = await file.text();
+  const rawText = decodeManuscriptBytes(new Uint8Array(await file.arrayBuffer()));
   const chapters = extractSectionsFromText(rawText);
 
   if (!chapters.length) {

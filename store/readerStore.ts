@@ -25,7 +25,7 @@ interface ReaderState {
 export const useReaderStore = create<ReaderState>()(
   persist(
     (set) => ({
-      theme: 'dark',
+      theme: 'paper',
       fontSize: 'medium',
       lineSpacing: 'normal',
       fontFamily: 'serif',
@@ -47,58 +47,58 @@ export const THEME_STYLES: Record<ReaderTheme, {
   surface: string; border: string; headerBg: string; label: string;
 }> = {
   dark: {
-    bg: '#131520',
-    text: '#e8d9c0',
-    muted: '#5a6070',
-    accent: '#e8442a',
-    surface: '#1c1f2e',
-    border: '#252836',
-    headerBg: '#0d0f18',
+    bg: '#191b1d',
+    text: '#e7e4de',
+    muted: '#aaa79f',
+    accent: '#d7bc8b',
+    surface: '#242628',
+    border: '#3b3c3d',
+    headerBg: '#191b1d',
     label: 'Dark',
   },
   night: {
-    bg: '#080808',
-    text: '#c9a96e',
-    muted: '#4a4030',
-    accent: '#c9a96e',
-    surface: '#111111',
-    border: '#1e1a14',
-    headerBg: '#040404',
+    bg: '#0d0e10',
+    text: '#c9c8c3',
+    muted: '#96958d',
+    accent: '#bda77e',
+    surface: '#191a1c',
+    border: '#343537',
+    headerBg: '#0d0e10',
     label: 'Night',
   },
   sepia: {
-    bg: '#fbf0d9',
-    text: '#3d2b1f',
-    muted: '#9a7c60',
-    accent: '#b5651d',
-    surface: '#f2e3c4',
-    border: '#ddd0b3',
-    headerBg: '#f2e3c4',
+    bg: '#f3e7d0',
+    text: '#3e3324',
+    muted: '#776349',
+    accent: '#775433',
+    surface: '#eadcc1',
+    border: '#d3c4a8',
+    headerBg: '#f3e7d0',
     label: 'Sepia',
   },
   paper: {
-    bg: '#f8f7f4',
-    text: '#1a1917',
-    muted: '#78716c',
-    accent: '#e8442a',
-    surface: '#f0efeb',
-    border: '#e4e3df',
-    headerBg: '#f0efeb',
+    bg: '#faf8f3',
+    text: '#292721',
+    muted: '#6e685e',
+    accent: '#806341',
+    surface: '#f1eee7',
+    border: '#ddd7ce',
+    headerBg: '#faf8f3',
     label: 'Paper',
   },
 };
 
 export const FONT_SIZE_PX: Record<FontSize, string> = {
-  small: '15px',
-  medium: '17px',
-  large: '19px',
-  xlarge: '21px',
+  small: '17px',
+  medium: '20px',
+  large: '23px',
+  xlarge: '27px',
 };
 
 export const LINE_SPACING_VALUE: Record<LineSpacing, string> = {
-  compact: '1.65',
-  normal: '1.9',
-  relaxed: '2.2',
+  compact: '1.5',
+  normal: '1.8',
+  relaxed: '2.1',
 };
 
 export const FONT_FAMILIES: Record<FontFamily, string> = {
@@ -112,13 +112,13 @@ export const FONT_LABELS: Record<FontFamily, string> = {
 };
 
 export const MARGIN_MAX_WIDTH: Record<MarginSize, string> = {
-  narrow: '740px',
-  normal: '640px',
-  wide: '540px',
+  narrow: '800px',
+  normal: '720px',
+  wide: '620px',
 };
 
 export const MARGIN_PADDING_X: Record<MarginSize, string> = {
-  narrow: '16px',
-  normal: '28px',
-  wide: '44px',
+  narrow: '24px',
+  normal: '40px',
+  wide: '56px',
 };
