@@ -1,0 +1,12 @@
+# Production secrets come from Vercel's environment settings.
+.env*
+!.env.example
+.firebase/
+.claude/
+.agents/
+.codex/
+dist/
+functions/lib/
+*.log
+*.tsbuildinfo
+lint-results.json
