@@ -7,6 +7,7 @@ import { getAdminDb } from '@/lib/firebase/admin';
 import { sendPurchaseReceiptEmail } from '@/lib/server/email';
 import { fulfillPayment, type SuccessfulPayment } from '@/lib/server/fulfillPayment';
 import { paymentConfiguration } from '@/lib/stripe/config';
+import { sendBookRoyalties, reviewPaymentRoyalties } from '@/lib/server/authorPayments';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Fulfillment incomplete; retry required' }, { status: 500 });
     }
     const ordersSnap = await adminDb.collection('orders').where('stripePaymentIntentId', '==', pi.id).get();
+    // The sale and entitlement are already durable. Scheduled retries recover
+    // deferred royalties without crediting the sale a second time.
+    await sendBookRoyalties(adminDb, stripe, pi.id).catch(() => console.error('Book royalty transfer deferred to scheduled retry'));
     const orders = ordersSnap.docs.map((doc) => doc.data());
     const buyer = (await adminDb.collection('users').doc(pi.metadata.userId).get()).data();
     if (buyer?.email && orders.every(order => order.status === 'completed') && orders.some((order) => !order.receiptEmailSent)) {
@@ -49,6 +53,24 @@ export async function POST(req: NextRequest) {
       }).catch(() => false);
       if (sent) await Promise.all(ordersSnap.docs.map((doc: QueryDocumentSnapshot) => doc.ref.update({ receiptEmailSent: true })));
     }
+  }
+
+  if (['charge.refunded', 'charge.dispute.created', 'charge.dispute.updated', 'transfer.reversed'].includes(event.type)) {
+    try {
+      if (event.type === 'transfer.reversed') {
+        const transfer = event.data.object as Stripe.Transfer;
+        const sourceId = typeof transfer.source_transaction === 'string' ? transfer.source_transaction : transfer.source_transaction?.id;
+        if (sourceId) {
+          const charge = await stripe.charges.retrieve(sourceId);
+          const paymentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+          if (paymentId) await reviewPaymentRoyalties(adminDb, paymentId);
+        }
+      } else {
+        const object = event.data.object as Stripe.Charge | Stripe.Dispute;
+        const paymentId = typeof object.payment_intent === 'string' ? object.payment_intent : object.payment_intent?.id;
+        if (paymentId) await reviewPaymentRoyalties(adminDb, paymentId);
+      }
+    } catch { return NextResponse.json({ error: 'Payment review incomplete; retry required' }, { status: 500 }); }
   }
 
   if (['customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'].includes(event.type)) {

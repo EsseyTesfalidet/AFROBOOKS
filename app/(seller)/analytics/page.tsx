@@ -166,7 +166,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-3 gap-4">
               {[
                 { label: 'Total Earned', value: centsToDisplay(totalRevenue), color: '#4ade80' },
-                { label: 'Paid Out', value: centsToDisplay(totalPaid), color: '#4ade80' },
+                { label: 'Sent to Stripe', value: centsToDisplay(totalPaid), color: '#4ade80' },
                 { label: 'Pending', value: centsToDisplay(pending), color: '#f5b800' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
@@ -196,7 +196,7 @@ export default function AnalyticsPage() {
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-0.5 rounded"
                             style={{ background: p.status === 'paid' ? '#0f2e1a' : '#2e1a0f', color: p.status === 'paid' ? '#4ade80' : '#f5b800' }}>
-                            {p.status === 'paid' && !p.stripeTransferId ? 'Recorded paid; unverified' : p.status}
+                            {p.status === 'paid' ? p.stripeTransferId ? 'Transferred to Stripe' : 'Recorded paid; unverified' : p.status}
                           </span>
                         </td>
                       </tr>

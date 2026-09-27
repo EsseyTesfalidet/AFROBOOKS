@@ -222,6 +222,11 @@ service cloud.firestore {
     }
 
     // Public author fields are exposed by /api/authors; financial data is private.
+    match /payoutReviews/{sellerId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /sellers/{sellerId} {
       allow read: if isOwner(sellerId) || isAdmin();
       allow create: if false;

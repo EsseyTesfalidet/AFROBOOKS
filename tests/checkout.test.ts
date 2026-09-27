@@ -4,6 +4,8 @@ import { calculateFees, calculateCartPricing, calculateCartTotals, priceForSelle
 import { calculateEarnings } from '../lib/utils/calculateEarnings';
 import { receiptStatus } from '../lib/utils/receiptStatus';
 import { paymentConfiguration } from '../lib/stripe/config';
+import { accountReadiness } from '../functions/src/stripe/accountReadiness';
+import { formatStripeAmount } from '../lib/utils/stripeMoney';
 
 test('configured fees and author estimates agree for a discounted order', () => {
   const fees = calculateFees(799, 20);
@@ -85,4 +87,20 @@ test('production checkout requires matching live keys and a webhook secret', () 
   assert.equal(paymentConfiguration(live).checkoutReady, true);
   assert.equal(paymentConfiguration({ ...live, STRIPE_WEBHOOK_SECRET: undefined }).checkoutReady, false);
   assert.equal(paymentConfiguration({}).checkoutReady, false);
+});
+
+test('submitting Stripe details alone does not make an author payout-ready', () => {
+  const account = { id: 'acct_fixture', details_submitted: true, payouts_enabled: true, capabilities: { transfers: 'active' } };
+  assert.equal(accountReadiness(account).stripeAccountStatus, 'active');
+  for (const partial of [{ payouts_enabled: false }, { details_submitted: false }, { capabilities: { transfers: 'pending' } }, { deleted: true }, { requirements: { disabled_reason: 'requirements.past_due' } }]) {
+    assert.equal(accountReadiness({ ...account, ...partial }).stripeAccountStatus, 'pending');
+  }
+  assert.deepEqual(accountReadiness({ ...account, requirements: { currently_due: null, past_due: null } }).stripeRequirementsDue, []);
+});
+
+test('bank payout amounts use Stripe minor units for both decimal and zero-decimal currencies', () => {
+  assert.equal(formatStripeAmount(1500, 'usd'), '$15.00');
+  assert.equal(formatStripeAmount(1500, 'jpy'), '¥1,500');
+  assert.match(formatStripeAmount(500, 'ugx'), /5$/);
+  assert.match(formatStripeAmount(500, 'isk'), /5$/);
 });

@@ -4,7 +4,7 @@
 
 The default commission is 15% of proceeds after estimated processing, using the existing `platformSettings/global.directSaleFee` setting. This is AfroBooks revenue before other business costs, not a guarantee of net profit. There is no universal commission or retail price for ebooks.
 
-The processing estimate uses [Stripe's published US domestic card rate](https://stripe.com/pricing) of 2.9% + $0.30. Other payment methods, international cards, currency conversion, Connect costs and custom account pricing can differ. The ledger currently reserves this estimate; it does not reconcile the actual Stripe balance transaction fee. Author payouts remain subject to the separate reconciliation and payout controls.
+The processing estimate uses [Stripe's published US domestic card rate](https://stripe.com/pricing) of 2.9% + $0.30. Other payment methods, international cards, currency conversion, Connect costs and custom account pricing can differ. The ledger currently reserves this estimate; it does not reconcile the actual Stripe balance transaction fee. Author royalties use the reconciled, source-linked transfer flow described in [author payouts](author-payouts.md).
 
 For a single undiscounted payment at the default commission:
 

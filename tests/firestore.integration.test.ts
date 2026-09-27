@@ -8,6 +8,8 @@ import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { fulfillPayment } from '../lib/server/fulfillPayment';
 import { calculateCartPricing } from '../lib/utils/fees';
+import { processAuthorRoyalties, reconcileAuthor, payAuthorOrder, holdAuthorPayouts } from '../functions/src/stripe/authorRoyalties';
+import { seedRoyalty, royaltyFixture } from './royalty-fixture';
 import { updateFollow, createPurchaseReview } from '../lib/server/social';
 import { publishBook } from '../lib/server/publishBook';
 import { validateBookContent } from '../lib/server/bookContent';
@@ -109,6 +111,118 @@ test('old ambiguous payouts hold their funds and never reuse an expired idempote
   assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
   assert.equal((await db.doc('payouts/author_2026-09').get()).data()?.status, 'needs_review');
   assert.equal((await db.collection('payouts').get()).size, 1);
+});
+
+test('royalties wait for activation and verified Stripe payout eligibility', async () => {
+  const { gateway, state } = royaltyFixture();
+  await seedRoyalty(db);
+  await processAuthorRoyalties(db, gateway);
+  assert.equal(state.createCalls, 0);
+  await db.doc('platformSettings/global').set({ automatedPayoutsEnabled: true });
+  state.ready = false;
+  await processAuthorRoyalties(db, gateway);
+  assert.equal(state.createCalls, 0);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 800);
+  assert.equal((await db.doc('sellers/author').get()).data()?.stripeAccountStatus, 'pending');
+});
+
+test('royalties link to the purchase charge and concurrent retries never duplicate author funds', async () => {
+  const { gateway, transfers } = royaltyFixture();
+  await seedRoyalty(db);
+  await db.doc('platformSettings/global').set({ automatedPayoutsEnabled: true });
+  await Promise.all([processAuthorRoyalties(db, gateway), processAuthorRoyalties(db, gateway)]);
+  await processAuthorRoyalties(db, gateway);
+  assert.equal(transfers.size, 1);
+  const transfer = [...transfers.values()][0];
+  assert.equal(transfer.amount, 800);
+  assert.equal(transfer.source_transaction, 'ch_pi_royalty');
+  assert.equal(transfer.destination, 'acct_author');
+  const seller = (await db.doc('sellers/author').get()).data();
+  assert.equal(seller?.pendingBalance, 0);
+  assert.equal(seller?.totalEarnings, 800);
+  assert.equal(seller?.payoutHoldReason, undefined);
+  assert.equal((await db.doc('payouts/royalty_royalty-order').get()).data()?.status, 'paid');
+  assert.equal((await db.collection('notifications').get()).size, 1);
+});
+
+test('royalty recovery finds an already-created transfer after its response was lost, even after 24 hours', async () => {
+  const { gateway, state, transfers } = royaltyFixture();
+  await seedRoyalty(db);
+  assert.equal(await reconcileAuthor(db, 'author', gateway), true);
+  const now = Date.now();
+  state.loseResponse = true;
+  assert.equal(await payAuthorOrder(db, 'royalty-order', gateway, now), 'pending');
+  assert.equal(await payAuthorOrder(db, 'royalty-order', gateway, now + 25 * 3600000), 'paid');
+  assert.equal(transfers.size, 1);
+  assert.equal(state.createCalls, 1);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+});
+
+test('unknown old royalty attempts keep reserved funds and require review instead of sending again', async () => {
+  const { gateway, state } = royaltyFixture();
+  await seedRoyalty(db);
+  await reconcileAuthor(db, 'author', gateway);
+  const now = Date.now();
+  state.failBeforeTransfer = true;
+  assert.equal(await payAuthorOrder(db, 'royalty-order', gateway, now), 'pending');
+  assert.equal(await payAuthorOrder(db, 'royalty-order', gateway, now + 25 * 3600000), 'needs_review');
+  assert.equal(state.createCalls, 1);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+  assert.equal((await db.doc('payoutReviews/author').get()).data()?.reason, 'transfer_review');
+});
+
+test('mismatched balances and unrecorded transfers cannot pass royalty reconciliation', async () => {
+  const { gateway, state, transfers } = royaltyFixture();
+  await seedRoyalty(db);
+  await db.doc('sellers/author').update({ pendingBalance: 900 });
+  assert.equal(await reconcileAuthor(db, 'author', gateway), false);
+  assert.equal((await db.doc('payoutReviews/author').get()).data()?.reason, 'balance_mismatch');
+  await db.doc('sellers/author').update({ pendingBalance: 800, payoutHoldReason: null });
+  transfers.set('unknown', { id: 'tr_unknown', amount: 100, currency: 'usd', destination: 'acct_author', source_transaction: 'ch_unknown', metadata: {}, reversed: false, amount_reversed: 0 });
+  assert.equal(await reconcileAuthor(db, 'author', gateway), false);
+  assert.equal((await db.doc('payoutReviews/author').get()).data()?.reason, 'unrecorded_transfer');
+  assert.equal(state.createCalls, 0);
+});
+
+test('refunded, disputed and test-mode payments cannot fund live author transfers', async () => {
+  for (const mode of ['refunded', 'disputed', 'test']) {
+    const { gateway, state } = royaltyFixture();
+    await seedRoyalty(db);
+    await db.doc('sellers/author').update({ payoutHoldReason: null });
+    await reconcileAuthor(db, 'author', gateway);
+    state.refunded = mode === 'refunded'; state.disputed = mode === 'disputed'; state.live = mode !== 'test';
+    assert.equal(await payAuthorOrder(db, 'royalty-order', gateway), 'needs_review');
+    assert.equal(state.createCalls, 0);
+    assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 800);
+  }
+});
+
+test('one unavailable author does not prevent another author from receiving verified royalties', async () => {
+  const { gateway, state } = royaltyFixture();
+  await seedRoyalty(db);
+  await seedRoyalty(db, { sellerId: 'other', orderId: 'other-order', paymentId: 'pi_other' });
+  await db.doc('platformSettings/global').set({ automatedPayoutsEnabled: true });
+  const account = gateway.account;
+  gateway.account = async id => { if (id === 'acct_author') throw new Error('Account unavailable'); return account(id); };
+  const result = await processAuthorRoyalties(db, gateway);
+  assert.equal(result.paid, 1);
+  assert.equal(state.createCalls, 1);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 800);
+  assert.equal((await db.doc('sellers/other').get()).data()?.pendingBalance, 0);
+});
+
+test('a refunded payment review holds further royalties and keeps financial review records private', async () => {
+  await seedRoyalty(db);
+  await holdAuthorPayouts(db, 'author', 'payment_review');
+  await db.doc('platformSettings/global').set({ automatedPayoutsEnabled: true });
+  const { gateway, state } = royaltyFixture();
+  await processAuthorRoyalties(db, gateway);
+  assert.equal(state.createCalls, 0);
+  const author = env.authenticatedContext('author').firestore();
+  const admin = env.authenticatedContext('admin').firestore();
+  await assertFails(getDoc(doc(author, 'payoutReviews/author')));
+  await assertSucceeds(getDoc(doc(admin, 'payoutReviews/author')));
+  await assertFails(setDoc(doc(admin, 'payoutReviews/author'), { status: 'resolved' }));
 });
 
 test('subscription sync preserves newer entitlements and never recreates deleted users', async () => {

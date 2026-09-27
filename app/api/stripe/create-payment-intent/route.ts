@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { validateBookContent, BookContentError } from '@/lib/server/bookContent';
 import { paymentConfiguration } from '@/lib/stripe/config';
 import { calculateCartPricing, MAX_BOOK_PRICE_CENTS } from '@/lib/utils/fees';
+import { syncAuthorAccount } from '@/lib/server/authorPayments';
 
 const checkoutSchema = z.object({
   items: z.array(z.object({ bookId: z.string().min(1).max(128).regex(/^[^/]+$/) })).min(1).max(20),
@@ -84,6 +85,14 @@ export async function POST(req: NextRequest) {
     }
 
     const pricing = calculateCartPricing(bookDetails.map(book => book.originalPrice), directSaleFee);
+    // An author must finish Connect setup before a buyer can pay. This lets us
+    // link royalties to the purchase charge while its funds are still settling.
+    for (const sellerId of new Set(bookDetails.map(book => book.sellerId))) {
+      const seller = (await adminDb.doc(`sellers/${sellerId}`).get()).data();
+      if (!seller?.stripeAccountId || seller.payoutHoldReason) return NextResponse.json({ error: 'An author in your cart is still setting up payments. Please try again later.' }, { status: 409 });
+      const account = await stripe.accounts.retrieve(seller.stripeAccountId);
+      if ((await syncAuthorAccount(adminDb, sellerId, account)).stripeAccountStatus !== 'active') return NextResponse.json({ error: 'An author in your cart must complete Stripe payout setup before this purchase can proceed.' }, { status: 409 });
+    }
     const { bundleDiscount, total: finalAmount } = pricing;
     if (finalAmount < 50) return NextResponse.json({ error: 'The checkout total must be at least $0.50.' }, { status: 400 });
     if (finalAmount > MAX_BOOK_PRICE_CENTS) return NextResponse.json({ error: 'The checkout total is too large. Please purchase fewer books at a time.' }, { status: 400 });

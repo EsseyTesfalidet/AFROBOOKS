@@ -17,6 +17,7 @@ import AvatarUpload from '@/components/shared/AvatarUpload';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AccountSettings from '@/components/shared/AccountSettings';
 import type { Seller } from '@/types/user';
+import AuthorPayouts from './AuthorPayouts';
 
 const inputClass = 'w-full min-h-11 rounded-lg border border-white/15 bg-[#1b1a17] px-3 py-2 text-[16px]';
 const actionClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[14px] font-medium disabled:opacity-50';
@@ -168,25 +169,10 @@ function Verification({ seller }: { seller: Seller }) {
 
 function PayoutSettings({ seller,onUpdate }: { seller: Seller; onUpdate:(seller:Seller)=>void }) {
   const user = useAuthStore(state=>state.userProfile)!;
-  const [connecting,setConnecting]=useState(false);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [file,setFile]=useState<File|null>(null);
   const [taxType,setTaxType]=useState(seller.taxFormType ?? '');
-  async function connect() {
-    setConnecting(true);setError('');
-    try {
-      const firebaseUser=useAuthStore.getState().firebaseUser;
-      if(!firebaseUser)throw new Error('Please sign in again.');
-      const response=await fetch('/api/stripe/connect',{headers:{Authorization:`Bearer ${await firebaseUser.getIdToken()}`},credentials:'include'});
-      const result=await response.json();
-      if(!response.ok||!result.url)throw new Error('Stripe onboarding could not be opened. Please try again.');
-      const url=new URL(result.url);
-      if(url.protocol!=='https:')throw new Error('Stripe returned an invalid link. Please try again.');
-      window.location.assign(url.href);
-    }catch(failure){setError(failure instanceof Error?failure.message:'Unable to open Stripe. Please try again.');}
-    finally{setConnecting(false);}
-  }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if(!file||!taxType||busy)return;
@@ -202,7 +188,7 @@ function PayoutSettings({ seller,onUpdate }: { seller: Seller; onUpdate:(seller:
   return <div className="space-y-7">
     <div><h2 className="text-[24px] font-semibold">Payout & tax details</h2><p className="mt-3 text-[14px] leading-relaxed text-[#a8a49c]">Keep your payment details ready. Payouts remain subject to account and balance review.</p></div>
     {error&&<p role="alert" className="text-[14px] text-red-300">{error}</p>}
-    <section className="space-y-3"><h3 className="text-[16px] font-semibold">Stripe account</h3><p className="text-[14px] text-[#a8a49c]">{seller.stripeAccountStatus==='active'?'Your Stripe account is connected.':seller.stripeAccountStatus==='pending'?'Your Stripe setup is incomplete. Continue to check the remaining steps.':'Connect Stripe to set up your payout details.'}</p><button onClick={connect} disabled={connecting} className={primaryClass}>{connecting?'Opening…':seller.stripeAccountStatus==='active'?'Update payout details':seller.stripeAccountStatus==='pending'?'Continue Stripe setup':'Connect Stripe'}<ArrowUpRight size={16}/></button></section>
+    <AuthorPayouts />
     <section className="space-y-4 border-t border-white/10 pt-6"><h3 className="text-[16px] font-semibold">Tax documents</h3>
       {seller.taxFormStatus==='submitted'||seller.taxFormStatus==='approved'?<p role="status" className="text-[14px] text-emerald-300">{seller.taxFormType ? seller.taxFormType+' · ':''}{seller.taxFormStatus==='approved'?'Tax form approved':'Tax form submitted for review'}</p>:<form onSubmit={submit} className="space-y-4">
         <div><label htmlFor="tax-type" className="mb-2 block text-[14px]">Form type</label><select id="tax-type" required value={taxType} disabled={busy} onChange={event=>setTaxType(event.target.value)} className={inputClass}><option value="">Choose your form</option><option value="W-9">W-9</option><option value="W-8BEN">W-8BEN</option></select></div>

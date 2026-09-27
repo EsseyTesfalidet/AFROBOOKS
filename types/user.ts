@@ -56,6 +56,10 @@ export interface Seller {
   };
   stripeAccountId: string | null;
   stripeAccountStatus: 'not_connected' | 'pending' | 'active';
+  stripePayoutsEnabled?: boolean;
+  stripeTransfersEnabled?: boolean;
+  stripeCountry?: string | null;
+  payoutHoldReason?: string | null;
   isVerified: boolean;
   verificationStatus: {
     emailVerified: boolean;

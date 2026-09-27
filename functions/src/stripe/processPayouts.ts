@@ -1,26 +1,21 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import Stripe from 'stripe';
-import { paySeller } from './payoutLedger';
+import { processAuthorRoyalties } from './authorRoyalties';
+import { stripeRoyaltyGateway } from './royaltyGateway';
 
-export const processMonthlyPayouts = functions.pubsub
-  .schedule('0 9 15 * *').timeZone('UTC').onRun(async () => {
+// Keep the deployed function name while replacing the old monthly aggregation.
+// Source-linked royalties reach Stripe after a sale; Stripe schedules bank payouts.
+export const processMonthlyPayouts = functions.runWith({ secrets: ['STRIPE_SECRET_KEY'], timeoutSeconds: 540 })
+  .pubsub.schedule('every 60 minutes').timeZone('UTC').onRun(async () => {
     const db = admin.firestore();
-    // Legacy payouts may have transferred without recording confirmation. An
-    // operator must reconcile those balances before enabling the new ledger.
     if ((await db.doc('platformSettings/global').get()).data()?.automatedPayoutsEnabled !== true) {
       console.log('Automatic payouts paused pending balance reconciliation.');
       return null;
     }
-    const stripe = new Stripe(functions.config().stripe?.secret_key ?? '', { apiVersion: '2023-10-16' });
-    const period = new Date().toISOString().slice(0, 7);
-    const sellers = await db.collection('sellers').get();
-    for (const seller of sellers.docs) {
-      await paySeller(db, seller.id, period, async (input) => stripe.transfers.create({
-        amount: input.amount, currency: 'usd', destination: input.destination,
-        description: `AfroBooks payout ${input.payoutId}`,
-        metadata: { payoutId: input.payoutId, sellerId: input.sellerId },
-      }, { idempotencyKey: input.idempotencyKey }));
-    }
+    const key = process.env.STRIPE_SECRET_KEY ?? '';
+    if (!/^(sk|rk)_live_/.test(key)) throw new Error('Live Stripe payout credentials are not configured');
+    const stripe = new Stripe(key, { apiVersion: '2023-10-16', timeout: 20000, maxNetworkRetries: 1 });
+    console.log('Author royalty run completed', await processAuthorRoyalties(db, stripeRoyaltyGateway(stripe)));
     return null;
   });
