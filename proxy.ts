@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const BUYER_PATHS = [
   '/checkout', '/library', '/profile', '/notifications',
 ];
-const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller'];
+const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller', '/promotions'];
 const ADMIN_PATHS = ['/admin'];
 const AUTH_PATHS = ['/login', '/signup'];
 

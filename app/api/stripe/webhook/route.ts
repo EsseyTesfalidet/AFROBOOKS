@@ -8,6 +8,7 @@ import { sendPurchaseReceiptEmail } from '@/lib/server/email';
 import { fulfillPayment, type SuccessfulPayment } from '@/lib/server/fulfillPayment';
 import { paymentConfiguration } from '@/lib/stripe/config';
 import { sendBookRoyalties, reviewPaymentRoyalties } from '@/lib/server/authorPayments';
+import { expirePromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharge, reconcilePromotionRefund } from '@/lib/server/promotionPayments';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -27,6 +28,24 @@ export async function POST(req: NextRequest) {
   }
 
   const adminDb = await getAdminDb();
+
+  if (['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.expired'].includes(event.type)) {
+    const eventSession = event.data.object as Stripe.Checkout.Session;
+    if (eventSession.metadata?.purchaseType === 'book_promotion') {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(eventSession.id);
+        if (session.status === 'expired') await expirePromotionCheckout(adminDb, session);
+        else if (session.payment_status === 'paid') {
+          const paymentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+          if (!paymentId) throw new Error('Promotion payment missing');
+          const payment = await stripe.paymentIntents.retrieve(paymentId, { expand: ['latest_charge'] });
+          const charge = payment.latest_charge as Stripe.Charge | null;
+          if (!charge || typeof charge === 'string') throw new Error('Promotion charge missing');
+          await fulfillPromotionCheckout(adminDb, session, { ...payment, refunded: charge.amount_refunded > 0, disputed: charge.disputed }, /^(?:sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY ?? ''));
+        }
+      } catch { return NextResponse.json({ error: 'Promotion fulfillment incomplete; retry required' }, { status: 500 }); }
+    }
+  }
 
   if (event.type === 'payment_intent.succeeded') {
     const pi = event.data.object as SuccessfulPayment;
@@ -68,9 +87,22 @@ export async function POST(req: NextRequest) {
       } else {
         const object = event.data.object as Stripe.Charge | Stripe.Dispute;
         const paymentId = typeof object.payment_intent === 'string' ? object.payment_intent : object.payment_intent?.id;
-        if (paymentId) await reviewPaymentRoyalties(adminDb, paymentId);
+        if (paymentId) {
+          await reviewPaymentRoyalties(adminDb, paymentId);
+          const payment = await stripe.paymentIntents.retrieve(paymentId);
+          if (event.type === 'charge.refunded') await reconcilePromotionRefund(adminDb, stripe, payment);
+          else await reviewPromotionCharge(adminDb, payment);
+        }
       }
     } catch { return NextResponse.json({ error: 'Payment review incomplete; retry required' }, { status: 500 }); }
+  }
+
+  if (['refund.created', 'refund.updated', 'refund.failed'].includes(event.type)) {
+    try {
+      const refund = event.data.object as Stripe.Refund;
+      const paymentId = typeof refund.payment_intent === 'string' ? refund.payment_intent : refund.payment_intent?.id;
+      if (paymentId) await reconcilePromotionRefund(adminDb, stripe, await stripe.paymentIntents.retrieve(paymentId));
+    } catch { return NextResponse.json({ error: 'Promotion refund review incomplete; retry required' }, { status: 500 }); }
   }
 
   if (['customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'].includes(event.type)) {

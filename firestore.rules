@@ -194,6 +194,20 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Promotion payments, review and counts are server-managed.
+    match /bookPromotions/{campaignId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+      allow write: if false;
+    }
+    match /promotionSettings/{settingsId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    match /promotionAudit/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Promo codes
     match /promoCodes/{codeId} {
       allow read: if isSignedIn();

@@ -21,6 +21,11 @@ import { deleteBookRecords } from '../lib/server/moderation';
 import { bookFilePrefixes } from '../lib/server/bookFiles';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
+import { submitPromotion, reviewPromotion, promotionCandidates, recordPromotionEvent, savePromotionSettings } from '../lib/server/promotions';
+import { preparePromotionCheckout, createPromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharge, expirePromotionCheckout, resolvePromotionPayment, reconcilePromotionRefund } from '../lib/server/promotionPayments';
+import { PROMOTION_TERMS_VERSION } from '../lib/promotions';
+import type { Promotion } from '../types/promotion';
+import { promotionFixture, promotionStripeFixture, author as promotionAuthor, admin as promotionAdmin } from './promotion-fixture';
 
 const projectId = 'demo-afrobooks-security';
 assert.match(process.env.FIRESTORE_EMULATOR_HOST ?? '', /^(127\.0\.0\.1|localhost):\d+$/, 'Integration tests require the local Firestore emulator');
@@ -45,6 +50,206 @@ beforeEach(async () => {
   ]);
 });
 after(async () => { await env?.cleanup(); await deleteApp(adminApp); });
+
+test('promotion ownership, offer price, terms and one-book concurrency are enforced', async () => {
+  await db.doc('books/book').update({ coverUrl: 'https://example.test/cover.jpg' });
+  await assert.rejects(submitPromotion(db, { uid: 'reader', role: 'buyer' }, 'book', 0, PROMOTION_TERMS_VERSION), /author account/);
+  await assert.rejects(submitPromotion(db, { uid: 'reader', role: 'seller' }, 'book', 0, PROMOTION_TERMS_VERSION), /your own published/);
+  await assert.rejects(submitPromotion(db, promotionAuthor, 'book', 0, 'old-terms'), /current promotion terms/);
+  await assert.rejects(submitPromotion(db, promotionAuthor, 'book', 900, PROMOTION_TERMS_VERSION), /offer changed/);
+  const results = await Promise.allSettled([submitPromotion(db, promotionAuthor, 'book', 0, PROMOTION_TERMS_VERSION), submitPromotion(db, promotionAuthor, 'book', 0, PROMOTION_TERMS_VERSION)]);
+  assert.equal(results.filter(item => item.status === 'fulfilled').length, 1);
+  assert.equal((await db.collection('bookPromotions').get()).size, 1);
+  const id = (results.find(item => item.status === 'fulfilled') as PromiseFulfilledResult<string>).value;
+  await assert.rejects(reviewPromotion(db, promotionAuthor, id, 'approve', ''), /Administrator/);
+  await assert.rejects(reviewPromotion(db, { uid: 'reader', role: 'buyer' }, id, 'stop', ''), /another author/);
+  await assert.rejects(savePromotionSettings(db, promotionAuthor, { enabled: true, priceCents: 0, durationDays: 7 }), /Administrator/);
+});
+
+test('free promotions start on approval and count one signed-in reader per UTC day', async () => {
+  const now = Date.now();
+  const id = await promotionFixture(db, 0, now);
+  assert.equal((await promotionCandidates(db, now)).length, 1);
+  await Promise.all([recordPromotionEvent(db, 'reader', id, 'view', now), recordPromotionEvent(db, 'reader', id, 'view', now), recordPromotionEvent(db, 'author', id, 'view', now)]);
+  await Promise.all([recordPromotionEvent(db, 'reader', id, 'click', now), recordPromotionEvent(db, 'reader', id, 'click', now)]);
+  let item = (await db.doc(`bookPromotions/${id}`).get()).data() as Promotion;
+  assert.equal(item.views, 1); assert.equal(item.clicks, 1);
+  await recordPromotionEvent(db, 'reader', id, 'click', now + 86400000);
+  await recordPromotionEvent(db, 'reader', id, 'view', now + 86400000);
+  item = (await db.doc(`bookPromotions/${id}`).get()).data() as Promotion;
+  assert.equal(item.views, 2); assert.equal(item.clicks, 2);
+  assert.equal((await promotionCandidates(db, now + 7 * 86400000)).length, 0);
+  await recordPromotionEvent(db, 'reader', id, 'click', now + 7 * 86400000);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.clicks, 2);
+});
+
+test('changed, flagged, deleted or suspended-author books never serve promotions', async () => {
+  await promotionFixture(db);
+  await db.doc('books/book').update({ coverUrl: 'https://example.test/different.jpg' });
+  assert.equal((await promotionCandidates(db)).length, 0);
+  await db.doc('books/book').update({ coverUrl: 'https://example.test/cover.jpg', status: 'flagged' });
+  assert.equal((await promotionCandidates(db)).length, 0);
+  await db.doc('books/book').update({ status: 'live' });
+  await db.doc('users/author').update({ status: 'suspended' });
+  assert.equal((await promotionCandidates(db)).length, 0);
+  await db.doc('users/author').update({ status: 'active' });
+  await db.doc('bookDeletions/book').set({ status: 'pending' });
+  assert.equal((await promotionCandidates(db)).length, 0);
+});
+
+test('campaign prices survive admin changes; checkout retries recover one immutable session', async () => {
+  const id = await promotionFixture(db, 900);
+  await savePromotionSettings(db, promotionAdmin, { enabled: true, priceCents: 1900, durationDays: 7 });
+  const fixture = promotionStripeFixture(id);
+  fixture.state.loseCreateResponse = true;
+  await assert.rejects(createPromotionCheckout(db, fixture.stripe, promotionAuthor, id, 'https://example.test'), /Lost creation/);
+  const firstAttempt = (await db.doc(`bookPromotions/${id}`).get()).data()?.checkoutAttemptAt;
+  await createPromotionCheckout(db, fixture.stripe, promotionAuthor, id, 'https://example.test');
+  await createPromotionCheckout(db, fixture.stripe, promotionAuthor, id, 'https://example.test');
+  assert.equal(fixture.state.createCalls, 2);
+  assert.equal(new Set(fixture.state.createKeys).size, 1);
+  assert.equal(fixture.state.request?.line_items?.[0].price_data?.unit_amount, 900);
+  assert.equal(fixture.state.request?.payment_intent_data?.metadata?.campaignId, id);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.checkoutAttemptAt, firstAttempt);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'approved');
+});
+
+test('verified promotion payment activates once without royalties or book entitlements', async () => {
+  const id = await promotionFixture(db, 900);
+  await preparePromotionCheckout(db, promotionAuthor, id);
+  const fixture = promotionStripeFixture(id);
+  const payment = fixture.paid();
+  const now = Date.now();
+  await Promise.all([fulfillPromotionCheckout(db, fixture.session, payment, true, now), fulfillPromotionCheckout(db, fixture.session, payment, true, now + 100)]);
+  const first = (await db.doc(`bookPromotions/${id}`).get()).data() as Promotion;
+  await fulfillPromotionCheckout(db, fixture.session, payment, true, now + 999999);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.startsAt, first.startsAt);
+  assert.equal(first.endsAt - first.startsAt, 7 * 86400000);
+  assert.equal(first.status, 'active');
+  assert.equal((await db.collection('orders').get()).size, 0);
+  assert.equal((await db.collection('library').get()).size, 0);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+});
+
+test('unpaid redirects, mismatched owners and wrong amounts cannot activate promotions', async () => {
+  const id = await promotionFixture(db, 900);
+  await preparePromotionCheckout(db, promotionAuthor, id);
+  const fixture = promotionStripeFixture(id);
+  await fulfillPromotionCheckout(db, fixture.session, { ...fixture.payment, refunded: false, disputed: false }, true);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'approved');
+  const payment = fixture.paid();
+  await assert.rejects(fulfillPromotionCheckout(db, fixture.session, { ...payment, metadata: { ...payment.metadata, userId: 'reader' } }, true), /ownership/);
+  await fulfillPromotionCheckout(db, fixture.session, { ...payment, amount_received: 100 }, true);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'needs_review');
+  assert.equal((await promotionCandidates(db)).length, 0);
+});
+
+test('test-mode payments cannot activate a production promotion', async () => {
+  const id = await promotionFixture(db, 900);
+  await preparePromotionCheckout(db, promotionAuthor, id);
+  const fixture = promotionStripeFixture(id);
+  await fulfillPromotionCheckout(db, fixture.session, { ...fixture.paid(), livemode: false }, true);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'needs_review');
+});
+
+test('refunds arriving before completion never resurrect a campaign', async () => {
+  const id = await promotionFixture(db, 900);
+  await preparePromotionCheckout(db, promotionAuthor, id);
+  const fixture = promotionStripeFixture(id);
+  await reviewPromotionCharge(db, fixture.payment, true);
+  await fulfillPromotionCheckout(db, fixture.session, fixture.paid(), true);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'refunded');
+  assert.equal((await promotionCandidates(db)).length, 0);
+});
+
+test('book deletion stops ads before file cleanup, including a late successful payment', async () => {
+  const id = await promotionFixture(db, 900);
+  await preparePromotionCheckout(db, promotionAuthor, id);
+  const fixture = promotionStripeFixture(id);
+  await assert.rejects(deleteBookRecords(db, 'book', { deleteFiles: async () => { throw new Error('Storage unavailable'); } }), /Storage unavailable/);
+  await fulfillPromotionCheckout(db, fixture.session, fixture.paid(), true);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'needs_review');
+  assert.equal((await promotionCandidates(db)).length, 0);
+  await deleteBookRecords(db, 'book', { deleteFiles: async () => {} });
+  assert.equal((await db.doc('books/book').get()).exists, false);
+  const campaign = (await db.doc(`bookPromotions/${id}`).get()).data();
+  assert.equal(campaign?.paymentIntentId, fixture.payment.id);
+  assert.equal(campaign?.title, undefined); assert.equal(campaign?.coverUrl, undefined);
+});
+
+test('expired checkout is terminal and unconfirmed old attempts cannot create another charge', async () => {
+  const id = await promotionFixture(db, 900);
+  const now = Date.now();
+  await preparePromotionCheckout(db, promotionAuthor, id, now);
+  await assert.rejects(preparePromotionCheckout(db, promotionAuthor, id, now + 23 * 3600000), /payment review/);
+  const fixture = promotionStripeFixture(id);
+  fixture.session.status = 'expired';
+  await expirePromotionCheckout(db, fixture.session);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'stopped');
+  await assert.rejects(preparePromotionCheckout(db, promotionAuthor, id), /not awaiting/);
+});
+
+test('admin refunds recover from a lost Stripe response without a second refund', async () => {
+  const id = await promotionFixture(db, 900);
+  const fixture = promotionStripeFixture(id);
+  await createPromotionCheckout(db, fixture.stripe, promotionAuthor, id, 'https://example.test');
+  await fulfillPromotionCheckout(db, fixture.session, fixture.paid(), true);
+  await reviewPromotion(db, promotionAuthor, id, 'stop', 'Stopped by author');
+  await assert.rejects(resolvePromotionPayment(db, fixture.stripe, promotionAuthor, id), /Administrator/);
+  fixture.state.loseRefundResponse = true;
+  await assert.rejects(resolvePromotionPayment(db, fixture.stripe, promotionAdmin, id), /Lost refund/);
+  await resolvePromotionPayment(db, fixture.stripe, promotionAdmin, id);
+  assert.equal(fixture.state.refundCalls, 1);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'refunded');
+  assert.equal((await promotionCandidates(db)).length, 0);
+});
+
+test('promotion data is private and all client activation, billing and counter writes are denied', async () => {
+  const id = await promotionFixture(db);
+  const author = env.authenticatedContext('author').firestore();
+  const admin = env.authenticatedContext('admin').firestore();
+  const reader = env.authenticatedContext('reader').firestore();
+  await assertSucceeds(getDoc(doc(author, 'bookPromotions', id)));
+  await assertSucceeds(getDoc(doc(admin, 'bookPromotions', id)));
+  await assertFails(getDoc(doc(reader, 'bookPromotions', id)));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'bookPromotions', id)));
+  for (const client of [author, admin, reader]) {
+    await assertFails(updateDoc(doc(client, 'bookPromotions', id), { status: 'active', priceCents: 0, clicks: 999 }));
+    await assertFails(setDoc(doc(client, 'bookPromotions', id, 'dailyReaders', 'fake'), { click: true }));
+    await assertFails(setDoc(doc(client, 'promotionSettings', 'global'), { enabled: true, priceCents: 0 }));
+    await assertFails(setDoc(doc(client, 'promotionSlots', 'book'), { campaignId: 'fake' }));
+  }
+});
+
+test('admin can recover and close a checkout whose creation response was lost', async () => {
+  const id = await promotionFixture(db, 900);
+  const fixture = promotionStripeFixture(id);
+  fixture.state.loseCreateResponse = true;
+  await assert.rejects(createPromotionCheckout(db, fixture.stripe, promotionAuthor, id, 'https://example.test'), /Lost creation/);
+  await reviewPromotion(db, promotionAuthor, id, 'stop', 'Cancel');
+  await resolvePromotionPayment(db, fixture.stripe, promotionAdmin, id);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'stopped');
+  assert.equal(fixture.state.createCalls, 1);
+  assert.equal(fixture.state.refundCalls, 0);
+});
+
+test('pending and later failed refunds stay visible for admin review', async () => {
+  const id = await promotionFixture(db, 900);
+  const fixture = promotionStripeFixture(id);
+  await createPromotionCheckout(db, fixture.stripe, promotionAuthor, id, 'https://example.test');
+  await fulfillPromotionCheckout(db, fixture.session, fixture.paid(), true);
+  fixture.charge.refunded = true;
+  fixture.state.refundStatus = 'pending';
+  await reconcilePromotionRefund(db, fixture.stripe, fixture.payment);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'needs_review');
+  fixture.state.refundStatus = 'succeeded';
+  await reconcilePromotionRefund(db, fixture.stripe, fixture.payment);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'refunded');
+  fixture.state.refundStatus = 'failed';
+  await reconcilePromotionRefund(db, fixture.stripe, fixture.payment);
+  assert.equal((await db.doc(`bookPromotions/${id}`).get()).data()?.status, 'needs_review');
+  assert.equal((await promotionCandidates(db)).length, 0);
+});
 
 test('author identity review commits status, verification and one notification atomically', async () => {
   await db.doc('verificationRequests/request').set({ sellerId: 'author', status: 'pending' });

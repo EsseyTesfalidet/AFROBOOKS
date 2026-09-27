@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookRail from '@/components/buyer/BookRail';
+import SponsoredBook from '@/components/buyer/SponsoredBook';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
 import { useCatalog } from '@/hooks/useCatalog';
@@ -27,6 +28,7 @@ export default function DiscoverPage() {
         : books.length === 0 ? <div className="border-t border-white/10 py-10"><h2 className="text-[22px] font-semibold">New stories are on the way.</h2><p className="mt-3 text-[14px] text-[#a8a49c]">There are no published books in the catalog yet. Check back for new releases.</p></div>
         : <>
           <BookRail title={shelves.genre.length ? 'Recommended for you' : 'Start with these stories'} subtitle={shelves.genre.length ? `Picks from ${favoriteGenre}, with more stories to explore.` : 'A selection from the available catalog. No reading history needed.'} books={shelves.recommended} />
+          <SponsoredBook books={books} />
           {shelves.popular.length > 0 && <BookRail title="Popular with readers" subtitle="Ordered by copies sold across the catalog." books={shelves.popular} actionHref="/search?collection=trending" />}
           {hasDifferentLatest && <BookRail title="Latest releases" subtitle="Recently published stories, ready to read." books={shelves.latest} actionHref="/search?collection=new" />}
           {shelves.featured.length > 0 && <BookRail title="Staff picks" subtitle="Selected by the AfroBooks team." books={shelves.featured} actionHref="/search?collection=featured" />}

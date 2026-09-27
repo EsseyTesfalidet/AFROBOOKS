@@ -4,6 +4,7 @@ import { countsTowardSellerVerificationBookLimit } from '@/lib/sellerVerificatio
 import type { Auth } from 'firebase-admin/auth';
 import { cancelUserSubscription } from './cancelSubscription';
 import { deleteBookFiles } from './bookFiles';
+import { stopBookPromotions } from './promotions';
 import type {
   DocumentReference,
   Firestore,
@@ -141,6 +142,8 @@ export async function deleteBookRecords(
     return { sellerId, title: (snapshot.data()?.title as string | undefined) ?? null };
   });
   if (!book) return { deleted: false, sellerId: null as string | null, title: null as string | null };
+
+  await stopBookPromotions(adminDb, bookId);
 
   // The book is hidden before cleanup starts. A failed cleanup keeps its
   // deletion marker so the same request can resume, even if the parent is gone.
