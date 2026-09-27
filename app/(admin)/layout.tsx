@@ -1,10 +1,6 @@
-import AdminMobileNav from '@/components/admin/AdminMobileNav';
+import AdminWorkspace from '@/components/admin/AdminWorkspace';
+import './admin.css';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <AdminMobileNav />
-      {children}
-    </>
-  );
+  return <AdminWorkspace>{children}</AdminWorkspace>;
 }

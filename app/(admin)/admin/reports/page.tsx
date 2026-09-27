@@ -1,78 +1,217 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import StatusPill from '@/components/shared/StatusPill';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { useState } from 'react';
+import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
+import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { dateValue } from '@/lib/admin/metrics';
+import {
+  AdminHeading,
+  AdminSearch,
+  AdminPagination,
+  AdminDrawer,
+  AdminError,
+  AdminBadge,
+} from '@/components/admin/AdminUI';
 import type { Report } from '@/types/review';
 
 export default function AdminReportsPage() {
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
-  const userProfile = useAuthStore((s) => s.userProfile);
-
-  useEffect(() => {
-    getDocs(collection(db, 'reports')).then((snap) => {
-      setReports(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Report)));
-      setLoading(false);
-    });
-  }, []);
-
-  async function handleResolve(reportId: string) {
-    await updateDoc(doc(db, 'reports', reportId), {
-      status: 'resolved', resolvedBy: userProfile?.uid, resolvedAt: serverTimestamp(),
-    });
-    setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: 'resolved' } : r));
+  const { data: reports, loading, error, retry } = useAdminCollection<Report>('reports');
+  const uid = useAuthStore((state) => state.userProfile?.uid);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('open');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const needle = search.trim().toLowerCase();
+  const filtered = reports
+    .filter(
+      (report) =>
+        (status === 'all' || report.status === status) &&
+        [report.targetName, report.reporterName, report.reason, report.id].some((value) =>
+          value?.toLowerCase().includes(needle),
+        ),
+    )
+    .sort((a, b) => dateValue(a.createdAt) - dateValue(b.createdAt));
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 15)));
+  const report = reports.find((item) => item.id === selected);
+  async function resolve(status: 'resolved' | 'dismissed') {
+    if (!report || !uid || busy) return;
+    setBusy(true);
+    setActionError('');
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, 'reports', report.id);
+        const current = await tx.get(ref);
+        if (!current.exists() || current.data().status !== 'open')
+          throw new Error(
+            'This report was already reviewed. Close this panel to see its current status.',
+          );
+        tx.update(ref, {
+          status,
+          adminNote: note.trim() || null,
+          resolvedBy: uid,
+          resolvedAt: serverTimestamp(),
+        });
+      });
+      setSelected(null);
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'Unable to save your review.');
+    } finally {
+      setBusy(false);
+    }
   }
-
-  async function handleDismiss(reportId: string) {
-    await updateDoc(doc(db, 'reports', reportId), { status: 'dismissed' });
-    setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: 'dismissed' } : r));
-  }
-
   return (
-    <div className="flex min-h-screen bg-[#0e0e0e]">
-      <AdminSidebar />
-      <main className="flex-1 px-4 md:px-6 py-7">
-        <h1 className="font-display text-display-lg text-white mb-5">Reports</h1>
-        {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
-          <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <table className="w-full text-sm min-w-[640px]">
-              <thead>
-                <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                  {['Reporter', 'Type', 'Target', 'Reason', 'Date', 'Status', 'Actions'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #111' }}>
-                    <td className="px-4 py-3 text-[#aaa]">{r.reporterName}</td>
-                    <td className="px-4 py-3"><StatusPill status={r.targetType} /></td>
-                    <td className="px-4 py-3 text-white truncate max-w-[120px]">{r.targetName}</td>
-                    <td className="px-4 py-3 text-[#666] truncate max-w-[160px]">{r.reason}</td>
-                    <td className="px-4 py-3 text-xs text-[#555]">{r.createdAt?.toDate?.()?.toLocaleDateString?.()}</td>
-                    <td className="px-4 py-3"><StatusPill status={r.status} /></td>
-                    <td className="px-4 py-3">
-                      {r.status === 'open' && (
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => handleResolve(r.id)} className="text-xs px-2.5 py-1 rounded-lg border" style={{ borderColor: '#1a4a2a', color: '#4ade80' }}>Resolve</button>
-                          <button type="button" onClick={() => handleDismiss(r.id)} className="text-xs px-2.5 py-1 rounded-lg border" style={{ borderColor: '#333', color: '#666' }}>Dismiss</button>
-                        </div>
-                      )}
-                    </td>
+    <main className="admin-page">
+      <AdminHeading
+        title="Reports"
+        description="Review the full context, record a decision, and keep the oldest concerns moving."
+      />
+      <AdminError error={error} retry={retry} />
+      <div className="admin-toolbar">
+        <AdminSearch
+          label="Search reports"
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+        />
+        <select
+          aria-label="Report status"
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value);
+            setPage(1);
+          }}
+        >
+          {['open', 'resolved', 'dismissed', 'all'].map((value) => (
+            <option key={value} value={value}>
+              {value === 'all' ? 'All reports' : value}
+            </option>
+          ))}
+        </select>
+      </div>
+      <section className="admin-panel">
+        {loading ? (
+          <p className="admin-empty" role="status">
+            Loading reports…
+          </p>
+        ) : error ? null : (
+          <>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Reported content</th>
+                    <th>Submitted by</th>
+                    <th>Received</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-                {reports.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-[#444]">No reports found.</td></tr>}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filtered.slice((currentPage - 1) * 15, currentPage * 15).map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <button
+                          type="button"
+                          className="admin-row-title"
+                          onClick={() => {
+                            setSelected(item.id);
+                            setNote(item.adminNote ?? '');
+                            setActionError('');
+                          }}
+                        >
+                          {item.targetName || 'Unnamed ' + item.targetType}
+                        </button>
+                        <small className="max-w-sm truncate">{item.reason}</small>
+                      </td>
+                      <td>{item.reporterName}</td>
+                      <td className="admin-muted">
+                        {dateValue(item.createdAt)
+                          ? new Date(dateValue(item.createdAt)).toLocaleDateString()
+                          : 'Unknown'}
+                      </td>
+                      <td>
+                        <AdminBadge tone={item.status === 'open' ? 'warning' : 'neutral'}>
+                          {item.status}
+                        </AdminBadge>
+                      </td>
+                    </tr>
+                  ))}
+                  {!filtered.length && (
+                    <tr>
+                      <td colSpan={4} className="admin-empty">
+                        No reports match this view.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <AdminPagination page={currentPage} total={filtered.length} onChange={setPage} />
+          </>
         )}
-      </main>
-    </div>
+      </section>
+      {report && (
+        <AdminDrawer busy={busy} title="Report review" onClose={() => setSelected(null)}>
+          <AdminBadge>{report.targetType}</AdminBadge>
+          <h3 className="text-xl font-semibold mt-4">{report.targetName}</h3>
+          <p className="text-sm text-[#a6afa3] mt-2">Reported by {report.reporterName}</p>
+          <div className="my-6 rounded-lg border border-[#30352f] p-4 whitespace-pre-wrap">
+            {report.reason}
+          </div>
+          <p className="text-xs text-[#a6afa3]">Target ID: {report.targetId}</p>
+          <AdminError error={actionError} />
+          {report.status === 'open' ? (
+            <>
+              <label className="block text-sm mt-6" htmlFor="review-note">
+                Review note <span className="text-[#a6afa3]">(optional)</span>
+              </label>
+              <textarea
+                id="review-note"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                maxLength={2000}
+                rows={4}
+                className="w-full mt-2 rounded-lg border border-[#49523f] bg-[#111311] p-3"
+              />
+              <p className="text-xs text-[#a6afa3] mt-3">
+                Closing a report records your decision. Book and account moderation are managed in
+                their own sections.
+              </p>
+              <div className="admin-drawer-actions">
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="admin-primary"
+                  onClick={() => resolve('resolved')}
+                >
+                  {busy ? 'Saving…' : 'Mark resolved'}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="admin-secondary"
+                  onClick={() => resolve('dismissed')}
+                >
+                  Dismiss report
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="mt-6">
+              <AdminBadge>{report.status}</AdminBadge>
+              <p className="mt-4 whitespace-pre-wrap">
+                {report.adminNote || 'No review note recorded.'}
+              </p>
+            </div>
+          )}
+        </AdminDrawer>
+      )}
+    </main>
   );
 }

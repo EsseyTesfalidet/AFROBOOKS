@@ -8,6 +8,7 @@ import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { fulfillPayment } from '../lib/server/fulfillPayment';
 import { calculateCartPricing } from '../lib/utils/fees';
+import { reviewVerification } from '../lib/admin/reviewVerification';
 import { processAuthorRoyalties, reconcileAuthor, payAuthorOrder, holdAuthorPayouts } from '../functions/src/stripe/authorRoyalties';
 import { seedRoyalty, royaltyFixture } from './royalty-fixture';
 import { updateFollow, createPurchaseReview } from '../lib/server/social';
@@ -44,6 +45,32 @@ beforeEach(async () => {
   ]);
 });
 after(async () => { await env?.cleanup(); await deleteApp(adminApp); });
+
+test('author identity review commits status, verification and one notification atomically', async () => {
+  await db.doc('verificationRequests/request').set({ sellerId: 'author', status: 'pending' });
+  const client = env.authenticatedContext('admin').firestore() as unknown as Parameters<typeof reviewVerification>[0];
+  const results = await Promise.allSettled([
+    reviewVerification(client, 'request', 'admin', 'approved'),
+    reviewVerification(client, 'request', 'admin', 'approved'),
+  ]);
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+  assert.equal((await db.doc('verificationRequests/request').get()).data()?.status, 'approved');
+  assert.equal((await db.doc('sellers/author').get()).data()?.verificationStatus.idVerified, true);
+  assert.equal((await db.doc('sellers/author').get()).data()?.verificationStatus.emailVerified, false);
+  assert.equal((await db.collection('notifications').get()).size, 1);
+  await db.doc('verificationRequests/missing').set({ sellerId: 'deleted-author', status: 'pending' });
+  await assert.rejects(reviewVerification(client, 'missing', 'admin', 'approved'), /no longer available/);
+  assert.equal((await db.doc('verificationRequests/missing').get()).data()?.status, 'pending');
+  assert.equal((await db.collection('notifications').get()).size, 1);
+});
+
+test('an author cannot approve their own identity request', async () => {
+  await db.doc('verificationRequests/request').set({ sellerId: 'author', status: 'pending' });
+  const client = env.authenticatedContext('author').firestore() as unknown as Parameters<typeof reviewVerification>[0];
+  await assertFails(reviewVerification(client, 'request', 'author', 'approved'));
+  assert.equal((await db.doc('verificationRequests/request').get()).data()?.status, 'pending');
+  assert.equal((await db.collection('notifications').get()).size, 0);
+});
 
 test('subscription tiers, eligibility and preorder dates gate paid chapters', async () => {
   const reader = env.authenticatedContext('reader').firestore();

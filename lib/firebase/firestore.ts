@@ -348,28 +348,30 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 
 export async function getPlatformSettings(): Promise<PlatformSettings> {
   const snap = await getDoc(doc(db, 'platformSettings', 'global'));
-  if (!snap.exists()) {
-    return {
-      id: 'global',
-      directSaleFee: 15,
-      subscriptionPlatformCut: 30,
-      borrowRatePerRead: 200,
-      newBookExclusivityDays: 90,
-      autoApproveBooks: true,
-      newUserSignupsOpen: true,
-      newSellerSignupsOpen: true,
-      subscriptionSalesActive: true,
-      maintenanceMode: false,
-      subscriptionPrices: { basic: 499, standard: 999, premium: 1499 },
-    };
-  }
-  return snap.data() as PlatformSettings;
+  const defaults: PlatformSettings = {
+    id: 'global',
+    directSaleFee: 15,
+    subscriptionPlatformCut: 30,
+    borrowRatePerRead: 200,
+    newBookExclusivityDays: 90,
+    autoApproveBooks: false,
+    newUserSignupsOpen: true,
+    newSellerSignupsOpen: true,
+    subscriptionSalesActive: false,
+    maintenanceMode: false,
+    subscriptionPrices: { basic: 499, standard: 999, premium: 1499 },
+  };
+  return {
+    ...defaults,
+    ...snap.data(),
+    subscriptionPrices: { ...defaults.subscriptionPrices, ...snap.data()?.subscriptionPrices },
+  };
 }
 
 export async function updatePlatformSettings(
   data: Partial<PlatformSettings>
 ): Promise<void> {
-  await updateDoc(doc(db, 'platformSettings', 'global'), data as DocumentData);
+  await setDoc(doc(db, 'platformSettings', 'global'), data as DocumentData, { merge: true });
 }
 
 // ── Reports ────────────────────────────────────────────────────────────────

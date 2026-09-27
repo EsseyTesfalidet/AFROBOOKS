@@ -1,130 +1,232 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import StatusPill from '@/components/shared/StatusPill';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs } from 'firebase/firestore';
+import { useState } from 'react';
+import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { dateValue } from '@/lib/admin/metrics';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import {
+  AdminHeading,
+  AdminSearch,
+  AdminPagination,
+  AdminDrawer,
+  AdminError,
+  AdminBadge,
+} from '@/components/admin/AdminUI';
 import type { Subscription } from '@/types/subscription';
 
 export default function AdminSubscriptionsPage() {
-  const [subs, setSubs] = useState<Subscription[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [planFilter, setPlanFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  useEffect(() => {
-    getDocs(collection(db, 'subscriptions')).then((snap) => {
-      setSubs(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Subscription)));
-      setLoading(false);
-    });
-  }, []);
-
-  const filtered = subs.filter((s) => {
-    if (planFilter !== 'all' && s.plan !== planFilter) return false;
-    if (statusFilter !== 'all' && s.status !== statusFilter) return false;
-    return true;
-  });
-
-  const stats = {
-    active: subs.filter((s) => s.status === 'active').length,
-    basic: subs.filter((s) => s.plan === 'basic' && s.status === 'active').length,
-    standard: subs.filter((s) => s.plan === 'standard' && s.status === 'active').length,
-    premium: subs.filter((s) => s.plan === 'premium' && s.status === 'active').length,
-    mrr: subs
-      .filter((s) => s.status === 'active')
-      .reduce((sum, s) => sum + (s.price ?? 0), 0),
-  };
-
+  const {
+    data: subscriptions,
+    loading,
+    error,
+    retry,
+  } = useAdminCollection<Subscription>('subscriptions');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+  const [plan, setPlan] = useState('all');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<string | null>(null);
+  const active = subscriptions.filter((item) => item.status === 'active');
+  const filtered = subscriptions
+    .filter(
+      (item) =>
+        (status === 'all' || item.status === status) &&
+        (plan === 'all' || item.plan === plan) &&
+        [item.userDisplayName, item.userId, item.stripeSubscriptionId].some((value) =>
+          value?.toLowerCase().includes(search.trim().toLowerCase()),
+        ),
+    )
+    .sort((a, b) => dateValue(b.startDate) - dateValue(a.startDate));
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 15)));
+  const subscription = subscriptions.find((item) => item.id === selected);
   return (
-    <div className="flex min-h-screen bg-[#0e0e0e]">
-      <AdminSidebar />
-      <main className="flex-1 px-4 md:px-6 py-7">
-        <h1 className="font-display text-display-lg text-white mb-5">Subscriptions</h1>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <p className="text-xs text-[#555] mb-1">MRR</p>
-            <p className="font-display text-2xl text-[#f5b800]">{centsToDisplay(stats.mrr)}</p>
-          </div>
-          <div className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <p className="text-xs text-[#555] mb-1">Active Subscribers</p>
-            <p className="font-display text-2xl text-white">{stats.active}</p>
-          </div>
-          <div className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <p className="text-xs text-[#555] mb-3">Plan Breakdown</p>
-            <div className="space-y-1">
-              {[['Basic', stats.basic, '#555'], ['Standard', stats.standard, '#4ade80'], ['Premium', stats.premium, '#f5b800']].map(([label, count, color]) => (
-                <div key={label as string} className="flex justify-between text-xs">
-                  <span style={{ color: color as string }}>{label as string}</span>
-                  <span className="text-[#aaa]">{count as number}</span>
+    <main className="admin-page">
+      <AdminHeading
+        title="Subscriptions"
+        description="Existing billing records and renewal status. New subscription purchases are currently unavailable."
+      />
+      <AdminError error={error} retry={retry} />
+      {loading ? (
+        <p role="status" className="admin-empty">
+          Loading subscriptions…
+        </p>
+      ) : (
+        !error && (
+          <>
+            <dl className="admin-metrics">
+              {[
+                [
+                  'Active plan value',
+                  centsToDisplay(active.reduce((sum, item) => sum + (item.price ?? 0), 0)),
+                  'Monthly prices of active records',
+                ],
+                ['Active subscribers', active.length.toString(), 'Current subscriptions'],
+                [
+                  'Past due',
+                  subscriptions.filter((item) => item.status === 'past_due').length.toString(),
+                  'Billing needs attention',
+                ],
+                [
+                  'Ending subscriptions',
+                  active.filter((item) => item.cancelAtPeriodEnd).length.toString(),
+                  'Cancel at the current period end',
+                ],
+              ].map(([label, value, hint]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                  <small>{hint}</small>
                 </div>
               ))}
-            </div>
-          </div>
-          <div className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <p className="text-xs text-[#555] mb-1">Total Records</p>
-            <p className="font-display text-2xl text-white">{subs.length}</p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 mb-5">
-          <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
-            <option value="all">All Plans</option>
-            <option value="basic">Basic</option>
-            <option value="standard">Standard</option>
-            <option value="premium">Premium</option>
-          </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="past_due">Past Due</option>
-          </select>
-        </div>
-
-        {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
-          <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <table className="w-full text-sm min-w-[600px]">
-              <thead>
-                <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                  {['Subscriber', 'Plan', 'Status', 'Stripe Sub ID', 'Started', 'Renews'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s) => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid #111' }}>
-                    <td className="px-4 py-3">
-                      <p className="text-white">{s.userDisplayName}</p>
-                      <p className="text-xs text-[#555]">{s.userId}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full capitalize"
-                        style={{
-                          background: s.plan === 'premium' ? '#2e1a0f' : s.plan === 'standard' ? '#0f2e1a' : '#1a1a1a',
-                          color: s.plan === 'premium' ? '#f5b800' : s.plan === 'standard' ? '#4ade80' : '#aaa',
-                        }}>
-                        {s.plan}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3"><StatusPill status={s.status} /></td>
-                    <td className="px-4 py-3 text-xs text-[#555] font-mono">{s.stripeSubscriptionId}</td>
-                    <td className="px-4 py-3 text-xs text-[#555]">{s.startDate?.toDate?.()?.toLocaleDateString?.()}</td>
-                    <td className="px-4 py-3 text-xs text-[#555]">{s.currentPeriodEnd?.toDate?.()?.toLocaleDateString?.()}</td>
-                  </tr>
+            </dl>
+            <div className="admin-toolbar">
+              <AdminSearch
+                label="Search subscriber or Stripe ID"
+                value={search}
+                onChange={(value) => {
+                  setSearch(value);
+                  setPage(1);
+                }}
+              />
+              <select
+                aria-label="Subscription plan"
+                value={plan}
+                onChange={(event) => {
+                  setPlan(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {['all', 'basic', 'standard', 'premium'].map((value) => (
+                  <option key={value} value={value}>
+                    {value === 'all' ? 'All plans' : value}
+                  </option>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-[#444]">No subscriptions found.</td></tr>}
-              </tbody>
-            </table>
+              </select>
+              <select
+                aria-label="Subscription status"
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {['all', 'active', 'cancelled', 'past_due'].map((value) => (
+                  <option key={value} value={value}>
+                    {value === 'all' ? 'All statuses' : value.replaceAll('_', ' ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <section className="admin-panel">
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Subscriber</th>
+                      <th>Plan</th>
+                      <th>Monthly price</th>
+                      <th>Period ends</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.slice((currentPage - 1) * 15, currentPage * 15).map((item) => (
+                      <tr key={item.id}>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-row-title"
+                            onClick={() => setSelected(item.id)}
+                          >
+                            {item.userDisplayName || 'Subscriber'}
+                          </button>
+                          <small>{item.userId}</small>
+                        </td>
+                        <td className="capitalize">{item.plan}</td>
+                        <td>{centsToDisplay(item.price ?? 0)}</td>
+                        <td className="admin-muted">
+                          {dateValue(item.currentPeriodEnd)
+                            ? new Date(dateValue(item.currentPeriodEnd)).toLocaleDateString()
+                            : 'Unknown'}
+                          {item.cancelAtPeriodEnd && <small>Cancellation scheduled</small>}
+                        </td>
+                        <td>
+                          <AdminBadge
+                            tone={
+                              item.status === 'active'
+                                ? 'good'
+                                : item.status === 'past_due'
+                                  ? 'warning'
+                                  : 'neutral'
+                            }
+                          >
+                            {item.status.replaceAll('_', ' ')}
+                          </AdminBadge>
+                        </td>
+                      </tr>
+                    ))}
+                    {!filtered.length && (
+                      <tr>
+                        <td colSpan={5} className="admin-empty">
+                          No subscriptions match this view.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <AdminPagination page={currentPage} total={filtered.length} onChange={setPage} />
+            </section>
+          </>
+        )
+      )}
+      {subscription && (
+        <AdminDrawer title="Subscription details" onClose={() => setSelected(null)}>
+          <h3 className="text-xl font-semibold">{subscription.userDisplayName}</h3>
+          <p className="text-[#a6afa3] mt-2 capitalize">
+            {subscription.plan} · {centsToDisplay(subscription.price ?? 0)} / month
+          </p>
+          <div className="mt-4">
+            <AdminBadge>{subscription.status.replaceAll('_', ' ')}</AdminBadge>
           </div>
-        )}
-      </main>
-    </div>
+          <dl>
+            <div>
+              <dt>Started</dt>
+              <dd>
+                {dateValue(subscription.startDate)
+                  ? new Date(dateValue(subscription.startDate)).toLocaleDateString()
+                  : 'Unknown'}
+              </dd>
+            </div>
+            <div>
+              <dt>Period ends</dt>
+              <dd>
+                {dateValue(subscription.currentPeriodEnd)
+                  ? new Date(dateValue(subscription.currentPeriodEnd)).toLocaleDateString()
+                  : 'Unknown'}
+              </dd>
+            </div>
+          </dl>
+          <p className="text-sm text-[#a6afa3]">
+            {subscription.cancelAtPeriodEnd
+              ? 'This subscription is scheduled to end at the current period boundary.'
+              : 'Billing is managed through Stripe.'}
+          </p>
+          {subscription.stripeSubscriptionId && (
+            <a
+              href={
+                'https://dashboard.stripe.com/subscriptions/' +
+                encodeURIComponent(subscription.stripeSubscriptionId)
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="admin-secondary mt-6"
+            >
+              Review subscription in Stripe ↗
+            </a>
+          )}
+        </AdminDrawer>
+      )}
+    </main>
   );
 }

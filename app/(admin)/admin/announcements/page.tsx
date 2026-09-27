@@ -1,154 +1,291 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { useState } from 'react';
+import { addDoc, updateDoc, doc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, orderBy, query } from 'firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
+import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { dateValue } from '@/lib/admin/metrics';
+import {
+  AdminHeading,
+  AdminSearch,
+  AdminDrawer,
+  AdminError,
+  AdminBadge,
+} from '@/components/admin/AdminUI';
 import type { Announcement } from '@/types/review';
 
+const empty = {
+  title: '',
+  body: '',
+  targetAudience: 'all' as Announcement['targetAudience'],
+  type: 'info' as Announcement['type'],
+  isActive: true,
+};
 export default function AdminAnnouncementsPage() {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const userProfile = useAuthStore((s) => s.userProfile);
-
-  const [form, setForm] = useState({
-    title: '',
-    body: '',
-    targetAudience: 'all' as 'all' | 'buyers' | 'sellers',
-    type: 'info' as 'info' | 'warning' | 'maintenance' | 'feature',
-  });
-
-  useEffect(() => {
-    getDocs(query(collection(db, 'announcements'), orderBy('createdAt', 'desc'))).then((snap) => {
-      setAnnouncements(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Announcement)));
-      setLoading(false);
-    });
-  }, []);
-
-  async function handleCreate() {
-    if (!form.title || !form.body) return;
-    setSaving(true);
-    const ref = await addDoc(collection(db, 'announcements'), {
-      ...form, isActive: true,
-      authorId: userProfile?.uid,
-      authorName: `${userProfile?.firstName} ${userProfile?.lastName}`,
-      createdAt: serverTimestamp(),
-    });
-    setAnnouncements((prev) => [{
-      id: ref.id, ...form, isActive: true,
-      authorId: userProfile?.uid ?? '',
-      authorName: `${userProfile?.firstName} ${userProfile?.lastName}`,
-      createdAt: null,
-    }, ...prev]);
-    setForm({ title: '', body: '', targetAudience: 'all', type: 'info' });
-    setShowForm(false);
-    setSaving(false);
+  const {
+    data: announcements,
+    loading,
+    error,
+    retry,
+  } = useAdminCollection<Announcement>('announcements');
+  const user = useAuthStore((state) => state.userProfile);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('active');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState(empty);
+  const [baseline, setBaseline] = useState(JSON.stringify(empty));
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [notice, setNotice] = useState('');
+  const filtered = announcements
+    .filter(
+      (item) =>
+        (filter === 'all' || item.isActive === (filter === 'active')) &&
+        [item.title, item.body].some((value) =>
+          value?.toLowerCase().includes(search.trim().toLowerCase()),
+        ),
+    )
+    .sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt));
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (!user || !editing || busy) return;
+    if (!form.title.trim() || !form.body.trim()) {
+      setSaveError('Enter a title and message.');
+      return;
+    }
+    setBusy(true);
+    setSaveError('');
+    try {
+      const data = {
+        ...form,
+        title: form.title.trim(),
+        body: form.body.trim(),
+        updatedAt: serverTimestamp(),
+      };
+      if (editing === 'new')
+        await addDoc(collection(db, 'announcements'), {
+          ...data,
+          authorId: user.uid,
+          authorName: user.firstName + ' ' + user.lastName,
+          createdAt: serverTimestamp(),
+        });
+      else await updateDoc(doc(db, 'announcements', editing), data);
+      setNotice(
+        form.isActive
+          ? 'Announcement saved and active for its audience.'
+          : 'Announcement saved as inactive.',
+      );
+      setEditing(null);
+    } catch {
+      setSaveError('Unable to save the announcement. Your text is still here; please try again.');
+    } finally {
+      setBusy(false);
+    }
   }
-
-  async function toggleActive(id: string, current: boolean) {
-    await updateDoc(doc(db, 'announcements', id), { isActive: !current });
-    setAnnouncements((prev) => prev.map((a) => a.id === id ? { ...a, isActive: !current } : a));
-  }
-
-  const typeColors: Record<string, { bg: string; color: string }> = {
-    info: { bg: '#0f1a2e', color: '#60a5fa' },
-    warning: { bg: '#2e1a0f', color: '#f5b800' },
-    maintenance: { bg: '#1f0e0c', color: '#e8442a' },
-    feature: { bg: '#0f2e1a', color: '#4ade80' },
-  };
-
   return (
-    <div className="flex min-h-screen bg-[#0e0e0e]">
-      <AdminSidebar />
-      <main className="flex-1 px-4 md:px-6 py-7 max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-display-lg text-white">Announcements</h1>
-          <button type="button" onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 rounded-xl text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
-            {showForm ? 'Cancel' : 'New Announcement'}
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="p-5 rounded-xl border mb-6 space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <h2 className="font-display text-display-sm text-white">Create Announcement</h2>
-            <div>
-              <label className="block text-xs text-[#555] mb-1">Title</label>
-              <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
-            </div>
-            <div>
-              <label className="block text-xs text-[#555] mb-1">Body</label>
-              <textarea rows={4} value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border text-sm resize-none" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-xs text-[#555] mb-1">Audience</label>
-                <select value={form.targetAudience} onChange={(e) => setForm((f) => ({ ...f, targetAudience: e.target.value as typeof form.targetAudience }))}
-                  className="w-full px-3 py-2 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
-                  <option value="all">All Users</option>
-                  <option value="buyers">Readers Only</option>
-                  <option value="sellers">Authors Only</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs text-[#555] mb-1">Type</label>
-                <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as typeof form.type }))}
-                  className="w-full px-3 py-2 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
-                  <option value="info">Info</option>
-                  <option value="feature">Feature</option>
-                  <option value="warning">Warning</option>
-                  <option value="maintenance">Maintenance</option>
-                </select>
-              </div>
-            </div>
-            <button type="button" onClick={handleCreate} disabled={saving || !form.title || !form.body}
-              className="px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
-              style={{ background: '#e8442a', color: '#fff' }}>
-              {saving ? 'Publishing...' : 'Publish'}
-            </button>
-          </div>
-        )}
-
-        {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : (
-          <div className="space-y-4">
-            {announcements.map((a) => {
-              const tc = typeColors[a.type] ?? typeColors.info;
-              return (
-                <div key={a.id} className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a', opacity: a.isActive ? 1 : 0.5 }}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: tc.bg, color: tc.color }}>{a.type}</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: '#1a1a1a', color: '#666' }}>{a.targetAudience}</span>
-                        {!a.isActive && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#1a1a1a', color: '#444' }}>Inactive</span>}
-                      </div>
-                      <p className="font-medium text-white">{a.title}</p>
-                      <p className="text-sm text-[#666] mt-1">{a.body}</p>
-                      <p className="text-xs text-[#444] mt-2">{a.authorName} · {(a.createdAt as any)?.toDate?.()?.toLocaleDateString?.()}</p>
-                    </div>
-                    <button type="button" onClick={() => toggleActive(a.id, a.isActive)}
-                      className="text-xs px-3 py-1.5 rounded-lg border flex-shrink-0"
-                      style={{ borderColor: a.isActive ? '#333' : '#1a4a2a', color: a.isActive ? '#666' : '#4ade80' }}>
-                      {a.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                  </div>
+    <main className="admin-page">
+      <AdminHeading
+        title="Announcements"
+        description="Publish a clear update for readers, authors, or your whole community."
+      >
+        <button
+          type="button"
+          className="admin-primary"
+          onClick={() => {
+            setEditing('new');
+            setForm(empty);
+            setBaseline(JSON.stringify(empty));
+            setSaveError('');
+          }}
+        >
+          New announcement
+        </button>
+      </AdminHeading>
+      <AdminError error={error} retry={retry} />
+      {notice && (
+        <p role="status" className="text-sm text-[#d8edb2] mb-5">
+          {notice}
+        </p>
+      )}
+      <div className="admin-toolbar">
+        <AdminSearch label="Search announcements" value={search} onChange={setSearch} />
+        <select
+          aria-label="Announcement visibility"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="all">All announcements</option>
+        </select>
+      </div>
+      {loading ? (
+        <p role="status" className="admin-empty">
+          Loading announcements…
+        </p>
+      ) : (
+        !error && (
+          <section className="admin-panel">
+            {filtered.map((item) => (
+              <article key={item.id} className="border-b border-[#30352f] last:border-0 p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <AdminBadge tone={item.isActive ? 'good' : 'neutral'}>
+                    {item.isActive ? 'Active' : 'Inactive'}
+                  </AdminBadge>
+                  <span className="admin-muted text-xs">
+                    {item.targetAudience === 'all'
+                      ? 'Everyone'
+                      : item.targetAudience === 'buyers'
+                        ? 'Readers'
+                        : 'Authors'}{' '}
+                    · {item.type}
+                  </span>
                 </div>
-              );
-            })}
-            {announcements.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-[#444] text-sm">No announcements yet.</p>
+                <button
+                  type="button"
+                  className="admin-row-title text-lg"
+                  onClick={() => {
+                    setEditing(item.id);
+                    setForm({
+                      title: item.title,
+                      body: item.body,
+                      targetAudience: item.targetAudience,
+                      type: item.type,
+                      isActive: item.isActive,
+                    });
+                    setBaseline(
+                      JSON.stringify({
+                        title: item.title,
+                        body: item.body,
+                        targetAudience: item.targetAudience,
+                        type: item.type,
+                        isActive: item.isActive,
+                      }),
+                    );
+                    setSaveError('');
+                  }}
+                >
+                  {item.title}
+                </button>
+                <p className="admin-muted mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+                  {item.body}
+                </p>
+                <p className="admin-muted text-xs mt-4">
+                  {item.authorName} ·{' '}
+                  {dateValue(item.createdAt)
+                    ? new Date(dateValue(item.createdAt)).toLocaleDateString()
+                    : 'Just published'}
+                </p>
+              </article>
+            ))}
+            {!filtered.length && <p className="admin-empty">No announcements match this view.</p>}
+          </section>
+        )
+      )}
+      {editing && (
+        <AdminDrawer
+          busy={busy}
+          title={editing === 'new' ? 'New announcement' : 'Edit announcement'}
+          onClose={() => {
+            if (
+              !busy &&
+              JSON.stringify(form) !== baseline &&
+              !window.confirm('Close this editor? Unsaved changes will be lost.')
+            )
+              return;
+            if (!busy) setEditing(null);
+          }}
+        >
+          <form onSubmit={save} className="space-y-5">
+            <div>
+              <label htmlFor="announcement-title">Title</label>
+              <input
+                id="announcement-title"
+                value={form.title}
+                maxLength={120}
+                required
+                onChange={(event) =>
+                  setForm((previous) => ({ ...previous, title: event.target.value }))
+                }
+                className="admin-field"
+              />
+            </div>
+            <div>
+              <label htmlFor="announcement-body">Message</label>
+              <textarea
+                id="announcement-body"
+                value={form.body}
+                maxLength={4000}
+                rows={7}
+                required
+                onChange={(event) =>
+                  setForm((previous) => ({ ...previous, body: event.target.value }))
+                }
+                className="admin-field"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="announcement-audience">Audience</label>
+                <select
+                  id="announcement-audience"
+                  value={form.targetAudience}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      targetAudience: event.target.value as Announcement['targetAudience'],
+                    }))
+                  }
+                  className="admin-field"
+                >
+                  <option value="all">Everyone</option>
+                  <option value="buyers">Readers</option>
+                  <option value="sellers">Authors</option>
+                </select>
               </div>
-            )}
-          </div>
-        )}
-      </main>
-    </div>
+              <div>
+                <label htmlFor="announcement-type">Type</label>
+                <select
+                  id="announcement-type"
+                  value={form.type}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      type: event.target.value as Announcement['type'],
+                    }))
+                  }
+                  className="admin-field"
+                >
+                  {['info', 'feature', 'warning', 'maintenance'].map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(event) =>
+                  setForm((previous) => ({ ...previous, isActive: event.target.checked }))
+                }
+              />
+              Visible to the selected audience
+            </label>
+            <AdminError error={saveError} />
+            <button type="submit" disabled={busy} className="admin-primary">
+              {busy
+                ? 'Saving…'
+                : editing === 'new' && form.isActive
+                  ? 'Publish announcement'
+                  : 'Save announcement'}
+            </button>
+          </form>
+        </AdminDrawer>
+      )}
+    </main>
   );
 }

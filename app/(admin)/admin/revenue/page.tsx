@@ -1,177 +1,356 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, orderBy, where, Timestamp } from 'firebase/firestore';
+import { useState } from 'react';
+import { Download } from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { dateValue, salesSummary } from '@/lib/admin/metrics';
+import { downloadCsv } from '@/lib/admin/csv';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import {
+  AdminHeading,
+  AdminSearch,
+  AdminPagination,
+  AdminDrawer,
+  AdminError,
+  AdminBadge,
+} from '@/components/admin/AdminUI';
 import type { Order } from '@/types/order';
 
-interface RevenueData {
-  date: string;
-  revenue: number;
-  platformFee: number;
-  sellerPayouts: number;
-  orders: number;
-}
-
 export default function AdminRevenuePage() {
-  const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<RevenueData[]>([]);
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-  const [reviewOrders, setReviewOrders] = useState<Order[]>([]);
-  const [error, setError] = useState('');
-  const [attempt, setAttempt] = useState(0);
-  const [totals, setTotals] = useState({ revenue: 0, platformFee: 0, sellerPayouts: 0, orders: 0 });
-  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
-
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError('');
-      const reviewSnap = await getDocs(query(collection(db, 'orders'), where('status', '==', 'needs_review')));
-      setReviewOrders(reviewSnap.docs.map(item => ({ ...item.data(), id: item.id } as Order)));
-      const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-
-      const snap = await getDocs(query(
-        collection(db, 'orders'),
-        where('createdAt', '>=', Timestamp.fromDate(since)),
-        orderBy('createdAt', 'desc')
-      ));
-
-      const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
-      setRecentOrders(orders.slice(0, 20));
-
-      const byDay: Record<string, RevenueData> = {};
-      let totalRev = 0, totalFee = 0, totalPayout = 0;
-
-      const completedOrders = orders.filter(order => order.status === 'completed');
-      completedOrders.forEach((o) => {
-        const date = o.createdAt?.toDate?.()?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? '';
-        if (!byDay[date]) byDay[date] = { date, revenue: 0, platformFee: 0, sellerPayouts: 0, orders: 0 };
-        byDay[date].revenue += o.finalPrice ?? 0;
-        byDay[date].platformFee += o.platformFee ?? 0;
-        byDay[date].sellerPayouts += o.sellerEarnings ?? 0;
-        byDay[date].orders += 1;
-        totalRev += o.finalPrice ?? 0;
-        totalFee += o.platformFee ?? 0;
-        totalPayout += o.sellerEarnings ?? 0;
-      });
-
-      setTotals({ revenue: totalRev, platformFee: totalFee, sellerPayouts: totalPayout, orders: completedOrders.length });
-      setChartData(Object.values(byDay).reverse());
-      setLoading(false);
-    }
-    load().catch(() => { setError('Unable to load payment records. Please try again.'); setLoading(false); });
-  }, [period, attempt]);
-
-  const stats = [
-    { label: 'Gross Revenue', value: centsToDisplay(totals.revenue), color: '#f5b800' },
-    { label: 'Platform Fees', value: centsToDisplay(totals.platformFee), color: '#4ade80' },
-    { label: 'Author Payouts', value: centsToDisplay(totals.sellerPayouts), color: '#60a5fa' },
-    { label: 'Total Orders', value: totals.orders.toLocaleString(), color: '#e8442a' },
-  ];
-
+  const { data: orders, loading, error, retry } = useAdminCollection<Order>('orders');
+  const [days, setDays] = useState(30);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<string | null>(null);
+  const now = new Date();
+  const summary = salesSummary(orders, days, now);
+  const since = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  since.setDate(since.getDate() - days + 1);
+  const filtered = orders
+    .filter(
+      (order) =>
+        dateValue(order.createdAt) >= since.getTime() &&
+        dateValue(order.createdAt) <= now.getTime() &&
+        (status === 'all' || order.status === status) &&
+        [order.bookTitle, order.buyerEmail, order.id, order.stripePaymentIntentId].some((value) =>
+          value?.toLowerCase().includes(search.trim().toLowerCase()),
+        ),
+    )
+    .sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt));
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 15)));
+  const order = orders.find((item) => item.id === selected);
+  const reviews = orders.filter((item) => item.status === 'needs_review');
+  function exportOrders() {
+    downloadCsv('afrobooks-orders-' + now.toISOString().slice(0, 10) + '.csv', [
+      [
+        'Order',
+        'Book',
+        'Status',
+        'Date',
+        'Customer paid USD',
+        'Platform earnings USD',
+        'Author earnings USD',
+        'Estimated processing USD',
+        'Stripe payment',
+      ],
+      ...filtered.map((item) => [
+        item.id,
+        item.bookTitle,
+        item.status,
+        new Date(dateValue(item.createdAt)).toISOString(),
+        (item.finalPrice / 100).toFixed(2),
+        ((item.platformFee ?? 0) / 100).toFixed(2),
+        ((item.sellerEarnings ?? 0) / 100).toFixed(2),
+        ((item.stripeFee ?? 0) / 100).toFixed(2),
+        item.stripePaymentIntentId,
+      ]),
+    ]);
+  }
   return (
-    <div className="flex min-h-screen bg-[#0e0e0e]">
-      <AdminSidebar />
-      <main className="flex-1 px-4 md:px-6 py-7">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-display-lg text-white">Revenue</h1>
-          <div className="flex gap-1 p-1 rounded-lg" style={{ background: '#1a1a1a' }}>
-            {(['7d', '30d', '90d'] as const).map((p) => (
-              <button key={p} type="button" onClick={() => setPeriod(p)}
-                className="px-3 py-1 rounded-md text-xs font-medium transition-colors"
-                style={{ background: period === p ? '#e8442a' : 'transparent', color: period === p ? '#fff' : '#666' }}>
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {error && <div role="alert" className="mb-5 text-[14px] text-red-300">{error}<button type="button" onClick={() => setAttempt(value => value + 1)} className="ml-4 min-h-11 underline">Try again</button></div>}
-        {!loading && reviewOrders.length > 0 && <section className="mb-6 rounded-xl border border-amber-400/30 p-5">
-          <h2 className="text-[18px] font-semibold text-amber-200">Payments needing review</h2>
-          <p className="mt-2 text-[14px] text-[#aaa]">These payments arrived after a book became unavailable. Access and author earnings were not granted. Review the payment in Stripe and resolve the buyer’s payment before closing the case.</p>
-          <ul className="mt-4 divide-y divide-white/10">{reviewOrders.map(order => <li key={order.id} className="space-y-1 py-3 text-[13px]"><p>{order.bookTitle} · {centsToDisplay(order.finalPrice)}</p><p className="break-all text-[#aaa]">Order: {order.id} · Payment: {order.stripePaymentIntentId}</p></li>)}</ul>
-        </section>}
-        {loading ? <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div> : error ? null : (
+    <main className="admin-page">
+      <AdminHeading
+        title="Revenue"
+        description="Understand book sales, your platform share, and author earnings. Financial totals include completed orders only."
+      >
+        <select
+          aria-label="Revenue date range"
+          value={days}
+          onChange={(event) => {
+            setDays(Number(event.target.value));
+            setPage(1);
+          }}
+        >
+          <option value={7}>Last 7 days</option>
+          <option value={30}>Last 30 days</option>
+          <option value={90}>Last 90 days</option>
+        </select>
+      </AdminHeading>
+      <AdminError error={error} retry={retry} />
+      {loading ? (
+        <p className="admin-empty" role="status">
+          Loading revenue…
+        </p>
+      ) : (
+        !error && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {stats.map((s) => (
-                <div key={s.label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-                  <p className="text-xs text-[#555] mb-1">{s.label}</p>
-                  <p className="font-display text-2xl" style={{ color: s.color }}>{s.value}</p>
+            {reviews.length > 0 && (
+              <section className="admin-panel mb-6">
+                <div className="admin-panel-heading">
+                  <div>
+                    <h2>Payments needing review</h2>
+                    <p>All dates · These payments did not grant book access or author earnings.</p>
+                  </div>
+                  <AdminBadge tone="warning">{reviews.length} open</AdminBadge>
+                </div>
+                {reviews.map((item) => (
+                  <div className="admin-queue-row" key={item.id}>
+                    <div>
+                      <button
+                        type="button"
+                        className="admin-row-title"
+                        onClick={() => setSelected(item.id)}
+                      >
+                        {item.bookTitle}
+                      </button>
+                      <small>{item.stripePaymentIntentId}</small>
+                    </div>
+                    <span>{centsToDisplay(item.finalPrice)}</span>
+                  </div>
+                ))}
+              </section>
+            )}
+            <dl className="admin-metrics">
+              {[
+                [
+                  'Book sales',
+                  centsToDisplay(summary.gross),
+                  'Customer payments for completed orders',
+                ],
+                [
+                  'Platform earnings',
+                  centsToDisplay(summary.platform),
+                  'Before other business costs',
+                ],
+                [
+                  'Author earnings',
+                  centsToDisplay(summary.royalties),
+                  'Royalties earned, not confirmed bank payouts',
+                ],
+                ['Books sold', summary.count.toLocaleString(), 'Individual book orders'],
+              ].map(([label, value, hint]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                  <small>{hint}</small>
                 </div>
               ))}
-            </div>
-
-            <div className="p-5 rounded-xl border mb-6" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <h2 className="font-display text-display-sm text-white mb-4">Revenue Breakdown</h2>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                  <XAxis dataKey="date" tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={(v) => `$${(v / 100).toFixed(0)}`} tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }}
-                    labelStyle={{ color: '#aaa', fontSize: 12 }}
-                    formatter={(value: number, name: string) => [centsToDisplay(value), name]}
-                  />
-                  <Bar dataKey="revenue" name="Gross Revenue" fill="#f5b800" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="platformFee" name="Platform Fee" fill="#4ade80" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="sellerPayouts" name="Author Payouts" fill="#60a5fa" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="p-5 rounded-xl border mb-6" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <h2 className="font-display text-display-sm text-white mb-4">Orders Over Time</h2>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                  <XAxis dataKey="date" tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8 }} labelStyle={{ color: '#aaa', fontSize: 12 }} />
-                  <Line type="monotone" dataKey="orders" name="Orders" stroke="#e8442a" dot={false} strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <div className="px-5 py-3 border-b" style={{ borderColor: '#1a1a1a' }}>
-                <h2 className="font-display text-display-sm text-white">Recent Orders</h2>
+            </dl>
+            <section className="admin-panel mb-6">
+              <div className="admin-panel-heading">
+                <div>
+                  <h2>Sales over time</h2>
+                  <p>USD · Includes days with no sales</p>
+                </div>
               </div>
-              <table className="w-full text-sm min-w-[580px]">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                    {['Reader', 'Book', 'Total', 'Platform Fee', 'Author Earnings', 'Date'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map((o) => (
-                    <tr key={o.id} style={{ borderBottom: '1px solid #111' }}>
-                      <td className="px-4 py-3 text-[#aaa]">{o.buyerEmail}</td>
-                      <td className="px-4 py-3 text-[#666] text-xs truncate max-w-[160px]">{o.bookTitle}</td>
-                      <td className="px-4 py-3 text-[#f5b800]">{centsToDisplay(o.finalPrice)}</td>
-                      <td className="px-4 py-3 text-[#4ade80]">{centsToDisplay(o.platformFee)}</td>
-                      <td className="px-4 py-3 text-[#60a5fa]">{centsToDisplay(o.sellerEarnings)}</td>
-                      <td className="px-4 py-3 text-xs text-[#555]">{o.createdAt?.toDate?.()?.toLocaleDateString?.()}</td>
-                    </tr>
-                  ))}
-                  {recentOrders.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-[#444]">No orders in this period.</td></tr>}
-                </tbody>
-              </table>
+              {summary.count ? (
+                <div className="h-[260px] px-3 pb-5">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={summary.series} margin={{ right: 20 }}>
+                      <CartesianGrid vertical={false} stroke="#30352f" />
+                      <XAxis
+                        dataKey="date"
+                        minTickGap={40}
+                        tick={{ fill: '#a6afa3', fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tickFormatter={(value) => '$' + value / 100}
+                        tick={{ fill: '#a6afa3', fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: '#20271e',
+                          border: '1px solid #49523f',
+                          borderRadius: 8,
+                        }}
+                        formatter={(value: number) => [centsToDisplay(value), 'Book sales']}
+                      />
+                      <Area
+                        isAnimationActive={false}
+                        dataKey="gross"
+                        type="monotone"
+                        stroke="#d8edb2"
+                        fill="#d8edb2"
+                        fillOpacity={0.12}
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="admin-empty">No completed book sales during this period.</div>
+              )}
+            </section>
+            <div className="admin-toolbar">
+              <AdminSearch
+                label="Search book, buyer, or payment ID"
+                value={search}
+                onChange={(value) => {
+                  setSearch(value);
+                  setPage(1);
+                }}
+              />
+              <select
+                aria-label="Order status"
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {['all', 'completed', 'pending', 'refunded', 'disputed', 'needs_review'].map(
+                  (value) => (
+                    <option key={value} value={value}>
+                      {value === 'all' ? 'All statuses' : value.replaceAll('_', ' ')}
+                    </option>
+                  ),
+                )}
+              </select>
+              <button
+                type="button"
+                className="admin-secondary"
+                disabled={!filtered.length}
+                onClick={exportOrders}
+              >
+                <Download size={15} />
+                Export CSV
+              </button>
             </div>
+            <section className="admin-panel">
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Book / buyer</th>
+                      <th>Date</th>
+                      <th>Customer paid</th>
+                      <th>Platform share</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.slice((currentPage - 1) * 15, currentPage * 15).map((item) => (
+                      <tr key={item.id}>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-row-title"
+                            onClick={() => setSelected(item.id)}
+                          >
+                            {item.bookTitle}
+                          </button>
+                          <small>{item.buyerEmail}</small>
+                        </td>
+                        <td className="admin-muted">
+                          {new Date(dateValue(item.createdAt)).toLocaleDateString()}
+                        </td>
+                        <td>{centsToDisplay(item.finalPrice)}</td>
+                        <td>
+                          {item.status === 'completed'
+                            ? centsToDisplay(item.platformFee ?? 0)
+                            : '—'}
+                        </td>
+                        <td>
+                          <AdminBadge tone={item.status === 'completed' ? 'good' : 'warning'}>
+                            {item.status.replaceAll('_', ' ')}
+                          </AdminBadge>
+                        </td>
+                      </tr>
+                    ))}
+                    {!filtered.length && (
+                      <tr>
+                        <td colSpan={5} className="admin-empty">
+                          No orders match this period and filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <AdminPagination page={currentPage} total={filtered.length} onChange={setPage} />
+            </section>
           </>
-        )}
-      </main>
-    </div>
+        )
+      )}
+      {order && (
+        <AdminDrawer title="Order details" onClose={() => setSelected(null)}>
+          <h3 className="text-xl font-semibold">{order.bookTitle}</h3>
+          <p className="text-[#a6afa3] mt-2">{order.buyerEmail}</p>
+          <div className="mt-4">
+            <AdminBadge tone={order.status === 'completed' ? 'good' : 'warning'}>
+              {order.status.replaceAll('_', ' ')}
+            </AdminBadge>
+          </div>
+          <dl>
+            <div>
+              <dt>Customer paid</dt>
+              <dd>{centsToDisplay(order.finalPrice)}</dd>
+            </div>
+            <div>
+              <dt>Discount</dt>
+              <dd>{centsToDisplay(order.discountAmount ?? 0)}</dd>
+            </div>
+            <div>
+              <dt>Platform earnings</dt>
+              <dd>
+                {order.status === 'completed'
+                  ? centsToDisplay(order.platformFee ?? 0)
+                  : 'Not counted'}
+              </dd>
+            </div>
+            <div>
+              <dt>Author earnings</dt>
+              <dd>
+                {order.status === 'completed'
+                  ? centsToDisplay(order.sellerEarnings ?? 0)
+                  : 'Not counted'}
+              </dd>
+            </div>
+            <div>
+              <dt>Estimated processing</dt>
+              <dd>{centsToDisplay(order.stripeFee ?? 0)}</dd>
+            </div>
+          </dl>
+          <p className="text-xs text-[#a6afa3]">Order ID: {order.id}</p>
+          <p className="text-xs text-[#a6afa3] mt-2">Payment ID: {order.stripePaymentIntentId}</p>
+          {order.stripePaymentIntentId && (
+            <a
+              className="admin-secondary mt-6"
+              href={
+                'https://dashboard.stripe.com/payments/' +
+                encodeURIComponent(order.stripePaymentIntentId)
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Review payment in Stripe ↗
+            </a>
+          )}
+        </AdminDrawer>
+      )}
+    </main>
   );
 }

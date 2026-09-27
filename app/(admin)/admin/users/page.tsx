@@ -1,170 +1,277 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import StatusPill from '@/components/shared/StatusPill';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { auth, db } from '@/lib/firebase/config';
-import { collection, getDocs } from 'firebase/firestore';
+import { useState } from 'react';
+import {
+  AdminHeading,
+  AdminSearch,
+  AdminPagination,
+  AdminDrawer,
+  AdminError,
+  AdminBadge,
+} from '@/components/admin/AdminUI';
+import { useAdminCollection } from '@/lib/admin/useAdminCollection';
+import { dateValue } from '@/lib/admin/metrics';
+import { authenticatedPost } from '@/lib/firebase/request';
 import type { User } from '@/types/user';
 
-type ModerationAction = 'active' | 'warned' | 'suspended' | 'delete';
-
+type Action = 'active' | 'warned' | 'suspended' | 'delete';
+const roleLabel: Record<string, string> = {
+  buyer: 'Reader',
+  seller: 'Author',
+  both: 'Reader & author',
+  admin: 'Administrator',
+};
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [filtered, setFiltered] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: users, loading, error, retry } = useAdminCollection<User>('users');
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    getDocs(collection(db, 'users')).then((snap) => {
-      const all = snap.docs.map((d) => d.data() as User);
-      setUsers(all);
-      setFiltered(all);
-      setLoading(false);
-    });
-  }, []);
-
-  useEffect(() => {
-    let res = users;
-    if (search) res = res.filter((u) => u.email.toLowerCase().includes(search.toLowerCase()) || `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()));
-    if (roleFilter !== 'all') res = res.filter((u) => u.role === roleFilter);
-    if (statusFilter !== 'all') res = res.filter((u) => u.status === statusFilter);
-    setFiltered(res);
-  }, [search, roleFilter, statusFilter, users]);
-
-  async function updateStatus(user: User, action: ModerationAction) {
-    const isDelete = action === 'delete';
-    const confirmed =
-      !isDelete ||
-      window.confirm(
-        `Permanently delete ${user.firstName} ${user.lastName}'s account${user.role === 'seller' || user.role === 'both' ? ' and all of their books' : ''}?`
-      );
-
-    if (!confirmed) {
+  const [role, setRole] = useState('all');
+  const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [notice, setNotice] = useState('');
+  const needle = search.trim().toLowerCase();
+  const filtered = users
+    .filter(
+      (user) =>
+        (role === 'all' || user.role === role) &&
+        (status === 'all' || user.status === status) &&
+        [user.firstName + ' ' + user.lastName, user.email, user.id].some((value) =>
+          value?.toLowerCase().includes(needle),
+        ),
+    )
+    .sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt));
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 15)));
+  const user = users.find((item) => item.id === selected);
+  async function moderate(action: Action) {
+    if (!user || user.role === 'admin' || busy) return;
+    if (
+      action === 'delete' &&
+      !window.confirm(
+        'Permanently delete ' +
+          user.firstName +
+          ' ' +
+          user.lastName +
+          "'s account and any published books? This cannot be undone.",
+      )
+    )
       return;
-    }
-
-    setPendingUserId(user.uid);
-
+    if (
+      action === 'suspended' &&
+      !window.confirm('Suspend this account and prevent access to AfroBooks?')
+    )
+      return;
+    setBusy(true);
+    setActionError('');
+    setNotice('');
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (auth.currentUser) {
-        headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
-      }
-
-      const response = await fetch('/api/admin/moderate-user', {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ uid: user.uid, action }),
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(data?.error ?? 'Unable to update account moderation.');
-      }
-
-      if (action === 'delete') {
-        setUsers((prev) => prev.filter((item) => item.uid !== user.uid));
-        return;
-      }
-
-      setUsers((prev) =>
-        prev.map((item) => (item.uid === user.uid ? { ...item, status: action } : item))
-      );
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Unable to update account moderation.');
+      await authenticatedPost('/api/admin/moderate-user', { uid: user.id, action });
+      setNotice(action === 'delete' ? 'Account deleted.' : 'Account status updated.');
+      if (action === 'delete') setSelected(null);
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'Unable to update this account.');
     } finally {
-      setPendingUserId(null);
+      setBusy(false);
     }
   }
-
-  const statusActions: Record<User['status'], { label: string; action: ModerationAction }[]> = {
-    active: [{ label: 'Warn', action: 'warned' }, { label: 'Disable', action: 'suspended' }, { label: 'Delete', action: 'delete' }],
-    warned: [{ label: 'Disable', action: 'suspended' }, { label: 'Delete', action: 'delete' }],
-    suspended: [{ label: 'Restore', action: 'active' }, { label: 'Delete', action: 'delete' }],
-    banned: [{ label: 'Delete', action: 'delete' }],
-  };
-
   return (
-    <div className="flex min-h-screen bg-[#0e0e0e]">
-      <AdminSidebar />
-      <main className="flex-1 px-4 md:px-6 py-7">
-        <h1 className="font-display text-display-lg text-white mb-5">Users</h1>
-
-        <div className="flex flex-wrap gap-2 mb-5">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email..." className="flex-1 min-w-[180px] px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
-          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
-            <option value="all">All Roles</option>
-            <option value="buyer">Reader</option>
-            <option value="seller">Author</option>
-            <option value="both">Reader + Author</option>
-          </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="warned">Warned</option>
-            <option value="suspended">Suspended</option>
-            <option value="banned">Banned</option>
-          </select>
-        </div>
-
+    <main className="admin-page">
+      <AdminHeading
+        title="People"
+        description="Readers and authors in one place. Open a profile when an account needs attention."
+      />
+      <AdminError error={error} retry={retry} />
+      {notice && (
+        <p role="status" className="mb-5 text-sm text-[#d8edb2]">
+          {notice}
+        </p>
+      )}
+      <div className="admin-toolbar">
+        <AdminSearch
+          label="Search name, email, or account ID"
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+        />
+        <select
+          aria-label="Account role"
+          value={role}
+          onChange={(event) => {
+            setRole(event.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="all">All roles</option>
+          {Object.entries(roleLabel).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Account status"
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="all">All statuses</option>
+          {['active', 'warned', 'suspended', 'banned'].map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </select>
+      </div>
+      <section className="admin-panel">
         {loading ? (
-          <div className="flex justify-center py-16"><LoadingSpinner size={32} /></div>
-        ) : (
-          <div className="rounded-xl border overflow-x-auto" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-            <table className="w-full text-sm min-w-[560px]">
-              <thead>
-                <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
-                  {['User', 'Role', 'Joined', 'Status', 'Actions'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#555] uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((user) => (
-                  <tr key={user.uid} style={{ borderBottom: '1px solid #111' }}>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-white">{user.firstName} {user.lastName}</p>
-                      <p className="text-xs text-[#555]">{user.email}</p>
-                    </td>
-                    <td className="px-4 py-3"><StatusPill status={user.role} /></td>
-                    <td className="px-4 py-3 text-[#555] text-xs">{user.createdAt?.toDate?.()?.toLocaleDateString?.()}</td>
-                    <td className="px-4 py-3"><StatusPill status={user.status} /></td>
-                    <td className="px-4 py-3">
-                      {user.role === 'admin' ? (
-                        <span className="text-xs text-[#666]">Protected account</span>
-                      ) : (
-                        <div className="flex gap-2">
-                          {(statusActions[user.status] ?? []).map(({ label, action }) => (
-                            <button
-                              key={label}
-                              type="button"
-                              disabled={pendingUserId === user.uid}
-                              onClick={() => updateStatus(user, action)}
-                              className="text-xs px-2.5 py-1 rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                              style={action === 'delete'
-                                ? { borderColor: '#e8442a', color: '#e8442a' }
-                                : { borderColor: '#333', color: '#aaa' }}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </td>
+          <p className="admin-empty" role="status">
+            Loading people…
+          </p>
+        ) : error ? null : (
+          <>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Person</th>
+                    <th>Role</th>
+                    <th>Joined</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-                {filtered.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-[#444]">No users found.</td></tr>}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filtered.slice((currentPage - 1) * 15, currentPage * 15).map((person) => (
+                    <tr key={person.id}>
+                      <td>
+                        <div className="flex gap-3 items-center">
+                          <span className="admin-avatar">{person.firstName?.[0] || '?'}</span>
+                          <div>
+                            <button
+                              type="button"
+                              className="admin-row-title"
+                              onClick={() => {
+                                setSelected(person.id);
+                                setActionError('');
+                                setNotice('');
+                              }}
+                            >
+                              {person.firstName} {person.lastName}
+                            </button>
+                            <small>{person.email}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{roleLabel[person.role] ?? person.role}</td>
+                      <td className="admin-muted">
+                        {dateValue(person.createdAt)
+                          ? new Date(dateValue(person.createdAt)).toLocaleDateString()
+                          : 'Unknown'}
+                      </td>
+                      <td>
+                        <AdminBadge tone={person.status === 'active' ? 'good' : 'warning'}>
+                          {person.status ?? 'Unknown'}
+                        </AdminBadge>
+                      </td>
+                    </tr>
+                  ))}
+                  {!filtered.length && (
+                    <tr>
+                      <td colSpan={4} className="admin-empty">
+                        No people match your search and filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <AdminPagination page={currentPage} total={filtered.length} onChange={setPage} />
+          </>
         )}
-      </main>
-    </div>
+      </section>
+      {user && (
+        <AdminDrawer busy={busy} title="Account details" onClose={() => setSelected(null)}>
+          <h3 className="text-xl font-semibold">
+            {user.firstName} {user.lastName}
+          </h3>
+          <p className="mt-2 text-[#a6afa3]">{user.email}</p>
+          <dl>
+            <div>
+              <dt>Role</dt>
+              <dd>{roleLabel[user.role] ?? user.role}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <AdminBadge>{user.status}</AdminBadge>
+              </dd>
+            </div>
+            <div>
+              <dt>Joined</dt>
+              <dd>
+                {dateValue(user.createdAt)
+                  ? new Date(dateValue(user.createdAt)).toLocaleDateString()
+                  : 'Unknown'}
+              </dd>
+            </div>
+          </dl>
+          {user.bio && <p className="text-[#c4ccbe] whitespace-pre-wrap">{user.bio}</p>}
+          <p className="mt-6 text-xs text-[#a6afa3]">Account ID: {user.id}</p>
+          <AdminError error={actionError} />
+          {user.role === 'admin' ? (
+            <p className="mt-6 text-sm text-[#a6afa3]">
+              Administrator accounts are protected from moderation here.
+            </p>
+          ) : (
+            <>
+              <div className="admin-drawer-actions">
+                {['warned', 'suspended'].includes(user.status) && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="admin-primary"
+                    onClick={() => moderate('active')}
+                  >
+                    Restore active status
+                  </button>
+                )}
+                {user.status === 'active' && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="admin-secondary"
+                    onClick={() => moderate('warned')}
+                  >
+                    Mark as warned
+                  </button>
+                )}
+                {['active', 'warned'].includes(user.status) && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="admin-secondary"
+                    onClick={() => moderate('suspended')}
+                  >
+                    Suspend account
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                className="admin-danger"
+                onClick={() => moderate('delete')}
+              >
+                Delete account permanently
+              </button>
+            </>
+          )}
+        </AdminDrawer>
+      )}
+    </main>
   );
 }
