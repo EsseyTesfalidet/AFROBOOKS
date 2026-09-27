@@ -74,7 +74,7 @@ export default function AdminSettingsPage() {
           <div className="p-5 rounded-xl border space-y-4" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <h2 className="font-display text-display-sm text-white">Platform Fees</h2>
             {[
-              { label: 'Direct sale fee (%)', key: 'directSaleFee', value: settings.directSaleFee },
+              { label: 'AfroBooks commission (%)', key: 'directSaleFee', value: settings.directSaleFee },
             ].map(({ label, key, value }) => (
               <div key={key} className="flex items-center justify-between">
                 <label htmlFor={`fee-${key}`} className="text-sm text-[#aaa]">{label}</label>
@@ -88,6 +88,7 @@ export default function AdminSettingsPage() {
                 />
               </div>
             ))}
+            <p className="text-xs leading-relaxed text-[#aaa]">Commission is included in the book’s customer price and calculated after estimated payment processing. The remaining proceeds go to the author. This is platform revenue before other business costs.</p>
           </div>
 
           {/* Controls */}

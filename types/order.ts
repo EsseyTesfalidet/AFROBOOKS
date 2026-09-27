@@ -16,6 +16,9 @@ export interface Order {
   stripeFee: number;
   platformFee: number;
   sellerEarnings: number;
+  platformFeePercent?: number;
+  processingFeeBasis?: 'estimated_us_domestic_card';
+  pricingVersion?: number;
   status: 'pending' | 'completed' | 'refunded' | 'disputed' | 'needs_review';
   receiptEmailSent: boolean;
   createdAt: Timestamp;

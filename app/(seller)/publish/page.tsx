@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
 import ChapterEditor from '@/components/seller/ChapterEditor';
+import BookPricing from '@/components/seller/BookPricing';
 import { useAuthStore } from '@/store/authStore';
 import { uploadCoverImage, uploadManuscript } from '@/lib/firebase/storage';
 import { db } from '@/lib/firebase/config';
@@ -31,7 +32,6 @@ import { COPYRIGHT_BASIS_OPTIONS, getCopyrightBasisLabel, requiresManualCopyrigh
 
 const STEPS = ['Details', 'Cover', 'Book Content', 'Pricing', 'Publish'];
 const GENRES = ['Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
-const PRICE_TIERS = [299, 499, 699, 999, 1499, 1999];
 const ACCENT_COLORS = ['#e8442a', '#f5b800', '#4ade80', '#7c3aed', '#0ea5e9', '#f97316', '#ec4899', '#6366f1'];
 const BG_COLORS = ['#1a1040', '#0a1628', '#0f2218', '#1a0a10', '#0e1a2e', '#1a1a0a'];
 
@@ -73,11 +73,12 @@ export default function PublishPage() {
   const [manuscriptFile, setManuscriptFile] = useState<File | null>(null);
   const [manuscriptImporting, setManuscriptImporting] = useState(false);
   const [manuscriptError, setManuscriptError] = useState('');
-  const [price, setPrice] = useState(PRICE_TIERS[2]);
-  const [customPrice, setCustomPrice] = useState('');
+  const [price, setPrice] = useState(699);
+  const [pricingValid, setPricingValid] = useState(true);
   const subscriptionType: 'sell_only' | 'sell_and_sub' | 'sub_only' = 'sell_only';
   const subTiers: string[] = [];
-  const [directSaleFee, setDirectSaleFee] = useState(15);
+  const [directSaleFee, setDirectSaleFee] = useState<number | null>(null);
+  const [pricingError, setPricingError] = useState('');
   const [publishMode, setPublishMode] = useState<'now' | 'draft' | 'preorder'>('now');
   const [releaseDate, setReleaseDate] = useState('');
   const savedBookId = useRef<string | null>(null);
@@ -85,9 +86,10 @@ export default function PublishPage() {
   const [editLoading, setEditLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/platform/public').then(response => response.json()).then(settings => {
-      if (Number.isFinite(settings.directSaleFee) && settings.directSaleFee >= 0 && settings.directSaleFee <= 100) setDirectSaleFee(settings.directSaleFee);
-    }).catch(() => {});
+    fetch('/api/platform/public', { cache: 'no-store' }).then(response => response.json()).then(settings => {
+      if (settings.pricingAvailable === false || !Number.isFinite(settings.directSaleFee) || settings.directSaleFee < 0 || settings.directSaleFee > 100) throw new Error('Invalid pricing settings');
+      setDirectSaleFee(settings.directSaleFee);
+    }).catch(() => setPricingError('Unable to load the current commission. Reload this page before setting your price.'));
   }, []);
 
   useEffect(() => {
@@ -132,10 +134,14 @@ export default function PublishPage() {
     };
   }, [userProfile?.uid]);
 
-  const earnings = calculateEarnings(Number.isSafeInteger(price) && price >= 0 ? price : 0, directSaleFee);
+  const earnings = directSaleFee === null ? null : calculateEarnings(Number.isSafeInteger(price) && price >= 0 ? price : 0, directSaleFee);
 
   function nextStep() { if (step < 4) setStep(step + 1); }
-  function prevStep() { if (step > 0) setStep(step - 1); }
+  function prevStep() {
+    // Leaving Pricing discards an unfinished input; the last valid price stays.
+    if (step === 3) setPricingValid(true);
+    if (step > 0) setStep(step - 1);
+  }
 
   function saveChapter(ch: Pick<Chapter, 'title' | 'content' | 'wordCount' | 'chapterNumber'>) {
     setChapters((prev) => {
@@ -191,6 +197,10 @@ export default function PublishPage() {
     if (!userProfile || editLoading) return;
     if (new URL(window.location.href).searchParams.has('edit') && !savedBookId.current) return;
     setPublishError('');
+    if (!pricingValid || directSaleFee === null || !Number.isSafeInteger(price) || price < 50 || price > 99999999) {
+      setPublishError('Review the book price in Pricing before saving.');
+      return;
+    }
     if (!title.trim()) {
       setPublishError('Add a book title before publishing.');
       return;
@@ -348,7 +358,7 @@ export default function PublishPage() {
     { label: 'Genre selected', done: !!genre },
     { label: 'Cover configured', done: !!accentColor },
     { label: 'Book content added', done: chapters.length > 0 },
-    { label: 'Price set', done: price > 0 },
+    { label: 'Customer price includes earnings and fees', done: pricingValid && directSaleFee !== null && price >= 50 },
     { label: 'Author name set', done: !!authorName },
     { label: 'Rights confirmed', done: copyrightAttested },
     { label: 'Rights review notes added', done: !requiresManualCopyrightReview(copyrightBasis) || !!copyrightDetails.trim() },
@@ -677,32 +687,9 @@ export default function PublishPage() {
             {/* Step 4: Pricing */}
             {step === 3 && (
               <div className="space-y-5">
-                <h2 className="font-display text-display-sm text-white">Pricing</h2>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {PRICE_TIERS.map((p) => (
-                    <button key={p} type="button" onClick={() => setPrice(p)}
-                      className="p-3 rounded-xl border text-center transition-all"
-                      style={{ border: price === p ? '1.5px solid #f5b800' : '1.5px solid #2a2a2a', background: price === p ? '#1a1500' : '#111' }}>
-                      <p className="font-display text-xl" style={{ color: price === p ? '#f5b800' : '#f5f2eb' }}>${(p / 100).toFixed(2)}</p>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Earnings breakdown */}
-                <div className="p-4 rounded-xl border" style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}>
-                  <p className="text-sm font-medium text-white mb-3">Earnings Breakdown</p>
-                  {[
-                    { label: 'List Price', value: `$${(price / 100).toFixed(2)}`, color: '#f5f2eb' },
-                    { label: `AfroBooks fee (${directSaleFee}%)`, value: `-${earnings.platformFeeDisplay}`, color: '#e8442a' },
-                    { label: 'Stripe fee (2.9% + $0.30)', value: `-${earnings.stripeFeeDisplay}`, color: '#f5b800' },
-                    { label: 'Your earnings', value: earnings.sellerEarningsDisplay, color: '#4ade80' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="flex justify-between text-sm py-1">
-                      <span className="text-[#888]">{label}</span>
-                      <span style={{ color }}>{value}</span>
-                    </div>
-                  ))}
-                </div>
+                {directSaleFee !== null
+                  ? <BookPricing price={price} directSaleFee={directSaleFee} onPriceChange={setPrice} onValidityChange={setPricingValid} />
+                  : <p role={pricingError ? 'alert' : 'status'} className="text-sm text-[#aaa]">{pricingError || 'Loading pricing…'}</p>}
 
                 <p className="text-sm text-[#aaa]">Choose free preview chapters in Book Content. All other chapters require purchase.</p>
               </div>
@@ -786,8 +773,8 @@ export default function PublishPage() {
                 <ArrowLeft size={14} /> Back
               </button>
               {step < 4 && (
-                <button type="button" onClick={nextStep}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                <button type="button" onClick={nextStep} disabled={step === 3 && (!pricingValid || directSaleFee === null)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
                   style={{ background: '#e8442a', color: '#fff' }}>
                   Next <ArrowRight size={14} />
                 </button>
@@ -822,8 +809,12 @@ export default function PublishPage() {
                 <span className="text-[#aaa]">{chapters.length}</span>
               </div>
               <div className="flex justify-between">
-                <span>Earnings/sale</span>
-                <span style={{ color: '#4ade80' }}>{earnings.sellerEarningsDisplay}</span>
+                <span>Customer price</span>
+                <span style={{ color: '#f5b800' }}>${(price / 100).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Estimated earnings/sale</span>
+                <span style={{ color: '#4ade80' }}>{earnings?.sellerEarningsDisplay ?? '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Status</span>

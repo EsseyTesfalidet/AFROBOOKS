@@ -12,8 +12,9 @@ export async function GET() {
       newSellerSignupsOpen: data.newSellerSignupsOpen ?? true,
       subscriptionSalesActive: false,
       directSaleFee: data.directSaleFee ?? 15,
+      pricingAvailable: true,
       maintenanceMode: data.maintenanceMode ?? false,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('platform public settings error:', error);
     return NextResponse.json(
@@ -22,9 +23,10 @@ export async function GET() {
         newSellerSignupsOpen: true,
         subscriptionSalesActive: false,
         directSaleFee: 15,
+        pricingAvailable: false,
         maintenanceMode: false,
       },
-      { status: 200 }
+      { status: 200, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Book } from '@/types/book';
+import { calculateCartTotals } from '@/lib/utils/fees';
 
 export interface CartItem {
   bookId: string;
@@ -87,17 +88,9 @@ export const useCartStore = create<CartState>()(
 
       getSubtotal: () => get().items.reduce((sum, i) => sum + i.price, 0),
 
-      getBundleDiscount: () => {
-        const subtotal = get().getSubtotal();
-        return get().items.length >= 3 ? Math.round(subtotal * 0.05) : 0;
-      },
+      getBundleDiscount: () => calculateCartTotals(get().items.map(item => item.price)).bundleDiscount,
 
-      getTotal: () => {
-        const subtotal = get().getSubtotal();
-        const bundle = get().getBundleDiscount();
-        const promo = 0;
-        return Math.max(0, subtotal - bundle - promo);
-      },
+      getTotal: () => calculateCartTotals(get().items.map(item => item.price)).total,
     }),
     { name: 'afrobooks-cart', version: 1, migrate: (state) => ({ ...(state as CartState), promoCode: null, promoBookId: null, discountAmount: 0 }) }
   )

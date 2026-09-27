@@ -71,6 +71,7 @@ export default function CheckoutPage() {
                 <span className="font-display text-xl" style={{ color: '#f5b800' }}>{centsToDisplay(tot)}</span>
               </div>
             </div>
+            <p className="mt-3 text-xs leading-relaxed text-[#aaa]">Platform and payment processing fees are included in the book prices.</p>
           </div>
 
           {/* Payment */}

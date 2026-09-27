@@ -94,9 +94,7 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {items.length >= 3 && bundle === 0 && (
-                <p className="text-xs text-center" style={{ color: '#4ade80' }}>5% bundle discount applied!</p>
-              )}
+              <p className="text-xs leading-relaxed text-[#aaa]">Platform and payment processing fees are included in the book prices.</p>
 
               <button
                 type="button"

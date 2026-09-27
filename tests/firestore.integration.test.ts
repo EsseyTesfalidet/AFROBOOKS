@@ -7,6 +7,7 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { fulfillPayment } from '../lib/server/fulfillPayment';
+import { calculateCartPricing } from '../lib/utils/fees';
 import { updateFollow, createPurchaseReview } from '../lib/server/social';
 import { publishBook } from '../lib/server/publishBook';
 import { validateBookContent } from '../lib/server/bookContent';
@@ -226,6 +227,28 @@ async function seedOrder() {
   await db.doc('orders/order').set({ buyerId: 'reader', sellerId: 'author', bookId: 'book', bookTitle: 'Book', finalPrice: 1000, sellerEarnings: 800, stripePaymentIntentId: 'pi_test', status: 'pending' });
 }
 const payment = { id: 'pi_test', amount_received: 1000, currency: 'usd', metadata: { userId: 'reader' } };
+
+test('a discounted cart credits each author their allocated proceeds exactly once', async () => {
+  const pricing = calculateCartPricing([499, 699, 999]);
+  const sellers = ['author', 'second-author', 'author'];
+  for (const [index, line] of pricing.lines.entries()) {
+    await db.doc(`books/cart-${index}`).set({ sellerId: sellers[index], status: 'live', totalSales: 0 });
+    await db.doc(`orders/cart-${index}`).set({ ...line, buyerId: 'reader', sellerId: sellers[index], bookId: `cart-${index}`, bookTitle: `Book ${index}`, stripePaymentIntentId: 'pi_cart', status: 'pending' });
+  }
+  const paid = { ...payment, id: 'pi_cart', amount_received: pricing.total };
+  await Promise.all([fulfillPayment(db, paid), fulfillPayment(db, paid)]);
+  for (const seller of new Set(sellers)) {
+    const expected = pricing.lines.reduce((sum, line, index) => sum + (sellers[index] === seller ? line.sellerEarnings : 0), 0);
+    const account = (await db.doc(`sellers/${seller}`).get()).data();
+    assert.equal(account?.pendingBalance, expected);
+    assert.equal(account?.totalEarnings, expected);
+  }
+  const orders = await db.collection('orders').where('stripePaymentIntentId', '==', 'pi_cart').get();
+  assert.equal(orders.size, 3);
+  assert.ok(orders.docs.every(order => order.data().status === 'completed'));
+  assert.equal(orders.docs.reduce((sum, order) => sum + order.data().stripeFee, 0), 91);
+  assert.equal(orders.docs.reduce((sum, order) => sum + order.data().platformFee + order.data().sellerEarnings + order.data().stripeFee, 0), pricing.total);
+});
 
 test('concurrent webhook deliveries grant access and credit earnings exactly once', async () => {
   await seedOrder();

@@ -5,6 +5,7 @@ import { requireRequestUser } from '@/lib/server/auth';
 import { z } from 'zod';
 import { validateBookContent, BookContentError } from '@/lib/server/bookContent';
 import { paymentConfiguration } from '@/lib/stripe/config';
+import { calculateCartPricing, MAX_BOOK_PRICE_CENTS } from '@/lib/utils/fees';
 
 const checkoutSchema = z.object({
   items: z.array(z.object({ bookId: z.string().min(1).max(128).regex(/^[^/]+$/) })).min(1).max(20),
@@ -12,33 +13,6 @@ const checkoutSchema = z.object({
   promoBookId: z.string().max(128).nullable().optional(),
   discountAmount: z.number().finite().nonnegative().optional(),
 });
-
-function distributeDiscounts(amounts: number[], totalDiscount: number) {
-  if (totalDiscount <= 0 || !amounts.length) {
-    return amounts.map(() => 0);
-  }
-
-  const subtotal = amounts.reduce((sum, amount) => sum + amount, 0);
-  if (subtotal <= 0) {
-    return amounts.map(() => 0);
-  }
-
-  const rawShares = amounts.map((amount) => (amount / subtotal) * totalDiscount);
-  const shares = rawShares.map((share) => Math.floor(share));
-  let remainder = totalDiscount - shares.reduce((sum, share) => sum + share, 0);
-
-  const ranked = rawShares
-    .map((share, index) => ({ index, remainder: share - Math.floor(share) }))
-    .sort((a, b) => b.remainder - a.remainder);
-
-  for (const item of ranked) {
-    if (remainder <= 0) break;
-    shares[item.index] += 1;
-    remainder -= 1;
-  }
-
-  return shares;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,7 +33,6 @@ export async function POST(req: NextRequest) {
     const settings = (await adminDb.doc('platformSettings/global').get()).data();
     const directSaleFee = settings?.directSaleFee ?? 15;
     calculateFees(0, directSaleFee); // Validate configuration before creating a payment.
-    let subtotal = 0;
     const bookDetails: {
       bookId: string;
       title: string;
@@ -86,7 +59,7 @@ export async function POST(req: NextRequest) {
         isPreorder?: boolean;
       };
 
-      if (book.status !== 'live' || !Number.isSafeInteger(book.price) || book.price < 0) {
+      if (book.status !== 'live' || !Number.isSafeInteger(book.price) || book.price < 0 || book.price > MAX_BOOK_PRICE_CENTS) {
         return NextResponse.json({ error: `Book ${item.bookId} not available` }, { status: 400 });
       }
       if (book.isPreorder && (book.releaseDate?.toMillis() ?? Infinity) > Date.now()) {
@@ -100,7 +73,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `"${book.title}" is temporarily unavailable because its chapters are incomplete. No payment has been taken.` }, { status: 409 });
       }
 
-      subtotal += book.price;
       bookDetails.push({
         bookId: bookSnap.id,
         title: book.title,
@@ -111,10 +83,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const bundleDiscount = bookDetails.length >= 3 ? Math.round(subtotal * 0.05) : 0;
-    const bundleShares = distributeDiscounts(bookDetails.map(book => book.originalPrice), bundleDiscount);
-    const finalAmount = subtotal - bundleDiscount;
+    const pricing = calculateCartPricing(bookDetails.map(book => book.originalPrice), directSaleFee);
+    const { bundleDiscount, total: finalAmount } = pricing;
     if (finalAmount < 50) return NextResponse.json({ error: 'The checkout total must be at least $0.50.' }, { status: 400 });
+    if (finalAmount > MAX_BOOK_PRICE_CENTS) return NextResponse.json({ error: 'The checkout total is too large. Please purchase fewer books at a time.' }, { status: 400 });
     const paymentIntent = await stripe.paymentIntents.create({
       amount: finalAmount, currency: 'usd',
       metadata: { userId: requestUser.uid, bookIds: bookDetails.map(book => book.bookId).join(','), purchaseType: 'books', bundleDiscount: String(bundleDiscount) },
@@ -124,9 +96,7 @@ export async function POST(req: NextRequest) {
     const orderBatch = adminDb.batch();
 
     for (const [index, book] of bookDetails.entries()) {
-      const lineDiscount = bundleShares[index];
-      const finalPrice = Math.max(0, book.originalPrice - lineDiscount);
-      const { stripeFee, platformFee, sellerEarnings } = calculateFees(finalPrice, directSaleFee);
+      const { discountAmount: lineDiscount, finalPrice, stripeFee, platformFee, sellerEarnings } = pricing.lines[index];
 
       const orderRef = adminDb.collection('orders').doc();
       orderBatch.create(orderRef, {
@@ -145,6 +115,9 @@ export async function POST(req: NextRequest) {
         stripeFee,
         platformFee,
         sellerEarnings,
+        platformFeePercent: directSaleFee,
+        processingFeeBasis: 'estimated_us_domestic_card',
+        pricingVersion: 2,
         status: 'pending',
         receiptEmailSent: false,
         createdAt: new Date(),
