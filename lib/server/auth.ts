@@ -6,6 +6,7 @@ export interface AuthenticatedRequestUser {
   email: string | null;
   role: 'buyer' | 'seller' | 'both' | 'admin';
   status: 'active' | 'warned' | 'suspended' | 'banned';
+  legalAgreement?: { termsVersion: string; privacyVersion: string; acceptedAt: number };
 }
 
 function getBearerToken(request: NextRequest) {
@@ -52,6 +53,7 @@ export async function requireRequestUser(
     role?: AuthenticatedRequestUser['role'];
     email?: string | null;
     status?: AuthenticatedRequestUser['status'];
+    legalAgreement?: AuthenticatedRequestUser['legalAgreement'];
   };
 
   const status = userData.status ?? 'active';
@@ -64,5 +66,6 @@ export async function requireRequestUser(
     email: userData.email ?? decodedToken.email ?? null,
     role: userData.role ?? 'buyer',
     status,
+    legalAgreement: userData.legalAgreement,
   };
 }

@@ -21,6 +21,10 @@ import { deleteBookRecords } from '../lib/server/moderation';
 import { bookFilePrefixes } from '../lib/server/bookFiles';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
+import { findOrCreateAuthorAccount } from '../lib/server/authorConnect';
+import { connectFixture } from './connect-fixture';
+import { recordLegalAgreement } from '../lib/server/legalAgreement';
+import { LEGAL_VERSION, hasCurrentAgreement } from '../lib/legal';
 import { submitPromotion, reviewPromotion, promotionCandidates, recordPromotionEvent, savePromotionSettings } from '../lib/server/promotions';
 import { preparePromotionCheckout, createPromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharge, expirePromotionCheckout, resolvePromotionPayment, reconcilePromotionRefund } from '../lib/server/promotionPayments';
 import { PROMOTION_TERMS_VERSION } from '../lib/promotions';
@@ -50,6 +54,86 @@ beforeEach(async () => {
   ]);
 });
 after(async () => { await env?.cleanup(); await deleteApp(adminApp); });
+
+test('legal acceptance is server-stamped, versioned, idempotent and private to the account', async () => {
+  const input = { termsAccepted: true, privacyAcknowledged: true, version: LEGAL_VERSION };
+  const first = await recordLegalAgreement(db, 'reader', input);
+  const second = await recordLegalAgreement(db, 'reader', input);
+  assert.deepEqual(second, first);
+  assert.ok(first.acceptedAt > 0);
+  assert.equal(hasCurrentAgreement((await db.doc('users/reader').get()).data()), true);
+  const receipt = `legalAgreements/reader/versions/${LEGAL_VERSION}`;
+  assert.equal((await db.collection('legalAgreements/reader/versions').get()).size, 1);
+  await assertSucceeds(getDoc(doc(env.authenticatedContext('reader').firestore(), receipt)));
+  await assertFails(getDoc(doc(env.authenticatedContext('author').firestore(), receipt)));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), receipt)));
+  await assertFails(updateDoc(doc(env.authenticatedContext('reader').firestore(), receipt), { acceptedAt: 1 }));
+  await assertFails(updateDoc(doc(env.authenticatedContext('reader').firestore(), 'users/reader'), { legalAgreement: { ...first, acceptedAt: 1 } }));
+});
+
+test('legal acceptance rejects unchecked, outdated or forged requests without recording agreement', async () => {
+  for (const input of [null, { termsAccepted: false, privacyAcknowledged: true, version: LEGAL_VERSION }, { termsAccepted: true, privacyAcknowledged: false, version: LEGAL_VERSION }, { termsAccepted: true, privacyAcknowledged: true, version: 'old' }, { termsAccepted: true, privacyAcknowledged: true, version: LEGAL_VERSION, acceptedAt: 1 }]) {
+    await assert.rejects(recordLegalAgreement(db, 'reader', input));
+  }
+  assert.equal(hasCurrentAgreement((await db.doc('users/reader').get()).data()), false);
+  assert.equal((await db.collection('legalAgreements/reader/versions').get()).empty, true);
+  const fresh = env.authenticatedContext('new-reader').firestore();
+  await assertFails(setDoc(doc(fresh, 'users/new-reader'), { ...profile, uid: 'new-reader', legalAgreement: { termsVersion: LEGAL_VERSION, privacyVersion: LEGAL_VERSION, acceptedAt: Date.now() } }));
+  await assertSucceeds(setDoc(doc(fresh, 'users/new-reader'), { ...profile, uid: 'new-reader' }));
+});
+
+test('agreement recording cannot recreate deleted accounts or accept for suspended accounts', async () => {
+  const input = { termsAccepted: true, privacyAcknowledged: true, version: LEGAL_VERSION };
+  await db.doc('users/reader').delete();
+  await assert.rejects(recordLegalAgreement(db, 'reader', input), /Unauthorized/);
+  assert.equal((await db.doc('users/reader').get()).exists, false);
+  await db.doc('users/author').update({ status: 'suspended' });
+  await assert.rejects(recordLegalAgreement(db, 'author', input), /Unauthorized/);
+  assert.equal((await db.collection('legalAgreements/author/versions').get()).empty, true);
+});
+
+test('author Connect creates and saves one owned v2 account, then reuses it without country selection', async () => {
+  const fixture = connectFixture();
+  const user = { uid: 'author', email: 'author@example.test' };
+  const first = await findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user, 'US');
+  const second = await findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user);
+  assert.equal(first.account.id, second.account.id);
+  assert.equal(second.version, 'v2');
+  assert.equal(fixture.state.creates.length, 1);
+  assert.equal((await db.doc('sellers/author').get()).data()?.stripeAccountApiVersion, 'v2');
+  fixture.state.ownerOverride = 'other';
+  await assert.rejects(findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user), /ownership review/);
+});
+
+test('author Connect recovers lost account links and rejects ambiguous ownership without creating another account', async () => {
+  const fixture = connectFixture();
+  const user = { uid: 'author', email: null };
+  fixture.state.accounts.push({ id: 'acct_recovered', metadata: { userId: 'author' }, version: 'v2' });
+  const recovered = await findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user);
+  assert.equal(recovered.account.id, 'acct_recovered');
+  assert.equal(recovered.version, 'v2');
+  assert.equal(fixture.state.creates.length, 0);
+  await db.doc('sellers/author').set({});
+  fixture.state.accounts.push({ id: 'acct_legacy', metadata: { userId: 'author' }, version: 'v1' });
+  await assert.rejects(findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user, 'US'), /Multiple Stripe accounts/);
+  assert.equal((await db.doc('sellers/author').get()).data()?.stripeAccountId, undefined);
+  fixture.state.accounts.shift();
+  const legacy = await findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user);
+  assert.equal(legacy.version, 'v1');
+  assert.equal(fixture.state.creates.length, 0);
+});
+
+test('author Connect refuses invalid countries, missing sellers and failed recovery scans', async () => {
+  const fixture = connectFixture();
+  const user = { uid: 'author', email: null };
+  await assert.rejects(findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user), /Choose the country/);
+  await assert.rejects(findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user, 'XX'), /supported by Stripe/);
+  fixture.state.legacyListError = new Error('Recovery scan unavailable');
+  await assert.rejects(findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user, 'US'), /Recovery scan unavailable/);
+  await db.doc('sellers/author').delete();
+  await assert.rejects(findOrCreateAuthorAccount(db, fixture.stripe, fixture.connect, user, 'US'), /author account is required/);
+  assert.equal(fixture.state.creates.length, 0);
+});
 
 test('promotion ownership, offer price, terms and one-book concurrency are enforced', async () => {
   await db.doc('books/book').update({ coverUrl: 'https://example.test/cover.jpg' });

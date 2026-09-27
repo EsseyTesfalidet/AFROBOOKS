@@ -8,6 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { BookOpen, PenLine, ShieldCheck } from 'lucide-react';
 import { signUp } from '@/lib/firebase/auth';
+import { authenticatedPost } from '@/lib/firebase/request';
+import { LEGAL_VERSION } from '@/lib/legal';
 import { setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import { useAuthStore } from '@/store/authStore';
 import Logo from '@/components/shared/Logo';
@@ -20,7 +22,7 @@ const schema = z.object({
   lastName: z.string().min(1, 'Required'),
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the Terms of Service' }) }),
+  terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the Terms of use' }) }),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -75,6 +77,9 @@ export default function SignupForm() {
     }
     try {
       const fbUser = await signUp(email, password, firstName, lastName, role);
+      // If saving fails, the mandatory account gate asks again after navigation.
+      // Never retry account creation or assume an unsaved agreement succeeded.
+      await authenticatedPost('/api/account/agreement', { termsAccepted: true, privacyAcknowledged: true, version: LEGAL_VERSION }).catch(() => undefined);
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
       setFirebaseUser(fbUser);
@@ -224,9 +229,11 @@ export default function SignupForm() {
                 />
                 <span className="text-sm text-[#8d8d96]">
                   I agree to the{' '}
-                  <Link href="/terms" target="_blank" className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
-                    Terms of Service
+                  <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
+                    Terms of use
                   </Link>
+                  {' '}and have read the{' '}
+                  <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">Privacy information</Link>.
                 </span>
               </label>
               {errors.terms && (

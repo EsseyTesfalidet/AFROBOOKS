@@ -430,7 +430,8 @@ export default function LandingPage() {
               <ul className="space-y-2.5">
                 {[
                   { label: 'About Us', href: '#about' },
-                  { label: 'Terms of Service', href: '/terms' },
+                  { label: 'Terms of use', href: '/terms' },
+                  { label: 'Privacy information', href: '/privacy' },
                   { label: 'esseytesfa@gmail.com', href: 'mailto:esseytesfa@gmail.com' },
                 ].map(({ label, href }) => (
                   <li key={label}>

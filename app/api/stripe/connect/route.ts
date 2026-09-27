@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type Stripe from 'stripe';
 import { z } from 'zod';
 import { getStripeServer } from '@/lib/stripe/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { requireRequestUser } from '@/lib/server/auth';
+import { agreementRequiredResponse } from '@/lib/server/legalAgreement';
 import { syncAuthorAccount } from '@/lib/server/authorPayments';
+import { getStripeConnectServer } from '@/lib/stripe/connect';
+import {
+  authorConnectFailure,
+  authorOnboardingLink,
+  findOrCreateAuthorAccount,
+} from '@/lib/server/authorConnect';
 
 async function context(req: NextRequest) {
   const user = await requireRequestUser(req);
@@ -15,12 +21,21 @@ async function context(req: NextRequest) {
   if (!seller) throw new Error('Author account required');
   return { user, db, sellerRef, seller, stripe: getStripeServer() };
 }
-function failure(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
-  if (message === 'Unauthorized') return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 });
-  if (message === 'Author account required') return NextResponse.json({ error: message }, { status: 403 });
-  console.error('Stripe author account request failed', { code: (error as { code?: string })?.code ?? 'unavailable' });
-  return NextResponse.json({ error: 'Stripe payout setup is temporarily unavailable. Please try again.' }, { status: 503 });
+function failure(error: unknown, stage: string) {
+  const result = authorConnectFailure(error);
+  const source = error as { code?: string; type?: string; requestId?: string; param?: string };
+  const reference = source?.requestId?.match(/^req_[A-Za-z0-9]+$/)?.[0];
+  console.error('Stripe author account request failed', {
+    stage,
+    code: source?.code ?? result.code,
+    type: source?.type,
+    parameter: source?.param,
+    reference,
+  });
+  return NextResponse.json(
+    { error: result.error, code: result.code, ...(reference ? { reference } : {}) },
+    { status: result.status, headers: { 'Cache-Control': 'no-store' } },
+  );
 }
 
 // Refreshes Stripe's actual eligibility; returning from onboarding is not proof
@@ -28,76 +43,113 @@ function failure(error: unknown) {
 export async function GET(req: NextRequest) {
   try {
     const { user, db, seller, stripe } = await context(req);
-    const enabled = (await db.doc('platformSettings/global').get()).data()?.automatedPayoutsEnabled === true;
-    if (!seller.stripeAccountId) return NextResponse.json({ connected: false, ready: false, enabled }, { headers: { 'Cache-Control': 'no-store' } });
+    const enabled =
+      (await db.doc('platformSettings/global').get()).data()?.automatedPayoutsEnabled === true;
+    if (!seller.stripeAccountId) {
+      const names = new Intl.DisplayNames(['en'], { type: 'region' });
+      const countries: { code: string; name: string }[] = [];
+      for await (const country of stripe.countrySpecs.list({ limit: 100 }))
+        countries.push({ code: country.id, name: names.of(country.id) ?? country.id });
+      countries.sort((a, b) => a.name.localeCompare(b.name));
+      return NextResponse.json(
+        { connected: false, ready: false, enabled, countries },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
     const account = await stripe.accounts.retrieve(seller.stripeAccountId);
     const readiness = await syncAuthorAccount(db, user.uid, account);
     let balance: { amount: number; currency: string }[] = [];
     let pendingBalance: { amount: number; currency: string }[] = [];
-    let bankPayouts: { id: string; amount: number; currency: string; status: string; arrivalDate: number; failureMessage: string | null }[] = [];
+    let bankPayouts: {
+      id: string;
+      amount: number;
+      currency: string;
+      status: string;
+      arrivalDate: number;
+      failureMessage: string | null;
+    }[] = [];
     let historyAvailable = true;
     try {
       const [funds, payouts] = await Promise.all([
         stripe.balance.retrieve({}, { stripeAccount: account.id }),
         stripe.payouts.list({ limit: 10 }, { stripeAccount: account.id }),
       ]);
-      balance = funds.available.map(item => ({ amount: item.amount, currency: item.currency }));
-      pendingBalance = funds.pending.map(item => ({ amount: item.amount, currency: item.currency }));
-      bankPayouts = payouts.data.map(item => ({ id: item.id, amount: item.amount, currency: item.currency, status: item.status, arrivalDate: item.arrival_date, failureMessage: item.failure_message }));
-    } catch { historyAvailable = false; }
-    return NextResponse.json({
-      connected: true, ready: readiness.stripeAccountStatus === 'active', enabled,
-      country: readiness.stripeCountry, requirementsDue: readiness.stripeRequirementsDue.length,
-      pendingVerification: (account.requirements?.pending_verification?.length ?? 0) > 0,
-      payoutHold: !!seller.payoutHoldReason, balance, pendingBalance, bankPayouts, historyAvailable,
-      schedule: account.settings?.payouts?.schedule?.interval ?? null,
-    }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) { return failure(error); }
+      balance = funds.available.map((item) => ({ amount: item.amount, currency: item.currency }));
+      pendingBalance = funds.pending.map((item) => ({
+        amount: item.amount,
+        currency: item.currency,
+      }));
+      bankPayouts = payouts.data.map((item) => ({
+        id: item.id,
+        amount: item.amount,
+        currency: item.currency,
+        status: item.status,
+        arrivalDate: item.arrival_date,
+        failureMessage: item.failure_message,
+      }));
+    } catch {
+      historyAvailable = false;
+    }
+    return NextResponse.json(
+      {
+        connected: true,
+        ready: readiness.stripeAccountStatus === 'active',
+        enabled,
+        country: readiness.stripeCountry,
+        requirementsDue: readiness.stripeRequirementsDue.length,
+        pendingVerification: (account.requirements?.pending_verification?.length ?? 0) > 0,
+        payoutHold: !!seller.payoutHoldReason,
+        balance,
+        pendingBalance,
+        bankPayouts,
+        historyAvailable,
+        schedule: account.settings?.payouts?.schedule?.interval ?? null,
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  } catch (error) {
+    return failure(error, 'status');
+  }
 }
 
-const actionSchema = z.object({ action: z.enum(['onboarding', 'dashboard']).default('onboarding') });
+const actionSchema = z.object({
+  action: z.enum(['onboarding', 'dashboard']).default('onboarding'),
+  country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
+});
 export async function POST(req: NextRequest) {
+  let stage = 'authorize';
   try {
-    const { user, db, seller, sellerRef, stripe } = await context(req);
-    const parsed = actionSchema.safeParse(await req.json());
-    if (!parsed.success) return NextResponse.json({ error: 'Invalid payout action.' }, { status: 400 });
-    let account: Stripe.Account | undefined;
-    if (seller.stripeAccountId) account = await stripe.accounts.retrieve(seller.stripeAccountId);
-    else {
-      // Recover an account if a previous Stripe creation succeeded but its
-      // Firestore write failed. Do not strand it or create duplicate accounts.
-      for await (const candidate of stripe.accounts.list({ limit: 100 })) {
-        if (candidate.metadata?.userId === user.uid) {
-          if (account) throw new Error('Multiple Stripe accounts require review');
-          account = candidate;
-        }
-      }
-      if (!account) account = await stripe.accounts.create({
-        // Supplying country or capabilities here locks the country before the
-        // author can choose. Stripe requests capabilities from platform options.
-        type: 'express', email: user.email ?? undefined,
-        business_profile: { product_description: 'Book author receiving royalties from AfroBooks' },
-        metadata: { userId: user.uid },
-      }, { idempotencyKey: `afrobooks-author-${user.uid}` });
-      const id = account.id;
-      await db.runTransaction(async tx => {
-        const latest = await tx.get(sellerRef);
-        if (!latest.exists || (latest.data()?.stripeAccountId && latest.data()?.stripeAccountId !== id)) throw new Error('Author account changed');
-        tx.update(sellerRef, { stripeAccountId: id, updatedAt: new Date() });
-      });
-    }
+    const { user, db, stripe } = await context(req);
+    const agreementError = agreementRequiredResponse(user);
+    if (agreementError) return agreementError;
+    const parsed = actionSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success)
+      return NextResponse.json({ error: 'Invalid payout action.' }, { status: 400 });
+    stage = 'find_or_create_account';
+    const connect = getStripeConnectServer();
+    const { account, version } = await findOrCreateAuthorAccount(
+      db,
+      stripe,
+      connect,
+      user,
+      parsed.data.country,
+    );
+    stage = 'sync_readiness';
     const readiness = await syncAuthorAccount(db, user.uid, account);
     if (parsed.data.action === 'dashboard' && readiness.stripeAccountStatus === 'active') {
+      stage = 'dashboard_link';
       const link = await stripe.accounts.createLoginLink(account.id);
       return NextResponse.json({ url: link.url }, { headers: { 'Cache-Control': 'no-store' } });
     }
     const base = process.env.NEXT_PUBLIC_APP_URL;
     if (!base || !base.startsWith('https://')) throw new Error('Public app address unavailable');
-    const link = await stripe.accountLinks.create({
-      account: account.id, type: 'account_onboarding', collection_options: { fields: 'eventually_due' },
-      refresh_url: `${base.replace(/\/$/, '')}/seller/profile/payout?reauth=1`,
-      return_url: `${base.replace(/\/$/, '')}/seller/profile/payout?connected=1`,
-    });
-    return NextResponse.json({ url: link.url }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) { return failure(error); }
+    stage = 'onboarding_link';
+    const url = await authorOnboardingLink(stripe, connect, account.id, version, base);
+    return NextResponse.json({ url }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    return failure(error, stage);
+  }
 }

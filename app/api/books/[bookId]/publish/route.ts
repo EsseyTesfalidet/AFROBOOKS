@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { requireRequestUser } from '@/lib/server/auth';
+import { agreementRequiredResponse } from '@/lib/server/legalAgreement';
 import { publishBook } from '@/lib/server/publishBook';
 import { BookContentError } from '@/lib/server/bookContent';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ bookId: string }> }) {
   try {
     const user = await requireRequestUser(request);
+    const agreementError = agreementRequiredResponse(user);
+    if (agreementError) return agreementError;
     if (!['seller', 'both', 'admin'].includes(user.role)) return NextResponse.json({ error: 'Author account required' }, { status: 403 });
     const { bookId } = await params;
     const status = await publishBook(await getAdminDb(), bookId, user.uid);

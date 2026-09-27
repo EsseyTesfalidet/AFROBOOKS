@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { requireRequestUser } from '@/lib/server/auth';
+import { agreementRequiredResponse } from '@/lib/server/legalAgreement';
 import { paymentConfiguration } from '@/lib/stripe/config';
 import { getStripeServer } from '@/lib/stripe/server';
 import { promotionSettings } from '@/lib/promotions';
@@ -136,6 +137,10 @@ export async function POST(req: NextRequest) {
         { status: 400, headers },
       );
     const input = parsed.data;
+    if (input.action === 'submit' || input.action === 'checkout') {
+      const agreementError = agreementRequiredResponse(user);
+      if (agreementError) return agreementError;
+    }
     const db = await getAdminDb();
     if (input.action === 'submit') {
       if (input.expectedPrice > 0 && !paymentConfiguration(process.env).checkoutReady)

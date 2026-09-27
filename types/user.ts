@@ -42,6 +42,7 @@ export interface User {
   favoriteGenre: string;
   language: string;
   currency: string;
+  legalAgreement?: { termsVersion: string; privacyVersion: string; acceptedAt: number };
 }
 
 export interface Seller {

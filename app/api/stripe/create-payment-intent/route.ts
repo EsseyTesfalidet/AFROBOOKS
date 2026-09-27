@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripeServer, calculateFees } from '@/lib/stripe/server';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { requireRequestUser } from '@/lib/server/auth';
+import { agreementRequiredResponse } from '@/lib/server/legalAgreement';
 import { z } from 'zod';
 import { validateBookContent, BookContentError } from '@/lib/server/bookContent';
 import { paymentConfiguration } from '@/lib/stripe/config';
@@ -18,6 +19,8 @@ const checkoutSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const requestUser = await requireRequestUser(req);
+    const agreementError = agreementRequiredResponse(requestUser);
+    if (agreementError) return agreementError;
     if (!paymentConfiguration(process.env).checkoutReady) return NextResponse.json({ error: 'Payments are temporarily unavailable. Please try again later.' }, { status: 503 });
     const parsed = checkoutSchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: 'Invalid checkout' }, { status: 400 });
