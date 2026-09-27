@@ -215,6 +215,7 @@ export async function stopBookPromotions(
       db.runTransaction(async (tx) => {
         const item = (await tx.get(doc.ref)).data() as Promotion;
         if (!['pending', 'approved', 'active'].includes(item.status)) return;
+        if (item.status === 'active' && item.endsAt <= Date.now()) return;
         tx.update(doc.ref, {
           status: item.paidAt || item.checkoutAttemptAt ? 'needs_review' : 'stopped',
           servingUntil: 0,

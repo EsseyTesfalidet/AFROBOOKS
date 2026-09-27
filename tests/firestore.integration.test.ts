@@ -251,6 +251,20 @@ test('pending and later failed refunds stay visible for admin review', async () 
   assert.equal((await promotionCandidates(db)).length, 0);
 });
 
+test('deleting a book preserves completed campaign history without a new refund review', async () => {
+  const then = Date.now() - 8 * 86400000;
+  const id = await promotionFixture(db, 900, then);
+  await preparePromotionCheckout(db, promotionAuthor, id, then);
+  const fixture = promotionStripeFixture(id);
+  await fulfillPromotionCheckout(db, fixture.session, fixture.paid(), true, then);
+  await deleteBookRecords(db, 'book', { deleteFiles: async () => {} });
+  const item = (await db.doc(`bookPromotions/${id}`).get()).data() as Promotion;
+  assert.equal(item.status, 'active');
+  assert.ok(item.endsAt < Date.now());
+  assert.equal((await promotionCandidates(db)).length, 0);
+  assert.equal((await db.doc('books/book').get()).exists, false);
+});
+
 test('author identity review commits status, verification and one notification atomically', async () => {
   await db.doc('verificationRequests/request').set({ sellerId: 'author', status: 'pending' });
   const client = env.authenticatedContext('admin').firestore() as unknown as Parameters<typeof reviewVerification>[0];
