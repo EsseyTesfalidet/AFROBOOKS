@@ -1,5 +1,8 @@
 {
   "indexes": [
+    { "collectionGroup": "bookGifts", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "senderId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ] },
     { "collectionGroup": "bookPromotions", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "sellerId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }
     ] },

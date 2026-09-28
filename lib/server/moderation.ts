@@ -144,6 +144,8 @@ export async function deleteBookRecords(
   if (!book) return { deleted: false, sellerId: null as string | null, title: null as string | null };
 
   await stopBookPromotions(adminDb, bookId);
+  const gifts = await adminDb.collection('bookGifts').where('bookId', '==', bookId).get();
+  for (const gift of gifts.docs) await gift.ref.update({ status: 'needs_review', reviewReason: 'book_unavailable', reviewedAt: new Date() });
 
   // The book is hidden before cleanup starts. A failed cleanup keeps its
   // deletion marker so the same request can resume, even if the parent is gone.
@@ -267,6 +269,7 @@ export async function deleteUserRecords(adminDb: Firestore, adminAuth: Auth, uid
     await adminDb.collection('sellers').doc(uid).delete().catch(() => undefined);
   }
 
+  await adminDb.recursiveDelete(adminDb.doc(`authorPayoutReminders/${uid}`));
   await userRef.delete();
 
   try {

@@ -19,6 +19,7 @@ export function purchaseReceiptEmail(params: {
   items: { title: string; authorName: string; priceCents: number }[];
   totalCents: number;
   orderId: string;
+  isGift?: boolean;
 }): { subject: string; html: string } {
   const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
   const itemRows = params.items.map((i) => `
@@ -53,7 +54,7 @@ export function purchaseReceiptEmail(params: {
             </tr>
           </tfoot>
         </table>
-        <a href="${process.env.NEXT_PUBLIC_BASE_URL}/library" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">Read in Library</a>
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL}/${params.isGift ? 'gifts' : 'library'}" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">${params.isGift ? 'View My Gifts' : 'Read in Library'}</a>
         <p style="margin-top:32px;color:#444;font-size:12px;">AfroBooks · This is an automated receipt.</p>
       </div>
     `,

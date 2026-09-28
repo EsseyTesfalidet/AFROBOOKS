@@ -9,6 +9,8 @@ import { fulfillPayment, type SuccessfulPayment } from '@/lib/server/fulfillPaym
 import { paymentConfiguration } from '@/lib/stripe/config';
 import { sendBookRoyalties, reviewPaymentRoyalties } from '@/lib/server/authorPayments';
 import { expirePromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharge, reconcilePromotionRefund } from '@/lib/server/promotionPayments';
+import { reviewGiftPayment } from '@/lib/server/bookGifts';
+import { deliverBookGift } from '@/lib/server/giftEmail';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -51,6 +53,12 @@ export async function POST(req: NextRequest) {
     const pi = event.data.object as SuccessfulPayment;
     if (!pi.metadata.bookIds && pi.metadata.purchaseType !== 'books') return NextResponse.json({ received: true });
     try {
+      if (pi.metadata.giftId) {
+        const current = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
+        const charge = current.latest_charge as Stripe.Charge | null;
+        if (!charge || typeof charge === 'string') throw new Error('Gift charge missing');
+        if (charge.amount_refunded > 0 || charge.disputed) await reviewGiftPayment(adminDb, pi.id);
+      }
       await fulfillPayment(adminDb, pi);
     } catch (error) {
       console.error('Payment fulfillment failed:', error);
@@ -69,8 +77,15 @@ export async function POST(req: NextRequest) {
         items: orders.map((order) => ({ title: order.bookTitle, authorName: order.authorName ?? 'Unknown Author', priceCents: order.finalPrice })),
         totalCents: pi.amount_received,
         orderId: pi.id,
+        isGift: orders.some(order => !!order.giftId),
       }).catch(() => false);
       if (sent) await Promise.all(ordersSnap.docs.map((doc: QueryDocumentSnapshot) => doc.ref.update({ receiptEmailSent: true })));
+    }
+    // Returning a retryable error preserves email delivery after a transient
+    // provider failure; fulfillment and royalties are independently deduplicated.
+    if (pi.metadata.giftId && orders.every(order => order.status === 'completed')) {
+      try { await deliverBookGift(adminDb, pi.metadata.giftId); }
+      catch { return NextResponse.json({ error: 'Gift email pending; retry required' }, { status: 500 }); }
     }
   }
 
@@ -88,6 +103,7 @@ export async function POST(req: NextRequest) {
         const object = event.data.object as Stripe.Charge | Stripe.Dispute;
         const paymentId = typeof object.payment_intent === 'string' ? object.payment_intent : object.payment_intent?.id;
         if (paymentId) {
+          await reviewGiftPayment(adminDb, paymentId);
           await reviewPaymentRoyalties(adminDb, paymentId);
           const payment = await stripe.paymentIntents.retrieve(paymentId);
           if (event.type === 'charge.refunded') await reconcilePromotionRefund(adminDb, stripe, payment);

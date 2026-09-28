@@ -16,6 +16,7 @@ import Logo from '@/components/shared/Logo';
 import RoleSelector from './RoleSelector';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
+import { giftReturnPath, loginDestination } from '@/lib/utils/loginDestination';
 
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
@@ -31,6 +32,11 @@ export default function SignupForm() {
   const router = useRouter();
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const [error, setError] = useState('');
+  const [loginHref, setLoginHref] = useState('/login');
+  useEffect(() => {
+    const destination = giftReturnPath(new URLSearchParams(window.location.search).get('redirect'));
+    if (destination) setLoginHref(`/login?redirect=${encodeURIComponent(destination)}`);
+  }, []);
   const { setFirebaseUser, setLoading } = useAuthStore();
   const [signupsOpen, setSignupsOpen] = useState({
     buyer: true,
@@ -90,11 +96,7 @@ export default function SignupForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'welcome', to: email, data: { firstName } }),
       }).catch(() => undefined);
-      if (role === 'seller') {
-        finishAuthNavigation('/dashboard');
-      } else {
-        finishAuthNavigation('/browse');
-      }
+      finishAuthNavigation(loginDestination({ role, activeRole: role }, new URLSearchParams(window.location.search).get('redirect')));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
       if (msg.includes('email-already-in-use')) {
@@ -257,7 +259,7 @@ export default function SignupForm() {
 
           <p className="mt-6 text-center text-sm text-[#7b7b84]">
             Already have an account?{' '}
-            <Link href="/login" className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
+            <Link href={loginHref} className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
               Sign in
             </Link>
           </p>

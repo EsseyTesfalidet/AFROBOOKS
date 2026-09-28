@@ -67,7 +67,10 @@ export default function LibraryPage() {
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="font-display text-display-lg text-white mb-6">My Library</h1>
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h1 className="font-display text-display-lg text-white">My Library</h1>
+          <Link href="/gifts" className="text-sm text-[#f5b800] underline">My gifts</Link>
+        </div>
 
         {/* Continue Reading — swipe carousel */}
         {(() => {

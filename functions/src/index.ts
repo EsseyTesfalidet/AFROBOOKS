@@ -2,8 +2,9 @@ import * as admin from 'firebase-admin';
 import { processMonthlyPayouts } from './stripe/processPayouts';
 import { processMonthlyBorrowPayouts } from './subscriptions/processBorrows';
 import { sendNotificationEmail } from './notifications/sendNotification';
+import { processAuthorPayoutReminders } from './notifications/processPayoutReminders';
 import { setAdminRole } from './admin/setRole';
 
 admin.initializeApp();
 
-export { processMonthlyPayouts, processMonthlyBorrowPayouts, sendNotificationEmail, setAdminRole };
+export { processMonthlyPayouts, processMonthlyBorrowPayouts, sendNotificationEmail, processAuthorPayoutReminders, setAdminRole };

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowUpRight, Plus } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
 import BookList from '@/components/seller/BookList';
+import AuthorPaymentSetupCard from '@/components/seller/AuthorPaymentSetupCard';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
 import { useSellerBooks } from '@/hooks/useSellerBooks';
@@ -48,6 +49,7 @@ export default function SellerDashboardPage() {
           </div>
           <Link href="/publish" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#ed6647] px-4 text-[14px] font-semibold text-[#160e0b] hover:bg-[#ff8b6f]"><Plus size={17} /> New book</Link>
         </div>
+        <AuthorPaymentSetupCard hasPublishedBooks={!loading && !error && live > 0} />
         <dl className="my-9 grid grid-cols-2 gap-x-6 gap-y-7 border-y border-white/10 py-7 lg:grid-cols-4">
           {[
             { label: 'Published books', value: loading || error ? '—' : String(live), note: loading || error ? 'Your catalog' : `${drafts} ${drafts === 1 ? 'draft' : 'drafts'} in progress` },

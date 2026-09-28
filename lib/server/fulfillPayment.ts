@@ -26,14 +26,22 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
     const bookIds = [...new Set(pending.map(doc => doc.data().bookId as string))];
     const books = await Promise.all(bookIds.map(id => tx.get(db.collection('books').doc(id))));
     const deletions = await Promise.all(bookIds.map(id => tx.get(db.collection('bookDeletions').doc(id))));
+    const giftOrders = pending.filter(doc => !!doc.data().giftId);
+    const gifts = await Promise.all(giftOrders.map(doc => tx.get(db.collection('bookGifts').doc(doc.data().giftId))));
+    for (const [index, gift] of gifts.entries()) {
+      const order = giftOrders[index];
+      if (!gift.exists || gift.data()?.orderId !== order.id || gift.data()?.senderId !== userId || gift.data()?.bookId !== order.data().bookId || gift.data()?.paymentIntentId !== payment.id || payment.metadata.giftId !== gift.id) throw new Error('Gift order mismatch');
+    }
+    const giftNeedsReview = gifts.some(gift => gift.data()?.status !== 'pending');
     const unavailable = books.filter((book, index) => !book.exists || book.data()?.deletionPending === true || book.data()?.status === 'removed' || deletions[index].exists);
-    if (unavailable.length) {
+    if (unavailable.length || giftNeedsReview) {
       // Record the received payment for staff review. Never reconstruct a book,
       // grant a dead entitlement, or credit earnings for unavailable content.
       for (const order of pending) tx.update(order.ref, { status: 'needs_review', reviewReason: 'book_unavailable', paymentReceivedAt: new Date() });
+      for (const gift of gifts) tx.update(gift.ref, { status: 'needs_review' });
       tx.set(db.collection('notifications').doc(`${payment.id}_review`), {
         userId, type: 'system', title: 'Payment needs review',
-        message: 'A book became unavailable while your payment was processing. Your payment has been recorded for review. Please do not pay again.',
+        message: 'Your payment has been recorded for review. Please check your receipt and do not pay again.',
         isRead: false, actionUrl: `/checkout/receipt?orders=${orders.docs.map(doc => doc.id).join(',')}`, relatedBookId: null, createdAt: new Date(),
       });
       tx.create(fulfillmentRef, { userId, amount: total, status: 'needs_review', unavailableBookIds: unavailable.map(book => book.id), createdAt: new Date() });
@@ -47,13 +55,14 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
     for (const orderDoc of pending) {
       const order = orderDoc.data();
       tx.update(orderDoc.ref, { status: 'completed', fulfilledAt: new Date() });
-      tx.set(db.collection('library').doc(`${userId}_${order.bookId}`), {
+      if (order.giftId) tx.update(db.collection('bookGifts').doc(order.giftId), { status: 'available', paidAt: new Date() });
+      else tx.set(db.collection('library').doc(`${userId}_${order.bookId}`), {
         id: `${userId}_${order.bookId}`, userId, bookId: order.bookId,
         purchaseType: 'bought', orderId: orderDoc.id, addedAt: new Date(),
       }, { merge: true });
       tx.update(db.collection('books').doc(order.bookId), { totalSales: FieldValue.increment(1), updatedAt: new Date() });
       for (const [recipient, type, title, actionUrl] of [
-        [userId, 'purchase', 'Purchase Successful', `/read/${order.bookId}`],
+        [userId, 'purchase', order.giftId ? 'Gift purchased' : 'Purchase Successful', order.giftId ? '/gifts' : `/read/${order.bookId}`],
         [order.sellerId, 'sale', 'New Sale', '/dashboard'],
       ]) {
         tx.set(db.collection('notifications').doc(`${orderDoc.id}_${type}`), {

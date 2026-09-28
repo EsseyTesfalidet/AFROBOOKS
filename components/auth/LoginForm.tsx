@@ -14,6 +14,7 @@ import Logo from '@/components/shared/Logo';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
 import type { User as UserProfile } from '@/types/user';
+import { loginDestination, giftReturnPath } from '@/lib/utils/loginDestination';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -26,10 +27,15 @@ export default function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [signupHref, setSignupHref] = useState('/signup');
+  useEffect(() => {
+    const destination = giftReturnPath(new URLSearchParams(window.location.search).get('redirect'));
+    if (destination) setSignupHref(`/signup?redirect=${encodeURIComponent(destination)}`);
+  }, []);
   const { userProfile, loading, setFirebaseUser, setUserProfile, setLoading } = useAuthStore();
 
-  function finishAuthNavigation(destination: string) {
-    window.location.replace(destination);
+  function finishAuthNavigation(profile: UserProfile) {
+    window.location.replace(loginDestination(profile, new URLSearchParams(window.location.search).get('redirect')));
   }
 
   async function clearBlockedSession(message: string) {
@@ -57,11 +63,9 @@ export default function LoginForm() {
 
   useEffect(() => {
     if (!loading && userProfile) {
-      if (userProfile.role === 'admin') router.replace('/admin');
-      else if (userProfile.activeRole === 'seller') router.replace('/dashboard');
-      else router.replace('/browse');
+      router.replace(loginDestination(userProfile, new URLSearchParams(window.location.search).get('redirect')));
     }
-  }, [loading, userProfile]);
+  }, [loading, userProfile, router]);
 
   const {
     register,
@@ -80,13 +84,7 @@ export default function LoginForm() {
       setUserProfile(profile);
       setLoading(false);
       setClientAuthHints(fbUser.uid, profile.role ?? 'buyer');
-      if (profile.role === 'admin') {
-        finishAuthNavigation('/admin');
-      } else if (profile.activeRole === 'seller') {
-        finishAuthNavigation('/dashboard');
-      } else {
-        finishAuthNavigation('/browse');
-      }
+      finishAuthNavigation(profile);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
       if (msg === 'ACCOUNT_SUSPENDED') {
@@ -118,9 +116,7 @@ export default function LoginForm() {
       setUserProfile(profile);
       setLoading(false);
       setClientAuthHints(user.uid, profile.role ?? 'buyer');
-      if (profile.role === 'admin') finishAuthNavigation('/admin');
-      else if (profile.activeRole === 'seller') finishAuthNavigation('/dashboard');
-      else finishAuthNavigation('/browse');
+      finishAuthNavigation(profile);
     } catch (e: unknown) {
       setGoogleLoading(false);
       const message = e instanceof Error ? e.message : '';
@@ -260,7 +256,7 @@ export default function LoginForm() {
 
           <p className="mt-6 text-center text-sm text-[#7b7b84]">
             Don't have an account?{' '}
-            <Link href="/signup" className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
+            <Link href={signupHref} className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
               Sign up
             </Link>
           </p>

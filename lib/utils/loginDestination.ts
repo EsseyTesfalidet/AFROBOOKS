@@ -1,0 +1,17 @@
+export const PAYOUT_SETUP_PATH = '/dashboard?profile=payout';
+
+export function giftReturnPath(requested: string | null): string | null {
+  return requested && (['/gifts', '/gifts/claim'].includes(requested) || /^\/gift\/[A-Za-z0-9_-]{1,128}(?:\?resume=[a-f0-9]{64})?$/.test(requested)) ? requested : null;
+}
+
+// Only the known payout destination is accepted from reminder links. Never
+// redirect to an arbitrary URL supplied through the login query string.
+export function payoutReturnPath(requested: string | null, role: string): string | null {
+  return requested === PAYOUT_SETUP_PATH && ['seller', 'both', 'admin'].includes(role)
+    ? PAYOUT_SETUP_PATH : null;
+}
+
+export function loginDestination(profile: { role: string; activeRole: string }, requested: string | null) {
+  return giftReturnPath(requested) ?? payoutReturnPath(requested, profile.role) ??
+    (profile.role === 'admin' ? '/admin' : profile.activeRole === 'seller' ? '/dashboard' : '/browse');
+}

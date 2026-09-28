@@ -4,6 +4,7 @@ export interface Order {
   id: string;
   buyerId: string;
   buyerEmail: string;
+  giftId?: string;
   bookId: string;
   bookTitle: string;
   sellerId: string;

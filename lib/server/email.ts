@@ -18,6 +18,7 @@ export async function sendPurchaseReceiptEmail(params: {
   items: { title: string; authorName: string; priceCents: number }[];
   totalCents: number;
   orderId: string;
+  isGift?: boolean;
 }) {
   const resend = getResend();
   if (!resend) return false;
@@ -27,16 +28,17 @@ export async function sendPurchaseReceiptEmail(params: {
     items: params.items,
     totalCents: params.totalCents,
     orderId: params.orderId,
+    isGift: params.isGift,
   });
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: FROM,
     to: params.to,
     subject: email.subject,
     html: email.html,
   });
 
-  return true;
+  return !result.error && !!result.data?.id;
 }
 
 export async function sendSubscriptionConfirmation(params: {

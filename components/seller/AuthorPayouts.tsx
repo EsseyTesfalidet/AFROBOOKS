@@ -10,6 +10,7 @@ interface PayoutStatus {
   connected: boolean;
   ready: boolean;
   enabled: boolean;
+  setupState?: 'needs_setup' | 'needs_details' | 'reviewing' | 'ready' | 'unavailable';
   payoutHold?: boolean;
   requirementsDue?: number;
   pendingVerification?: boolean;
@@ -125,7 +126,9 @@ export default function AuthorPayouts() {
               ? 'Your Stripe account is ready to receive earnings.'
               : !status.connected
                 ? 'Connect Stripe before readers can purchase your books.'
-                : status.pendingVerification && !status.requirementsDue
+                : status.setupState === 'unavailable'
+                  ? 'Your Stripe account needs attention. Open Stripe to review the account status or contact support.'
+                : status.setupState === 'reviewing' || (status.pendingVerification && !status.requirementsDue)
                   ? 'Stripe is reviewing your details. You can check progress on Stripe.'
                   : 'Finish your Stripe setup to receive earnings and enable book purchases.'}
           </p>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { PAYOUT_SETUP_PATH, payoutReturnPath, giftReturnPath } from '@/lib/utils/loginDestination';
 
 const BUYER_PATHS = [
   '/checkout', '/library', '/profile', '/notifications',
@@ -33,7 +34,8 @@ export function proxy(request: NextRequest) {
   const canAccessAdmin = roleCookie === 'admin';
 
   if (pathStartsWith(pathname, AUTH_PATHS) && isAuthed) {
-    return NextResponse.redirect(new URL('/browse', request.url));
+    const destination = giftReturnPath(request.nextUrl.searchParams.get('redirect')) ?? payoutReturnPath(request.nextUrl.searchParams.get('redirect'), roleCookie);
+    return NextResponse.redirect(new URL(destination ?? '/browse', request.url));
   }
 
   if (
@@ -42,7 +44,11 @@ export function proxy(request: NextRequest) {
       pathStartsWith(pathname, ADMIN_PATHS)) &&
     !isAuthed
   ) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const login = new URL('/login', request.url);
+    if (pathname === '/dashboard' && request.nextUrl.searchParams.get('profile') === 'payout') {
+      login.searchParams.set('redirect', PAYOUT_SETUP_PATH);
+    }
+    return NextResponse.redirect(login);
   }
 
   if (pathStartsWith(pathname, SELLER_PATHS) && !canAccessSeller) {

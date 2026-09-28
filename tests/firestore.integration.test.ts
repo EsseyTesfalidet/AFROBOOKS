@@ -7,6 +7,8 @@ import { ref, uploadBytes } from 'firebase/storage';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { fulfillPayment } from '../lib/server/fulfillPayment';
+import { prepareBookGift, attachGiftPayment, findBookGift, claimBookGift, reviewGiftPayment } from '../lib/server/bookGifts';
+import { deliverBookGift } from '../lib/server/giftEmail';
 import { calculateCartPricing } from '../lib/utils/fees';
 import { reviewVerification } from '../lib/admin/reviewVerification';
 import { processAuthorRoyalties, reconcileAuthor, payAuthorOrder, holdAuthorPayouts } from '../functions/src/stripe/authorRoyalties';
@@ -28,6 +30,9 @@ import { LEGAL_VERSION, hasCurrentAgreement } from '../lib/legal';
 import { submitPromotion, reviewPromotion, promotionCandidates, recordPromotionEvent, savePromotionSettings } from '../lib/server/promotions';
 import { preparePromotionCheckout, createPromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharge, expirePromotionCheckout, resolvePromotionPayment, reconcilePromotionRefund } from '../lib/server/promotionPayments';
 import { PROMOTION_TERMS_VERSION } from '../lib/promotions';
+import { FOLLOWUP_DELAY, processAuthorPayoutReminder, type ReminderGateway } from '../functions/src/notifications/authorPayoutReminders';
+import type { ConnectedAccount } from '../functions/src/stripe/accountReadiness';
+import type { ReminderEmail } from '../functions/src/notifications/payoutReminderEmail';
 import type { Promotion } from '../types/promotion';
 import { promotionFixture, promotionStripeFixture, author as promotionAuthor, admin as promotionAdmin } from './promotion-fixture';
 
@@ -54,6 +59,156 @@ beforeEach(async () => {
   ]);
 });
 after(async () => { await env?.cleanup(); await deleteApp(adminApp); });
+
+const giftRecipient = { uid: 'recipient', email: 'friend@example.test', emailVerified: true };
+const giftInput = {
+  senderId: 'reader', senderName: 'Alex', recipientEmail: giftRecipient.email, message: 'Enjoy this story!',
+  attemptId: 'e85c20fc-031a-43ba-a289-383c25ae1823',
+  order: { buyerId: 'reader', buyerEmail: 'sender@example.test', bookId: 'book', bookTitle: 'Story', sellerId: 'author', finalPrice: 1000, sellerEarnings: 800, status: 'pending' },
+};
+async function giftFixture(paid = true) {
+  await db.doc('books/book').update({ chapterCount: 2 });
+  await db.doc('users/recipient').set({ ...profile, uid: 'recipient', email: giftRecipient.email });
+  const prepared = await prepareBookGift(db, giftInput);
+  await attachGiftPayment(db, prepared.id, 'pi_gift');
+  const payment = { id: 'pi_gift', amount_received: 1000, currency: 'usd', metadata: { userId: 'reader', bookIds: 'book', purchaseType: 'books', giftId: prepared.id } };
+  if (paid) await fulfillPayment(db, payment);
+  const gift = await db.doc(`bookGifts/${prepared.id}`).get();
+  return { ...prepared, ref: gift.ref, token: gift.data()!.claimToken, payment, confirmed: { ...payment, status: 'succeeded', refunded: false, disputed: false } };
+}
+
+test('concurrent gift checkout preparation saves one immutable private order and retry token', async () => {
+  const results = await Promise.all([prepareBookGift(db, giftInput), prepareBookGift(db, giftInput)]);
+  assert.equal(results[0].id, results[1].id);
+  assert.equal((await db.collection('bookGifts').get()).size, 1);
+  assert.equal((await db.collection('orders').get()).size, 1);
+  await assert.rejects(prepareBookGift(db, { ...giftInput, recipientEmail: 'different@example.test' }), /details or book price changed/);
+  await assert.rejects(prepareBookGift(db, { ...giftInput, order: { ...giftInput.order, finalPrice: 2000 } }), /details or book price changed/);
+  await attachGiftPayment(db, results[0].id, 'pi_gift');
+  assert.equal((await prepareBookGift(db, giftInput)).paymentIntentId, 'pi_gift');
+  await assert.rejects(attachGiftPayment(db, results[0].id, 'pi_duplicate'), /mismatch/);
+  const order = (await db.doc(`orders/${results[0].orderId}`).get()).data()!;
+  assert.equal(order.recipientEmail, undefined); assert.equal(order.message, undefined); assert.equal(order.claimToken, undefined);
+  for (const context of [env.unauthenticatedContext(), env.authenticatedContext('reader'), env.authenticatedContext('author'), env.authenticatedContext('admin')]) {
+    const client = context.firestore();
+    await assertFails(getDoc(doc(client, `bookGifts/${results[0].id}`)));
+    await assertFails(setDoc(doc(client, `bookGifts/${results[0].id}`), { status: 'claimed' }));
+  }
+});
+
+test('gift fulfillment retries credit the author once and never grant sender access', async () => {
+  const gift = await giftFixture(false);
+  await Promise.all([fulfillPayment(db, gift.payment), fulfillPayment(db, gift.payment)]);
+  assert.equal((await gift.ref.get()).data()?.status, 'available');
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 800);
+  assert.equal((await db.doc('books/book').get()).data()?.totalSales, 1);
+  assert.equal((await db.collection('library').get()).size, 0);
+  await assertFails(getDoc(doc(env.authenticatedContext('reader').firestore(), 'books/book/chapters/locked')));
+});
+
+test('concurrent gift claims grant one entitlement and notify sender once', async () => {
+  const gift = await giftFixture();
+  assert.equal((await findBookGift(db, gift.token)).id, gift.id);
+  await assert.rejects(findBookGift(db, 'f'.repeat(64)), /invalid/);
+  const results = await Promise.all([claimBookGift(db, gift.ref, giftRecipient, gift.confirmed), claimBookGift(db, gift.ref, giftRecipient, gift.confirmed)]);
+  assert.ok(results.every(result => result.claimed));
+  assert.equal((await db.collection('library').get()).size, 1);
+  assert.equal((await gift.ref.get()).data()?.recipientId, 'recipient');
+  assert.equal((await db.doc('library/recipient_book').get()).data()?.orderId, gift.orderId);
+  assert.equal((await db.doc('notifications/' + gift.id + '_claimed_sender').get()).data()?.userId, 'reader');
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 800);
+  await assertSucceeds(getDoc(doc(env.authenticatedContext('recipient').firestore(), 'books/book/chapters/locked')));
+  await assertFails(getDoc(doc(env.authenticatedContext('reader').firestore(), 'books/book/chapters/locked')));
+  await assert.rejects(claimBookGift(db, gift.ref, { ...giftRecipient, uid: 'new-account' }, gift.confirmed), /not available/);
+});
+
+test('gift claims reject wrong or unverified identities and unpaid or mismatched payments', async () => {
+  const gift = await giftFixture(false);
+  await assert.rejects(claimBookGift(db, gift.ref, giftRecipient, gift.confirmed), /not available/);
+  await fulfillPayment(db, gift.payment);
+  await assert.rejects(claimBookGift(db, gift.ref, { ...giftRecipient, email: 'other@example.test' }, gift.confirmed), /Sign in/);
+  await assert.rejects(claimBookGift(db, gift.ref, { ...giftRecipient, emailVerified: false }, gift.confirmed), /Verify/);
+  for (const change of [{ refunded: true }, { disputed: true }, { status: 'processing' }, { amount_received: 500 }, { currency: 'eur' }, { id: 'pi_other' }]) await assert.rejects(claimBookGift(db, gift.ref, giftRecipient, { ...gift.confirmed, ...change }), /payment.*review/);
+  assert.equal((await db.collection('library').get()).size, 0);
+  assert.equal((await gift.ref.get()).data()?.status, 'available');
+});
+
+test('an owned book leaves a gift unclaimed but a subscription copy can become a gift purchase', async () => {
+  const gift = await giftFixture();
+  await db.doc('library/recipient_book').set({ userId: 'recipient', bookId: 'book', purchaseType: 'bought', orderId: 'other' });
+  await assert.rejects(claimBookGift(db, gift.ref, giftRecipient, gift.confirmed), /already own/);
+  assert.equal((await gift.ref.get()).data()?.status, 'available');
+  assert.equal((await db.doc('library/recipient_book').get()).data()?.orderId, 'other');
+  await db.doc('library/recipient_book').update({ purchaseType: 'subscription' });
+  await claimBookGift(db, gift.ref, giftRecipient, gift.confirmed);
+  assert.equal((await db.doc('library/recipient_book').get()).data()?.purchaseType, 'bought');
+});
+
+test('gifts cannot unlock removed or incomplete books or suspended recipients', async () => {
+  const gift = await giftFixture();
+  await db.doc('users/recipient').update({ status: 'suspended' });
+  await assert.rejects(claimBookGift(db, gift.ref, giftRecipient, gift.confirmed), /account/);
+  await db.doc('users/recipient').update({ status: 'active' });
+  await db.doc('books/book').update({ chapterCount: 3 });
+  await assert.rejects(claimBookGift(db, gift.ref, giftRecipient, gift.confirmed), /unavailable/);
+  await db.doc('books/book').update({ chapterCount: 2 });
+  await db.doc('bookDeletions/book').set({ status: 'pending' });
+  await assert.rejects(claimBookGift(db, gift.ref, giftRecipient, gift.confirmed), /unavailable/);
+  assert.equal((await db.collection('library').get()).size, 0);
+});
+
+test('gift refund review revokes the gift copy and is safe against stale success webhooks', async () => {
+  const gift = await giftFixture();
+  await claimBookGift(db, gift.ref, giftRecipient, gift.confirmed);
+  await reviewGiftPayment(db, gift.confirmed.id);
+  await fulfillPayment(db, gift.payment);
+  assert.equal((await gift.ref.get()).data()?.status, 'needs_review');
+  assert.equal((await db.doc('library/recipient_book').get()).exists, false);
+  await assert.rejects(claimBookGift(db, gift.ref, giftRecipient, gift.confirmed), /not available/);
+  await db.doc('library/recipient_book').set({ orderId: 'separate_purchase', purchaseType: 'bought' });
+  await reviewGiftPayment(db, gift.confirmed.id);
+  assert.equal((await db.doc('library/recipient_book').get()).data()?.orderId, 'separate_purchase');
+});
+
+test('gift review before a delayed success event prevents fulfillment and author credit', async () => {
+  const gift = await giftFixture(false);
+  await reviewGiftPayment(db, gift.confirmed.id);
+  await fulfillPayment(db, gift.payment);
+  assert.equal((await db.doc(`orders/${gift.orderId}`).get()).data()?.status, 'needs_review');
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+  assert.equal((await gift.ref.get()).data()?.status, 'needs_review');
+});
+
+test('gift email retries preserve the provider key and exact payload after a lost response', async () => {
+  const gift = await giftFixture();
+  const config = { appUrl: 'https://example.test', apiKey: 'test', from: 'AfroBooks <gift@example.test>' };
+  const calls: { email: ReminderEmail; key: string }[] = [];
+  const send = async (_apiKey: string, email: ReminderEmail, key: string) => {
+    calls.push({ email, key });
+    if (calls.length === 1) throw new Error('Response lost');
+    return 'email_1';
+  };
+  await assert.rejects(deliverBookGift(db, gift.id, { config, send }), /not been confirmed/);
+  assert.equal((await gift.ref.get()).data()?.emailStatus, 'failed');
+  await deliverBookGift(db, gift.id, { config: { ...config, appUrl: 'https://new.example.test' }, send });
+  assert.deepEqual(calls[0], calls[1]);
+  assert.equal((await gift.ref.get()).data()?.emailStatus, 'sent');
+  await deliverBookGift(db, gift.id, { config, send });
+  assert.equal(calls.length, 2);
+});
+
+test('gift email uses a lease under concurrency and stops ambiguous attempts outside idempotency window', async () => {
+  const gift = await giftFixture();
+  const config = { appUrl: 'https://example.test', apiKey: 'test', from: 'gift@example.test' };
+  let calls = 0;
+  const send = async () => { calls++; return 'email_1'; };
+  await Promise.allSettled([deliverBookGift(db, gift.id, { config, send }), deliverBookGift(db, gift.id, { config, send })]);
+  assert.equal(calls, 1);
+  await gift.ref.update({ emailStatus: 'failed', emailStartedAt: Date.now() - 24 * 60 * 60 * 1000 });
+  await deliverBookGift(db, gift.id, { config, send });
+  assert.equal(calls, 1);
+  assert.equal((await gift.ref.get()).data()?.emailStatus, 'needs_review');
+});
 
 test('legal acceptance is server-stamped, versioned, idempotent and private to the account', async () => {
   const input = { termsAccepted: true, privacyAcknowledged: true, version: LEGAL_VERSION };
@@ -838,4 +993,149 @@ test('book file uploads require an existing draft owned by the uploader', async 
   await deleteBookRecords(db, 'upload', { deleteFiles: async () => undefined });
   await assertFails(uploadBytes(file('upload'), bytes, { contentType: 'image/png' }));
   await assertFails(uploadBytes(file('upload', 'manuscripts'), bytes, { contentType: 'text/plain' }));
+});
+
+function reminderFixture() {
+  const state = {
+    account: { id: 'acct_author', metadata: { userId: 'author' }, details_submitted: false } as ConnectedAccount,
+    accountCalls: 0, loseResponse: false,
+    accepted: new Map<string, ReminderEmail>(), calls: [] as string[],
+  };
+  const gateway: ReminderGateway = {
+    appUrl: 'https://afrobs.com', from: 'AfroBooks <noreply@example.test>',
+    account: async () => { state.accountCalls++; return state.account; },
+    sendEmail: async (email, key) => {
+      state.calls.push(key);
+      state.accepted.set(key, email);
+      if (state.loseResponse) { state.loseResponse = false; throw new Error('Provider response lost'); }
+      return `email_${state.accepted.size}`;
+    },
+  };
+  return { gateway, state };
+}
+
+test('payout reminders create one private notification and one email under concurrent runs, then one seven-day follow-up', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  await Promise.all(Array.from({ length: 4 }, () => processAuthorPayoutReminder(db, 'author', gateway, now)));
+  assert.equal((await db.collection('notifications').get()).size, 1);
+  assert.equal(state.calls.length, 1);
+  assert.equal(state.accountCalls, 0);
+  const notification = await db.doc('notifications/payout_setup_author_initial').get();
+  assert.equal(notification.data()?.actionUrl, '/dashboard?profile=payout');
+  await processAuthorPayoutReminder(db, 'author', gateway, now + FOLLOWUP_DELAY - 1);
+  assert.equal(state.calls.length, 1);
+  await processAuthorPayoutReminder(db, 'author', gateway, now + FOLLOWUP_DELAY);
+  assert.equal(state.calls.length, 2);
+  assert.equal((await db.collection('notifications').get()).size, 2);
+  await processAuthorPayoutReminder(db, 'author', gateway, now + FOLLOWUP_DELAY * 4);
+  assert.equal(state.calls.length, 2);
+  const authorDb = env.authenticatedContext('author').firestore();
+  await assertSucceeds(getDoc(doc(authorDb, notification.ref.path)));
+  await assertFails(getDoc(doc(env.authenticatedContext('reader').firestore(), notification.ref.path)));
+  await assertFails(getDoc(doc(authorDb, 'authorPayoutReminders/author')));
+  await assertFails(getDoc(doc(authorDb, 'authorPayoutReminders/author/emails/initial')));
+  await assertFails(setDoc(doc(authorDb, 'authorPayoutReminders/author'), { initialAt: 0 }));
+  await assertFails(updateDoc(doc(authorDb, notification.ref.path), { actionUrl: 'https://attacker.test' }));
+});
+
+test('fresh Stripe readiness cancels queued reminders and marks old setup messages read', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  await processAuthorPayoutReminder(db, 'author', { ...gateway, sendEmail: undefined }, now);
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author', stripeAccountStatus: 'pending' });
+  state.account = { ...state.account, details_submitted: true, payouts_enabled: true, capabilities: { transfers: 'active' } };
+  assert.equal(await processAuthorPayoutReminder(db, 'author', gateway, now + FOLLOWUP_DELAY), 'ready');
+  assert.equal(state.calls.length, 0);
+  assert.equal((await db.doc('authorPayoutReminders/author/emails/initial').get()).data()?.status, 'cancelled');
+  assert.equal((await db.doc('sellers/author').get()).data()?.stripeAccountStatus, 'active');
+  assert.equal((await db.doc('notifications/payout_setup_author_initial').get()).data()?.isRead, true);
+  assert.equal((await db.doc('notifications/payout_setup_author_followup').get()).exists, false);
+});
+
+test('Stripe review produces one distinct in-app status and no setup emails until action is required', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author' });
+  state.account = { ...state.account, requirements: { currently_due: ['identity'], pending_verification: ['identity'] } };
+  await processAuthorPayoutReminder(db, 'author', gateway, now);
+  await processAuthorPayoutReminder(db, 'author', gateway, now + FOLLOWUP_DELAY);
+  assert.equal(state.calls.length, 0);
+  assert.equal((await db.collection('notifications').get()).size, 1);
+  assert.match((await db.doc('notifications/payout_setup_author_review').get()).data()?.message, /reviewing/);
+  state.account.requirements = { currently_due: ['external_account'], pending_verification: [] };
+  await processAuthorPayoutReminder(db, 'author', gateway, now + FOLLOWUP_DELAY + 1);
+  assert.equal(state.calls.length, 1);
+  assert.ok(state.calls[0].endsWith('/initial'));
+  assert.equal((await db.doc('notifications/payout_setup_author_review').get()).data()?.isRead, true);
+});
+
+test('queued email retries use an identical payload and key after a lost response without duplicating notifications', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  state.loseResponse = true;
+  await assert.rejects(processAuthorPayoutReminder(db, 'author', gateway, now), /response lost/);
+  assert.equal((await db.doc('authorPayoutReminders/author/emails/initial').get()).data()?.status, 'sending');
+  await processAuthorPayoutReminder(db, 'author', gateway, now + 1000);
+  assert.equal(state.calls.length, 1, 'Lease prevents an immediate concurrent resend');
+  const original = state.accepted.values().next().value;
+  await processAuthorPayoutReminder(db, 'author', { ...gateway, from: 'Changed <new@example.test>' }, now + 3600000);
+  assert.equal(state.calls.length, 2);
+  assert.equal(state.accepted.size, 1);
+  assert.deepEqual(state.accepted.values().next().value, original);
+  assert.equal((await db.collection('notifications').get()).size, 1);
+  assert.equal((await db.doc('authorPayoutReminders/author/emails/initial').get()).data()?.status, 'sent');
+});
+
+test('old ambiguous email attempts require review instead of resending outside provider deduplication window', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  state.loseResponse = true;
+  await assert.rejects(processAuthorPayoutReminder(db, 'author', gateway, now));
+  await processAuthorPayoutReminder(db, 'author', gateway, now + 24 * 3600000);
+  assert.equal(state.calls.length, 1);
+  assert.equal((await db.doc('authorPayoutReminders/author/emails/initial').get()).data()?.status, 'needs_review');
+});
+
+test('in-app reminders work without email configuration and late activation sends only the current follow-up', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  await processAuthorPayoutReminder(db, 'author', { ...gateway, sendEmail: undefined }, now);
+  assert.equal((await db.collection('notifications').get()).size, 1);
+  assert.equal((await db.doc('authorPayoutReminders/author/emails/initial').get()).data()?.status, 'pending');
+  await processAuthorPayoutReminder(db, 'author', gateway, now + FOLLOWUP_DELAY);
+  assert.equal(state.calls.length, 1);
+  assert.ok(state.calls[0].endsWith('/followup'));
+});
+
+test('reminders skip removed, suspended, buyer-only and held accounts and reject mismatched Stripe ownership', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  await db.doc('users/author').update({ status: 'suspended' });
+  await processAuthorPayoutReminder(db, 'author', gateway, now);
+  await db.doc('users/author').update({ status: 'active', role: 'buyer' });
+  await processAuthorPayoutReminder(db, 'author', gateway, now);
+  await db.doc('users/author').update({ role: 'seller' });
+  await db.doc('sellers/author').update({ payoutHoldReason: 'payment_review' });
+  await processAuthorPayoutReminder(db, 'author', gateway, now);
+  await db.doc('sellers/author').update({ payoutHoldReason: null, stripeAccountId: 'acct_author' });
+  state.account.metadata = { userId: 'someone_else' };
+  await assert.rejects(processAuthorPayoutReminder(db, 'author', gateway, now), /ownership/);
+  await db.doc('users/author').delete();
+  await processAuthorPayoutReminder(db, 'author', gateway, now);
+  assert.equal(state.calls.length, 0);
+  assert.equal((await db.collection('notifications').get()).size, 0);
+});
+
+test('a newer readiness check wins when onboarding completes during reminder preparation', async () => {
+  const { gateway, state } = reminderFixture();
+  const now = Date.now();
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author' });
+  gateway.account = async () => {
+    await db.doc('sellers/author').update({ stripeAccountStatus: 'active', stripeAccountCheckedAt: new Date(now + 1) });
+    return state.account;
+  };
+  assert.equal(await processAuthorPayoutReminder(db, 'author', gateway, now), 'skipped');
+  assert.equal(state.calls.length, 0);
+  assert.equal((await db.collection('notifications').get()).size, 0);
 });

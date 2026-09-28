@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, BadgeCheck, Flag, X, BookOpen, Calendar, Share2, Copy, Check } from 'lucide-react';
+import { ShieldCheck, BadgeCheck, Flag, X, BookOpen, Calendar, Share2, Copy, Check, Gift } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import StarRating from '@/components/shared/StarRating';
 import StatusPill from '@/components/shared/StatusPill';
@@ -293,6 +293,11 @@ export default function BookDetailPage() {
         )}
 
         {/* Read Sample button */}
+        {!isPreorder && book.status === 'live' && book.price >= 50 && (
+          <Link href={`/gift/${book.id}`} className="flex items-center justify-center gap-2 rounded-xl border border-[#333] px-4 py-3 text-sm text-[#f5b800] hover:border-[#f5b800]">
+            <Gift size={17} /> Gift this book
+          </Link>
+        )}
         {!owned && !isPreorder && (
           <div className="flex justify-center">
             <Link href={`/sample/${book.id}`}

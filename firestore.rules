@@ -170,6 +170,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Claim tokens, recipient emails and personal messages are API-only.
+    match /bookGifts/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reminder history and email payloads are server-only, including for authors.
+    match /authorPayoutReminders/{document=**} {
+      allow read, write: if false;
+    }
+
     // Subscriptions
     match /subscriptions/{subId} {
       allow read: if isSignedIn() &&

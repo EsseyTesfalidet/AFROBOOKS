@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsx --test tests/reader.test.ts tests/firebase-runtime.test.ts tests/checkout.test.ts tests/catalog.test.ts tests/manuscript.test.ts tests/admin.test.ts tests/promotions.test.ts tests/connect.test.ts tests/legal.test.ts",
+    "test": "tsx --test tests/reader.test.ts tests/firebase-runtime.test.ts tests/checkout.test.ts tests/catalog.test.ts tests/manuscript.test.ts tests/admin.test.ts tests/promotions.test.ts tests/connect.test.ts tests/legal.test.ts tests/payout-reminders.test.ts tests/gifts.test.ts",
     "test:integration": "tsx --test tests/firestore.integration.test.ts",
     "test:rules": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore,storage --project demo-afrobooks-security --config firebase.test.json \"npm run test:integration\""
   },

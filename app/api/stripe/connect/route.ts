@@ -6,6 +6,7 @@ import { requireRequestUser } from '@/lib/server/auth';
 import { agreementRequiredResponse } from '@/lib/server/legalAgreement';
 import { syncAuthorAccount } from '@/lib/server/authorPayments';
 import { getStripeConnectServer } from '@/lib/stripe/connect';
+import { payoutSetupState } from '@/functions/src/stripe/payoutSetupState';
 import {
   authorConnectFailure,
   authorOnboardingLink,
@@ -45,19 +46,28 @@ export async function GET(req: NextRequest) {
     const { user, db, seller, stripe } = await context(req);
     const enabled =
       (await db.doc('platformSettings/global').get()).data()?.automatedPayoutsEnabled === true;
+    const setupOnly = req.nextUrl.searchParams.get('view') === 'setup';
     if (!seller.stripeAccountId) {
+      if (setupOnly) return NextResponse.json(
+        { connected: false, ready: false, setupState: 'needs_setup', payoutHold: !!seller.payoutHoldReason },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
       const names = new Intl.DisplayNames(['en'], { type: 'region' });
       const countries: { code: string; name: string }[] = [];
       for await (const country of stripe.countrySpecs.list({ limit: 100 }))
         countries.push({ code: country.id, name: names.of(country.id) ?? country.id });
       countries.sort((a, b) => a.name.localeCompare(b.name));
       return NextResponse.json(
-        { connected: false, ready: false, enabled, countries },
+        { connected: false, ready: false, enabled, countries, setupState: 'needs_setup' },
         { headers: { 'Cache-Control': 'no-store' } },
       );
     }
     const account = await stripe.accounts.retrieve(seller.stripeAccountId);
     const readiness = await syncAuthorAccount(db, user.uid, account);
+    if (setupOnly) return NextResponse.json(
+      { connected: true, ready: readiness.stripeAccountStatus === 'active', setupState: payoutSetupState(account), payoutHold: !!seller.payoutHoldReason },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
     let balance: { amount: number; currency: string }[] = [];
     let pendingBalance: { amount: number; currency: string }[] = [];
     let bankPayouts: {
@@ -94,6 +104,7 @@ export async function GET(req: NextRequest) {
       {
         connected: true,
         ready: readiness.stripeAccountStatus === 'active',
+        setupState: payoutSetupState(account),
         enabled,
         country: readiness.stripeCountry,
         requirementsDue: readiness.stripeRequirementsDue.length,

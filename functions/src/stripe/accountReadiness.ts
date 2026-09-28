@@ -4,7 +4,7 @@ export interface ConnectedAccount {
   details_submitted?: boolean;
   payouts_enabled?: boolean;
   capabilities?: { transfers?: string };
-  requirements?: { disabled_reason?: string | null; currently_due?: string[] | null; past_due?: string[] | null } | null;
+  requirements?: { disabled_reason?: string | null; currently_due?: string[] | null; past_due?: string[] | null; pending_verification?: string[] | null } | null;
   country?: string;
   metadata?: { [key: string]: string } | null;
 }

@@ -8,12 +8,16 @@ import { validateBookContent, BookContentError } from '@/lib/server/bookContent'
 import { paymentConfiguration } from '@/lib/stripe/config';
 import { calculateCartPricing, MAX_BOOK_PRICE_CENTS } from '@/lib/utils/fees';
 import { syncAuthorAccount } from '@/lib/server/authorPayments';
+import { giftCheckoutSchema } from '@/lib/gifts';
+import { prepareBookGift, attachGiftPayment, GiftError } from '@/lib/server/bookGifts';
+import { giftEmailConfiguration } from '@/lib/server/giftEmail';
 
 const checkoutSchema = z.object({
   items: z.array(z.object({ bookId: z.string().min(1).max(128).regex(/^[^/]+$/) })).min(1).max(20),
   promoCode: z.string().max(100).nullable().optional(),
   promoBookId: z.string().max(128).nullable().optional(),
   discountAmount: z.number().finite().nonnegative().optional(),
+  gift: giftCheckoutSchema.optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -24,7 +28,9 @@ export async function POST(req: NextRequest) {
     if (!paymentConfiguration(process.env).checkoutReady) return NextResponse.json({ error: 'Payments are temporarily unavailable. Please try again later.' }, { status: 503 });
     const parsed = checkoutSchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: 'Invalid checkout' }, { status: 400 });
-    const { items, promoCode, discountAmount = 0 } = parsed.data;
+    const { items, promoCode, discountAmount = 0, gift } = parsed.data;
+    if (gift && items.length !== 1) return NextResponse.json({ error: 'Choose one book per gift.' }, { status: 400 });
+    if (gift && !giftEmailConfiguration()) return NextResponse.json({ error: 'Book gifting is temporarily unavailable. Please try again later.' }, { status: 503 });
 
     if (!Array.isArray(items) || !items.length || items.length > 20 || items.some((item) => typeof item?.bookId !== 'string' || item.bookId.includes('/')) || new Set(items.map((item) => item.bookId)).size !== items.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -99,6 +105,27 @@ export async function POST(req: NextRequest) {
     const { bundleDiscount, total: finalAmount } = pricing;
     if (finalAmount < 50) return NextResponse.json({ error: 'The checkout total must be at least $0.50.' }, { status: 400 });
     if (finalAmount > MAX_BOOK_PRICE_CENTS) return NextResponse.json({ error: 'The checkout total is too large. Please purchase fewer books at a time.' }, { status: 400 });
+    if (gift) {
+      const book = bookDetails[0];
+      const sender = (await adminDb.doc(`users/${requestUser.uid}`).get()).data();
+      const prepared = await prepareBookGift(adminDb, {
+        ...gift, senderId: requestUser.uid,
+        senderName: [sender?.firstName, sender?.lastName].filter(Boolean).join(' ') || 'An AfroBooks reader',
+        order: {
+          buyerId: requestUser.uid, buyerEmail: requestUser.email ?? '', bookId: book.bookId, bookTitle: book.title,
+          sellerId: book.sellerId, sellerName: book.sellerName, authorName: book.authorName,
+          ...pricing.lines[0], promoCodeUsed: null,
+          platformFeePercent: directSaleFee, processingFeeBasis: 'estimated_us_domestic_card', pricingVersion: 2,
+          status: 'pending', receiptEmailSent: false,
+        },
+      });
+      const intent = prepared.paymentIntentId ? await stripe.paymentIntents.retrieve(prepared.paymentIntentId) : await stripe.paymentIntents.create({
+        amount: finalAmount, currency: 'usd',
+        metadata: { userId: requestUser.uid, bookIds: book.bookId, purchaseType: 'books', giftId: prepared.id },
+      }, { idempotencyKey: `afrobooks-gift-${prepared.id}` });
+      await attachGiftPayment(adminDb, prepared.id, intent.id);
+      return NextResponse.json({ clientSecret: intent.client_secret, orderIds: [prepared.orderId], amount: intent.amount, paymentStatus: intent.status });
+    }
     const paymentIntent = await stripe.paymentIntents.create({
       amount: finalAmount, currency: 'usd',
       metadata: { userId: requestUser.uid, bookIds: bookDetails.map(book => book.bookId).join(','), purchaseType: 'books', bundleDiscount: String(bundleDiscount) },
@@ -145,6 +172,7 @@ export async function POST(req: NextRequest) {
       amount: finalAmount,
     });
   } catch (err) {
+    if (err instanceof GiftError) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error('create-payment-intent error:', err);
     const status = err instanceof Error && err.message === 'Unauthorized' ? 401 : 500;
     return NextResponse.json({ error: status === 401 ? 'Unauthorized' : 'Internal server error' }, { status });

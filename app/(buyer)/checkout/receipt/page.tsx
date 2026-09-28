@@ -58,6 +58,7 @@ function ReceiptContent() {
   const status = receiptStatus(orderIds.length, orders);
   const completed = !error && status === 'completed';
   const needsReview = orders.some(order => order.status === 'needs_review');
+  const isGift = orders.some(order => !!order.giftId);
   const StatusIcon = completed ? CheckCircle : Clock;
 
   return (
@@ -65,8 +66,8 @@ function ReceiptContent() {
       <div className="rounded-2xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
         <div className="px-6 py-8 text-center" style={{ background: '#0f2e1a' }}>
           <StatusIcon size={40} style={{ color: completed ? '#4ade80' : '#f5b800' }} className="mx-auto mb-3" />
-          <h1 className="font-display text-display-lg text-white">{completed ? 'Purchase confirmed' : error || status === 'unavailable' ? 'Order needs attention' : 'Confirming your purchase'}</h1>
-          <p role="status" className="text-sm mt-2 text-[#aaa]">{error || (needsReview ? 'A book became unavailable while your payment was processing. Your payment has been recorded for staff review. Please do not pay again.' : completed ? 'Your purchase has been recorded. Available books can be opened from your library.' : status === 'unavailable' ? 'Check your order status before trying to read.' : 'Payment is still being confirmed. This page updates automatically; please do not pay again.')}</p>
+          <h1 className="font-display text-display-lg text-white">{completed ? isGift ? 'Gift purchased' : 'Purchase confirmed' : error || status === 'unavailable' ? 'Order needs attention' : 'Confirming your purchase'}</h1>
+          <p role="status" className="text-sm mt-2 text-[#aaa]">{error || (needsReview ? 'Your payment has been recorded for staff review. Please do not pay again.' : completed ? isGift ? 'Your gift is ready to claim. Check My gifts for email status and to share the claim link.' : 'Your purchase has been recorded. Available books can be opened from your library.' : status === 'unavailable' ? 'Check your order status before trying to read.' : 'Payment is still being confirmed. This page updates automatically; please do not pay again.')}</p>
         </div>
 
         <div className="p-6 space-y-5">
@@ -96,7 +97,7 @@ function ReceiptContent() {
           {completed && <p className="text-xs text-center text-[#888]">{orders.every(order => order.receiptEmailSent) ? 'A receipt has been sent to your email.' : 'Your receipt is available here. Email delivery has not been confirmed.'}</p>}
 
           <div className="flex gap-3">
-            {completed && orders.length === 1 && books[orders[0].bookId] && (
+            {completed && !isGift && orders.length === 1 && books[orders[0].bookId] && (
               <Link
                 href={`/read/${orders[0].bookId}`}
                 className="flex-1 py-3 rounded-xl text-sm font-medium text-center"
@@ -106,11 +107,11 @@ function ReceiptContent() {
               </Link>
             )}
             <Link
-              href="/library"
+              href={isGift ? '/gifts' : '/library'}
               className="flex-1 py-3 rounded-xl text-sm font-medium text-center border"
               style={{ borderColor: '#333', color: '#aaa' }}
             >
-              My Library
+              {isGift ? 'My gifts' : 'My Library'}
             </Link>
           </div>
         </div>
