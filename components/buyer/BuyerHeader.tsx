@@ -49,6 +49,9 @@ export default function BuyerHeader() {
       <div className="mx-auto max-w-5xl px-4 py-3 sm:px-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
+            <div className="sm:hidden">
+              <Logo href="/browse" size="sm" compact />
+            </div>
             <div className="hidden sm:block">
               <Logo href="/browse" size="sm" />
             </div>
@@ -75,7 +78,7 @@ export default function BuyerHeader() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {userProfile && canAccessAuthorWorkspace ? (
               <div className="hidden lg:block">
                 <WorkspaceSwitcher

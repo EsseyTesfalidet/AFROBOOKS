@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { BookOpen, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Facebook, Heart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import { useAuthStore } from '@/store/authStore';
@@ -44,12 +45,12 @@ export default function LandingPage() {
             Browse
           </Link>
           <Link href="/login"
-            className="text-sm px-4 py-2 rounded-lg transition-colors"
+            className="text-xs px-2 py-2 rounded-lg transition-colors sm:text-sm sm:px-4"
             style={{ color: '#888' }}>
             Sign In
           </Link>
           <Link href="/signup"
-            className="text-sm px-4 py-2 rounded-lg font-semibold transition-all"
+            className="text-xs px-3 py-2 rounded-lg font-semibold transition-all sm:text-sm sm:px-4"
             style={{ background: '#e8442a', color: '#fff' }}>
             Get Started
           </Link>
@@ -288,75 +289,76 @@ export default function LandingPage() {
       </section>
 
       {/* ── ABOUT & CONTACT ── */}
-      <section id="about" className="px-5 sm:px-10 py-20" style={{ borderTop: '1px solid #1a1a1a' }}>
+      <section id="about" aria-labelledby="about-title" className="scroll-mt-16 px-5 sm:px-10 py-20" style={{ background: '#101110', borderTop: '1px solid #28251f' }}>
         <div className="max-w-5xl mx-auto grid sm:grid-cols-2 gap-12 items-start">
 
           {/* About */}
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#e8442a' }}>About Us</p>
-            <h2 className="font-display text-3xl text-white mb-5 leading-tight">
+            <div className="flex min-h-8 items-center gap-2.5 mb-3">
+              <Image src="/brand/afrobooks-mark.svg" alt="" width={28} height={28} aria-hidden="true" />
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#e9bd73]">About Us</p>
+            </div>
+            <h2 id="about-title" className="font-display text-3xl text-[#f5f2eb] mb-5 leading-tight">
               Built for Africa's<br />Literary Future
             </h2>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: '#666' }}>
+            <p className="text-sm leading-relaxed mb-4" style={{ color: '#a8a49c' }}>
               AfroBooks is a digital marketplace dedicated to African storytelling. We believe every African story deserves a global audience — and every African author deserves fair compensation for their craft.
             </p>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: '#555' }}>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: '#96928a' }}>
               Founded with a mission to bridge the gap between Africa's brilliant writers and a world hungry for authentic African narratives, we provide authors with the tools, platform, and audience they need to thrive.
             </p>
-            <div className="flex items-center gap-2 text-sm" style={{ color: '#888' }}>
-              <Heart size={13} style={{ color: '#e8442a' }} />
+            <div className="flex items-center gap-2 text-sm" style={{ color: '#b9ad98' }}>
+              <Heart size={14} strokeWidth={1.75} className="shrink-0 text-[#e9bd73]" aria-hidden="true" />
               Made with love for African literature
             </div>
           </div>
 
           {/* Contact */}
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#f5b800' }}>Get In Touch</p>
-            <h2 className="font-display text-3xl text-white mb-5">Contact Us</h2>
+            <p className="flex min-h-8 items-center text-xs font-semibold uppercase tracking-[0.16em] mb-3 text-[#e9bd73]">Get In Touch</p>
+            <h2 className="font-display text-3xl text-[#f5f2eb] mb-5">Contact Us</h2>
 
             <div className="space-y-4 mb-8">
               <a
                 href="mailto:esseytesfa@gmail.com"
-                className="flex items-center gap-3 p-4 rounded-xl border transition-all hover:border-[#333] group"
-                style={{ background: '#111', borderColor: '#1a1a1a' }}
+                className="group flex items-center gap-3 p-4 rounded-xl border border-[#2b2821] bg-[#141412] transition-colors hover:border-[#745b37] hover:bg-[#191712] focus-visible:outline-[#e9bd73]"
               >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#1a1a1a' }}>
-                  <Mail size={15} style={{ color: '#e8442a' }} />
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#342c20] bg-[#231e16]">
+                  <Mail size={15} strokeWidth={1.75} className="text-[#e9bd73]" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-xs mb-0.5" style={{ color: '#555' }}>General enquiries</p>
-                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>esseytesfa@gmail.com</p>
+                  <p className="text-xs mb-0.5 text-[#96928a]">General enquiries</p>
+                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">esseytesfa@gmail.com</p>
                 </div>
               </a>
 
               <a
                 href="mailto:esseytesfa@gmail.com"
-                className="flex items-center gap-3 p-4 rounded-xl border transition-all hover:border-[#333] group"
-                style={{ background: '#111', borderColor: '#1a1a1a' }}
+                className="group flex items-center gap-3 p-4 rounded-xl border border-[#2b2821] bg-[#141412] transition-colors hover:border-[#745b37] hover:bg-[#191712] focus-visible:outline-[#e9bd73]"
               >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#1a1a1a' }}>
-                  <Feather size={15} style={{ color: '#f5b800' }} />
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#342c20] bg-[#231e16]">
+                  <Feather size={15} strokeWidth={1.75} className="text-[#e9bd73]" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-xs mb-0.5" style={{ color: '#555' }}>Author support</p>
-                  <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: '#aaa' }}>esseytesfa@gmail.com</p>
+                  <p className="text-xs mb-0.5 text-[#96928a]">Author support</p>
+                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">esseytesfa@gmail.com</p>
                 </div>
               </a>
 
-              <div className="flex items-center gap-3 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#1a1a1a' }}>
-                  <MapPin size={15} style={{ color: '#888' }} />
+              <div className="flex items-center gap-3 p-4 rounded-xl border border-[#2b2821] bg-[#141412]">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#342c20] bg-[#231e16]">
+                  <MapPin size={15} strokeWidth={1.75} className="text-[#e9bd73]" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-xs mb-0.5" style={{ color: '#555' }}>Headquarters</p>
-                  <p className="text-sm" style={{ color: '#aaa' }}>United States of America</p>
+                  <p className="text-xs mb-0.5 text-[#96928a]">Headquarters</p>
+                  <p className="text-sm text-[#c9c4ba]">United States of America</p>
                 </div>
               </div>
             </div>
 
             {/* Social links */}
             <div>
-              <p className="text-xs mb-3" style={{ color: '#444' }}>Follow us</p>
+              <p className="text-xs mb-3 text-[#96928a]">Follow us</p>
               <div className="flex items-center gap-3">
                 {[
                   { icon: Facebook, href: 'https://facebook.com/AfroBooks', label: 'Facebook' },
@@ -368,10 +370,9 @@ export default function LandingPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center border transition-all hover:border-[#444] hover:text-white"
-                    style={{ background: '#111', borderColor: '#1a1a1a', color: '#555' }}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center border border-[#2b2821] bg-[#141412] text-[#b9ad98] transition-colors hover:border-[#745b37] hover:text-[#e9bd73] focus-visible:outline-[#e9bd73]"
                   >
-                    <Icon size={15} />
+                    <Icon size={15} strokeWidth={1.75} aria-hidden="true" />
                   </a>
                 ))}
               </div>

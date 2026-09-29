@@ -1,18 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>CampusConnect — Offline</title>
+  <meta charset="utf-8">
+  <title>AfroBooks — Offline</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e0e0e">
   <style>
-    body { font-family: system-ui; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #F8FAFC; }
-    h1 { color: #2563EB; font-size: 24px; }
-    p { color: #64748B; font-size: 14px; text-align: center; padding: 0 32px; }
-    button { margin-top: 20px; padding: 12px 24px; background: #2563EB; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100dvh; margin: 0; padding: 32px; background: #0e0e0e; color: #f5f2eb; }
+    main { width: 100%; max-width: 360px; text-align: center; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 48px; font-size: 28px; font-weight: 600; letter-spacing: -1.5px; }
+    .brand img { width: 44px; height: 44px; }
+    h1 { margin: 0 0 12px; font-size: 22px; font-weight: 500; letter-spacing: -.5px; }
+    p { color: #a8a49c; font-size: 14px; line-height: 1.7; margin: 0; }
+    button { margin-top: 28px; min-height: 44px; padding: 12px 24px; background: #e9bd73; color: #15130f; border: none; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button:focus-visible { outline: 2px solid #f5f2eb; outline-offset: 4px; }
   </style>
 </head>
 <body>
-  <h1>CampusConnect</h1>
-  <p>You are offline. Please check your internet connection and try again.</p>
-  <button onclick="window.location.reload()">Try Again</button>
+  <main>
+    <div class="brand"><img src="/brand/afrobooks-mark.svg" alt="" width="44" height="44"><span>AfroBooks</span></div>
+    <h1>You’re offline</h1>
+    <p>Your next story will be here when you reconnect. Check your internet connection and try again.</p>
+    <button onclick="window.location.reload()">Try again</button>
+  </main>
 </body>
 </html>

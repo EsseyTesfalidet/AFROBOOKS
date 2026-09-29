@@ -28,13 +28,13 @@ export const metadata: Metadata = {
     siteName: 'AfroBooks',
     title: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
     description: 'Discover and read ebooks by African authors. Browse thousands of titles across fiction, history, science, and more.',
-    images: [{ url: '/pwa-512x512.png', width: 512, height: 512, alt: 'AfroBooks' }],
+    images: [{ url: '/pwa-512x512.png?v=2', width: 512, height: 512, alt: 'AfroBooks' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
     description: 'Discover and read ebooks by African authors.',
-    images: ['/pwa-512x512.png'],
+    images: ['/pwa-512x512.png?v=2'],
   },
   robots: {
     index: true,
@@ -44,11 +44,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon.svg?v=2', type: 'image/svg+xml' },
+      { url: '/pwa-192x192.png?v=2', sizes: '192x192', type: 'image/png' },
     ],
-    apple: '/pwa-192x192.png',
-    shortcut: '/favicon.svg',
+    apple: '/apple-touch-icon.png?v=2',
+    shortcut: '/favicon.svg?v=2',
   },
 };
 
