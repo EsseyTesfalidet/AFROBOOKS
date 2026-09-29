@@ -14,7 +14,7 @@ import Logo from '@/components/shared/Logo';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
 import type { User as UserProfile } from '@/types/user';
-import { loginDestination, giftReturnPath } from '@/lib/utils/loginDestination';
+import { loginDestination, publicReturnPath } from '@/lib/utils/loginDestination';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -29,7 +29,7 @@ export default function LoginForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [signupHref, setSignupHref] = useState('/signup');
   useEffect(() => {
-    const destination = giftReturnPath(new URLSearchParams(window.location.search).get('redirect'));
+    const destination = publicReturnPath(new URLSearchParams(window.location.search).get('redirect'));
     if (destination) setSignupHref(`/signup?redirect=${encodeURIComponent(destination)}`);
   }, []);
   const { userProfile, loading, setFirebaseUser, setUserProfile, setLoading } = useAuthStore();

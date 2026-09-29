@@ -3,7 +3,7 @@ import {
   Compass,
   Library,
   ShoppingCart,
-  User,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -39,6 +39,15 @@ const ROUTE_STATE_RULES: Array<{
   matches: string[];
   state: Partial<BuyerRouteState>;
 }> = [
+  {
+    matches: ['/community'],
+    state: {
+      eyebrow: 'AfroBooks',
+      title: 'Community',
+      subtitle: 'Shared experiences and memories from home.',
+      showSwipe: false,
+    },
+  },
   {
     matches: ['/browse'],
     state: {
@@ -167,7 +176,7 @@ export const BUYER_MOBILE_TABS: BuyerNavItem[] = [
   { label: 'Discover', href: '/discover', icon: Compass, matches: ['/discover'] },
   { label: 'Library', href: '/library', icon: Library, matches: ['/library'] },
   { label: 'Cart', href: '/cart', icon: ShoppingCart, matches: ['/cart', '/checkout'] },
-  { label: 'Profile', icon: User, matches: ['/profile'], drawerSection: 'account' },
+  { label: 'Community', href: '/community', icon: Users, matches: ['/community'] },
 ];
 
 export const BUYER_DESKTOP_LINKS: BuyerNavItem[] = BUYER_MOBILE_TABS.filter(

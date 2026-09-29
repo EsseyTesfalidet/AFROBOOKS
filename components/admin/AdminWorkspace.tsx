@@ -118,7 +118,7 @@ export default function AdminWorkspace({ children }: { children: React.ReactNode
             </Link>
             <button
               type="button"
-              className="md:hidden p-2"
+              className="admin-mobile-signout md:hidden p-2"
               aria-label="Sign out"
               onClick={() => {
                 void logOutAndRedirect('/login').catch(() =>
@@ -131,7 +131,7 @@ export default function AdminWorkspace({ children }: { children: React.ReactNode
           </div>
         </header>
         {signOutError && (
-          <p role="alert" className="md:hidden p-4 text-red-300">
+          <p role="alert" className="admin-mobile-error md:hidden p-4 text-red-300">
             {signOutError}
           </p>
         )}

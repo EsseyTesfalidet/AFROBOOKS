@@ -1,0 +1,88 @@
+.buyer-header {
+  border-bottom: 1px solid #ffffff12;
+  background: #10110ff5;
+  backdrop-filter: blur(18px);
+}
+.buyer-header-inner { max-width: 1152px; margin-inline: auto; padding: 12px 20px 0; }
+.buyer-header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.buyer-header-brand { display: flex; align-items: center; min-width: 0; gap: 24px; }
+.buyer-logo-compact, .buyer-header-tagline, .buyer-workspace-switcher { display: none; }
+.buyer-header-tagline { padding-left: 24px; border-left: 1px solid #ffffff14; color: #aaa99e; font-size: 11px; line-height: 1.6; }
+.buyer-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.buyer-header-action, .buyer-account-button, .buyer-header-actions .icon-button {
+  display: inline-flex; position: relative; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex-shrink: 0; border: 1px solid transparent; border-radius: 50%;
+  background: transparent; color: #b9b9ae; box-shadow: none;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+.buyer-header-action:hover, .buyer-header-actions .icon-button:hover { background: #ffffff08; border-color: #ffffff12; color: #f5f2eb; transform: none; }
+.buyer-account-button { overflow: hidden; margin-left: 4px; border-color: #c5a56a3d; background: #c5a56a12; color: #e6c58c; font-size: 12px; font-weight: 600; }
+.buyer-account-button:hover, .buyer-account-button[data-active='true'] { border-color: #c5a56a; background: #c5a56a24; }
+.buyer-cart-count { position: absolute; top: -1px; right: -2px; min-width: 18px; padding-inline: 4px; border-radius: 12px; background: #e3c18a; color: #171710; font-size: 10px; font-weight: 700; text-align: center; line-height: 18px; }
+.buyer-header-navigation { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 8px; }
+.buyer-desktop-nav { display: flex; align-items: center; gap: 24px; }
+.buyer-desktop-link { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding-block: 12px; color: #aaa99e; font-size: 13px; transition: color 160ms ease; }
+.buyer-desktop-link::after { position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; border-radius: 2px; background: transparent; content: ''; }
+.buyer-desktop-link:hover { color: #f5f2eb; }
+.buyer-desktop-link[aria-current='page'] { color: #e6c58c; }
+.buyer-desktop-link[aria-current='page']::after { background: #d4b278; }
+.buyer-nav-count { padding: 1px 6px; border-radius: 12px; background: #c5a56a1a; color: #e6c58c; font-size: 10px; }
+.buyer-header-context { overflow: hidden; color: #93968b; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+.buyer-bottom-nav-shell { border: 1px solid #d4b27830; background: #171915f5; box-shadow: 0 10px 30px #0005; backdrop-filter: blur(18px); }
+.buyer-bottom-nav .buyer-nav-item { color: #a7aa9f; }
+.buyer-nav-icon { transition: background 160ms ease, color 160ms ease; }
+.buyer-bottom-nav .buyer-nav-item[data-active='true'] { color: #edcf9d; }
+.buyer-nav-item[data-active='true'] .buyer-nav-icon { background: #c5a56a1c; }
+.buyer-nav-item:hover .buyer-nav-icon { background: #ffffff0a; }
+.buyer-footer { border-top: 1px solid #c5a56a29; background: #10120f; }
+.buyer-footer-inner { max-width: 1152px; margin-inline: auto; padding: 48px 32px 16px; }
+.buyer-footer-main { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 48px; padding-bottom: 36px; }
+.buyer-footer-brand > p { margin-top: 20px; color: #f0ede4; font-size: 23px; letter-spacing: -.04em; line-height: 1.35; }
+.buyer-footer-brand > p > span { color: #c8ad7f; }
+.buyer-footer-description { display: block; max-width: 330px; margin-top: 14px; color: #a4a79a; font-size: 13px; line-height: 1.8; }
+.buyer-footer-about { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 12px; color: #dec18e; font-size: 13px; }
+.buyer-footer-about:hover { color: #fff0d3; }
+.buyer-footer-links { padding-top: 12px; }
+.buyer-footer-links h2 { margin-bottom: 14px; color: #dddfd4; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.buyer-footer-links a { display: flex; align-items: center; min-height: 44px; width: fit-content; color: #a4a79a; font-size: 13px; }
+.buyer-footer a:hover { color: #f4d6a3; }
+.buyer-footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; padding-top: 16px; border-top: 1px solid #ffffff10; color: #989d90; font-size: 11px; }
+.buyer-footer-bottom nav { display: flex; gap: 24px; }
+.buyer-footer-bottom a { display: inline-flex; align-items: center; min-height: 44px; }
+:is(.buyer-header, .buyer-footer, .buyer-bottom-nav) :is(a, button):focus-visible { outline: 2px solid #e3c18a; outline-offset: 4px; }
+@media (min-width: 640px) {
+  .buyer-header-inner { padding-inline: 32px; }
+}
+@media (min-width: 1024px) {
+  .buyer-header-tagline, .buyer-workspace-switcher { display: block; }
+}
+@media (max-width: 767px) {
+  .buyer-header-context { display: none; }
+  .buyer-footer-main { gap: 24px; grid-template-columns: 1fr 1fr; }
+  .buyer-footer-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 639px) {
+  .buyer-header .buyer-header-inner { padding: 10px 16px; }
+  .buyer-header-navigation, .buyer-header-action.buyer-header-cart { display: none; }
+  .buyer-header-actions { gap: 4px; }
+  .buyer-account-button { margin-left: 0; }
+  .buyer-footer-inner { padding: 32px 20px 20px; }
+  .buyer-footer-main { padding-bottom: 24px; }
+  .buyer-footer-brand > p { font-size: 22px; }
+}
+@media (max-width: 379px) {
+  .buyer-logo-full { display: none; }
+  .buyer-logo-compact { display: block; }
+}
+@media (max-width: 639px) and (orientation: portrait) {
+  .reader-resume-bar ~ .buyer-footer { padding-bottom: 80px; }
+}
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+  .buyer-header .buyer-header-inner { padding-top: 6px; padding-bottom: 0; }
+  .buyer-header-navigation { margin-top: 0; }
+  .buyer-desktop-link { min-height: 44px; padding-block: 10px; }
+  .buyer-header-context { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buyer-header a, .buyer-header button, .buyer-bottom-nav .buyer-nav-icon { transition: none; }
+}

@@ -16,7 +16,7 @@ import Logo from '@/components/shared/Logo';
 import RoleSelector from './RoleSelector';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
-import { giftReturnPath, loginDestination } from '@/lib/utils/loginDestination';
+import { publicReturnPath, loginDestination } from '@/lib/utils/loginDestination';
 
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
@@ -34,7 +34,7 @@ export default function SignupForm() {
   const [error, setError] = useState('');
   const [loginHref, setLoginHref] = useState('/login');
   useEffect(() => {
-    const destination = giftReturnPath(new URLSearchParams(window.location.search).get('redirect'));
+    const destination = publicReturnPath(new URLSearchParams(window.location.search).get('redirect'));
     if (destination) setLoginHref(`/login?redirect=${encodeURIComponent(destination)}`);
   }, []);
   const { setFirebaseUser, setLoading } = useAuthStore();

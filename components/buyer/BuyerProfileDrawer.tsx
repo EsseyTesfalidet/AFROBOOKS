@@ -76,10 +76,10 @@ export default function BuyerProfileDrawer() {
   if (!visible || !user) return null;
   const title = PROFILE_SECTIONS.find(item => item.id === activeSection)!.label;
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-end sm:items-stretch">
+    <div className="profile-overlay fixed inset-0 z-[100] flex items-end justify-end sm:items-stretch">
       <div aria-hidden="true" className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={close} />
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="buyer-profile-title"
-        className="relative flex h-[94dvh] max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#111110] text-[#f5f2eb] shadow-2xl sm:h-full sm:max-h-full sm:max-w-[520px] sm:rounded-none sm:border-y-0 sm:border-r-0">
+        className="profile-panel relative flex h-[94dvh] max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#111110] text-[#f5f2eb] shadow-2xl sm:h-full sm:max-h-full sm:max-w-[520px] sm:rounded-none sm:border-y-0 sm:border-r-0">
         <header className="flex shrink-0 items-center justify-between gap-4 px-5 pb-4 pt-5 sm:px-7 sm:pt-7">
           <div className="flex items-center gap-3">
             {activeSection !== 'account' && <button type="button" aria-label="Back to profile" onClick={() => setSection('account')} className={`${buttonClass} !h-11 !w-11 !p-0 text-[#b9b5ac] hover:bg-white/5`}><ArrowLeft size={19} /></button>}

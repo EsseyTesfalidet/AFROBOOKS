@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { PAYOUT_SETUP_PATH, payoutReturnPath, giftReturnPath } from '@/lib/utils/loginDestination';
+import { PAYOUT_SETUP_PATH, payoutReturnPath, publicReturnPath } from '@/lib/utils/loginDestination';
 
 const BUYER_PATHS = [
   '/checkout', '/library', '/profile', '/notifications',
@@ -34,7 +34,7 @@ export function proxy(request: NextRequest) {
   const canAccessAdmin = roleCookie === 'admin';
 
   if (pathStartsWith(pathname, AUTH_PATHS) && isAuthed) {
-    const destination = giftReturnPath(request.nextUrl.searchParams.get('redirect')) ?? payoutReturnPath(request.nextUrl.searchParams.get('redirect'), roleCookie);
+    const destination = publicReturnPath(request.nextUrl.searchParams.get('redirect')) ?? payoutReturnPath(request.nextUrl.searchParams.get('redirect'), roleCookie);
     return NextResponse.redirect(new URL(destination ?? '/browse', request.url));
   }
 

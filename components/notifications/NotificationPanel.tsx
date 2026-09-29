@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -83,7 +84,7 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
   }
 
   if (isMobile) {
-    return (
+    return createPortal(
       <>
         {/* Backdrop */}
         <div
@@ -97,8 +98,10 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           style={{
             background: 'linear-gradient(180deg, rgba(21,21,24,0.98) 0%, rgba(12,12,14,0.98) 100%)',
             borderBottom: '1px solid rgba(255,255,255,0.08)',
-            maxHeight: '80vh',
+            maxHeight: 'calc(100dvh - 24px - env(safe-area-inset-bottom))',
             paddingTop: 'env(safe-area-inset-top)',
+            left: 'env(safe-area-inset-left)',
+            right: 'env(safe-area-inset-right)',
             boxShadow: '0 24px 60px rgba(0,0,0,0.42)',
             backdropFilter: 'blur(18px)',
             transform: dragging.current ? `translateY(${dragY}px)` : visible ? 'translateY(0)' : 'translateY(-100%)',
@@ -139,7 +142,7 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
 
           {/* List — horizontal swipe switches tabs */}
           <div
-            className="overflow-y-auto flex-1"
+            className="min-h-0 overflow-y-auto flex-1"
             onTouchStart={onListTouchStart}
             onTouchMove={onListTouchMove}
             onTouchEnd={onListTouchEnd}
@@ -165,23 +168,24 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
             <div className="w-10 h-1 rounded-full" style={{ background: '#333' }} />
           </div>
         </div>
-      </>
+      </>, document.body
     );
   }
 
   // Desktop dropdown
   return (
     <div
-      className="surface-panel absolute right-0 top-10 z-50 w-80 rounded-[24px]"
+      className="surface-panel absolute right-0 top-10 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[24px]"
+      style={{ maxHeight: 'calc(100dvh - 100px - env(safe-area-inset-bottom))' }}
     >
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
+      <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-3">
         <h3 className="font-display text-lg text-white">Notifications</h3>
         <button type="button" onClick={handleMarkAll} className="text-xs font-medium" style={{ color: '#f5b800' }}>
           Mark all read
         </button>
       </div>
 
-      <div className="mb-3 flex gap-2 px-4">
+      <div className="mb-3 flex shrink-0 gap-2 px-4">
         {(['all', 'unread'] as const).map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)}
             className="rounded-full px-3 py-1.5 text-sm capitalize transition-colors"
@@ -195,13 +199,13 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
         ))}
       </div>
 
-      <div className="max-h-72 overflow-y-auto">
+      <div className="min-h-0 max-h-72 flex-1 overflow-y-auto">
         {recent.length === 0
           ? <p className="py-8 text-center text-sm text-[#666]">No notifications</p>
           : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} />)}
       </div>
 
-      <div className="border-t px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <div className="shrink-0 border-t px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <Link href="/notifications" onClick={onClose} className="text-xs text-[#aaa] hover:text-white transition-colors">
           View all notifications
         </Link>

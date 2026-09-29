@@ -8,6 +8,7 @@ import BookCard from '@/components/buyer/BookCard';
 import BookRail from '@/components/buyer/BookRail';
 import ContinueReadingShelf from '@/components/buyer/ContinueReadingShelf';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import CommunityInvitation from '@/components/community/CommunityInvitation';
 import { getFollowedSellerIds } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
@@ -63,6 +64,7 @@ export default function BrowsePage() {
           </section>
           {!filtering && recentlyViewed.length > 0 && <BookRail title="Recently viewed" books={recentlyViewed} />}
         </>}
+      {!filtering && <CommunityInvitation />}
     </main>
   </div>;
 }

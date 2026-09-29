@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { BookOpen, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Facebook, Heart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
+import CommunityInvitation from '@/components/community/CommunityInvitation';
 import { useAuthStore } from '@/store/authStore';
 import { useCatalog } from '@/hooks/useCatalog';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
@@ -34,7 +35,7 @@ export default function LandingPage() {
 
       {/* ── NAV ── */}
       <nav
-        className="sticky top-0 z-50 flex items-center justify-between px-5 sm:px-10 h-16"
+        className="app-header sticky top-0 z-50 flex items-center justify-between px-5 sm:px-10 h-16"
         style={{ background: 'rgba(14,14,14,0.92)', backdropFilter: 'blur(14px)', borderBottom: '1px solid #1a1a1a' }}
       >
         <Logo size="sm" />
@@ -44,6 +45,7 @@ export default function LandingPage() {
             style={{ color: '#888' }}>
             Browse
           </Link>
+          <Link href="/community" className="hidden min-h-11 items-center px-3 text-sm text-[#b5b0a6] hover:text-white sm:inline-flex">Community</Link>
           <Link href="/login"
             className="text-xs px-2 py-2 rounded-lg transition-colors sm:text-sm sm:px-4"
             style={{ color: '#888' }}>
@@ -381,6 +383,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-5xl px-5 py-10 sm:px-10"><CommunityInvitation /></section>
+
       {/* ── FOOTER ── */}
       <footer style={{ borderTop: '1px solid #1a1a1a', background: '#080808' }}>
         <div className="max-w-5xl mx-auto px-5 sm:px-10 py-10">
@@ -399,6 +403,7 @@ export default function LandingPage() {
                 {[
                   { label: 'Browse Books', href: '/browse' },
                   { label: 'Discover', href: '/discover' },
+                  { label: 'Community', href: '/community' },
                   { label: 'Subscription', href: '/subscription' },
                   { label: 'Sign In', href: '/login' },
                   { label: 'Create Account', href: '/signup' },

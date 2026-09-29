@@ -170,6 +170,21 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Community reads and writes go through validated server routes. Hidden
+    // contributions, moderation records and rate limits are never client-readable.
+    match /communityPosts/{document=**} {
+      allow read, write: if false;
+    }
+    match /communityReports/{document=**} {
+      allow read, write: if false;
+    }
+    match /communitySettings/{document=**} {
+      allow read, write: if false;
+    }
+    match /communityLimits/{document=**} {
+      allow read, write: if false;
+    }
+
     // Claim tokens, recipient emails and personal messages are API-only.
     match /bookGifts/{document=**} {
       allow read, write: if false;

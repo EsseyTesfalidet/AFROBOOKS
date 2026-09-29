@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BookOpen, BarChart2, Megaphone } from 'lucide-react';
+import { LayoutDashboard, BookOpen, BarChart2, Megaphone, Users } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useAuthStore } from '@/store/authStore';
@@ -13,6 +13,7 @@ const NAV = [
   { label: 'Books', href: '/listings', icon: BookOpen },
   { label: 'Promote', href: '/promotions', icon: Megaphone },
   { label: 'Earnings', href: '/analytics', icon: BarChart2 },
+  { label: 'Community', href: '/community', icon: Users },
 ];
 
 export default function SellerHeader() {
@@ -25,13 +26,13 @@ export default function SellerHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#10100f]/95 backdrop-blur-xl">
+      <header className="app-header sticky top-0 z-50 border-b border-white/10 bg-[#10100f]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-5 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Logo href="/dashboard" size="sm" />
             <span className="hidden border-l border-white/15 pl-3 text-[12px] text-[#a8a49c] sm:block">Author studio</span>
           </div>
-          <nav aria-label="Author workspace" className="hidden h-full items-center gap-7 md:flex">
+          <nav aria-label="Author workspace" className="seller-desktop-nav hidden h-full items-center gap-7 md:flex">
             {NAV.map(({ label, href }) => <Link key={href} href={href} aria-current={isActive(href) ? 'page' : undefined} className={`inline-flex h-full items-center border-b-2 text-[14px] transition-colors ${isActive(href) ? 'border-[#ed896b] text-[#f5f2eb]' : 'border-transparent text-[#a8a49c] hover:text-white'}`}>{label}</Link>)}
           </nav>
           <div className="flex items-center gap-3">
@@ -42,7 +43,7 @@ export default function SellerHeader() {
           </div>
         </div>
       </header>
-      {!drawerOpen && <nav aria-label="Author workspace" className="fixed inset-x-0 bottom-0 z-50 flex border-t border-white/10 bg-[#10100f]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+      {!drawerOpen && <nav aria-label="Author workspace" className="seller-bottom-nav fixed inset-x-0 bottom-0 z-50 flex border-t border-white/10 bg-[#10100f]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
         {NAV.map(({ label, href, icon: Icon }) => <Link key={href} href={href} aria-current={isActive(href) ? 'page' : undefined} className={`flex min-h-[64px] flex-1 flex-col items-center justify-center gap-1 text-[11px] ${isActive(href) ? 'text-[#ffab8e]' : 'text-[#a8a49c]'}`}><Icon size={20} aria-hidden="true" />{label}</Link>)}
       </nav>}
     </>

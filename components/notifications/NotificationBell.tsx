@@ -44,6 +44,8 @@ export default function NotificationBell() {
     <div ref={containerRef} className="relative">
       <button
         type="button"
+        aria-label="Notifications"
+        aria-expanded={panelOpen}
         onClick={() => setPanelOpen(!panelOpen)}
         className="icon-button relative flex h-8 w-8 items-center justify-center rounded-lg"
       >

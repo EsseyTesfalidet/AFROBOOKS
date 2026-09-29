@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
+import './buyer-chrome.css';
 import {
   BUYER_MOBILE_TABS,
   getBuyerRouteState,
@@ -22,9 +23,9 @@ export default function BuyerBottomNav() {
   }
 
   return (
-    <nav className="sm:hidden fixed inset-x-0 bottom-3 z-50 px-3">
+    <nav aria-label="Reader navigation" className="buyer-bottom-nav sm:hidden fixed inset-x-0 bottom-3 z-50 px-3">
       <div
-        className="surface-glass mx-auto max-w-md rounded-[26px] p-2 shadow-2xl"
+        className="buyer-bottom-nav-shell mx-auto max-w-md rounded-[24px] p-2"
       >
         <div className="grid grid-cols-5 gap-1">
           {BUYER_MOBILE_TABS.map((item) => {
@@ -37,26 +38,19 @@ export default function BuyerBottomNav() {
             const content = (
               <>
                 <div
-                  className="relative flex h-10 w-10 items-center justify-center rounded-2xl transition-all"
-                  style={{
-                    background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'rgba(255,255,255,0.02)',
-                    color: active ? '#fff' : '#7b7b7b',
-                    boxShadow: active ? '0 12px 24px rgba(232,68,42,0.24)' : 'none',
-                  }}
+                  className="buyer-nav-icon relative flex h-10 w-10 items-center justify-center rounded-2xl"
                 >
-                  <Icon size={18} />
+                  <Icon size={19} aria-hidden="true" />
                   {label === 'Cart' && cartCount > 0 ? (
                     <span
-                      className="absolute -right-1 -top-1 min-w-[18px] rounded-full px-1 text-center text-[10px] font-bold"
-                      style={{ background: '#f5b800', color: '#000', lineHeight: '18px' }}
+                      className="buyer-cart-count"
                     >
                       {cartCount > 9 ? '9+' : cartCount}
                     </span>
                   ) : null}
                 </div>
                 <span
-                  className="text-[10px] font-medium transition-colors"
-                  style={{ color: active ? '#f5f2eb' : '#70707a' }}
+                  className="text-[10px] font-medium"
                 >
                   {label}
                 </span>
@@ -68,7 +62,9 @@ export default function BuyerBottomNav() {
                 <Link
                   key={label}
                   href={href}
-                  className="flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-2xl"
+                  aria-current={active ? 'page' : undefined}
+                  data-active={active}
+                  className="buyer-nav-item flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-2xl"
                 >
                   {content}
                 </Link>
@@ -79,8 +75,9 @@ export default function BuyerBottomNav() {
               <button
                 key={label}
                 type="button"
+                data-active={active}
                 onClick={() => openDrawer(drawerSection)}
-                className="flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-2xl"
+                className="buyer-nav-item flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-2xl"
               >
                 {content}
               </button>

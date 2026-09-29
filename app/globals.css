@@ -21,10 +21,52 @@ body {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   background-image:
     radial-gradient(circle at top, rgba(232, 68, 42, 0.14), transparent 28%),
     radial-gradient(circle at 85% 12%, rgba(245, 184, 0, 0.08), transparent 18%),
     linear-gradient(180deg, #0d0d10 0%, #09090b 100%);
+}
+
+/* Keep content and controls clear of phone cutouts in either orientation. */
+@supports (min-height: 100dvh) {
+  .min-h-screen { min-height: 100dvh; }
+}
+.app-header { top: env(safe-area-inset-top); }
+.buyer-bottom-nav {
+  bottom: max(12px, env(safe-area-inset-bottom));
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+}
+.buyer-nav-space { height: calc(92px + env(safe-area-inset-bottom)); }
+.seller-bottom-nav {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.profile-overlay {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+
+/* A wide phone still has very little vertical space. Let headers scroll away
+   and keep the fixed controls compact while preserving their touch targets. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+  .app-header { position: relative; top: auto; }
+  .buyer-bottom-nav > div { max-width: 640px; border-radius: 18px; padding-block: 4px; }
+  .buyer-bottom-nav .buyer-nav-item { min-height: 44px; flex-direction: row; gap: 4px; }
+  .buyer-bottom-nav .buyer-nav-icon { width: 28px; height: 32px; border-radius: 10px; }
+  .buyer-nav-space { height: calc(72px + env(safe-area-inset-bottom)); }
+  .reader-resume-bar { position: static; margin-block: 12px; }
+  nav.seller-desktop-nav { display: none; }
+  nav.seller-bottom-nav { display: flex; }
+  .seller-bottom-nav a { min-height: 48px; flex-direction: row; gap: 8px; }
+  div.seller-nav-space { display: block; height: calc(60px + env(safe-area-inset-bottom)); }
+  .profile-panel { height: 100%; max-height: 100%; border-radius: 0; }
+  .profile-panel > header { padding-block: 8px; }
+  .profile-panel > header p { display: none; }
+  .profile-panel > header h1 { font-size: 22px; }
+  .profile-panel > div { padding-block: 12px; }
+  .profile-panel > footer { padding-top: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
 }
 
 .font-display {

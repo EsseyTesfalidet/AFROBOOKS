@@ -1,5 +1,13 @@
 export const PAYOUT_SETUP_PATH = '/dashboard?profile=payout';
 
+export function communityReturnPath(requested: string | null): string | null {
+  return requested && requested.trim() === requested && /^\/community(?:\/new|\/[a-f0-9]{40}|\?tab=memory)?$/.test(requested) ? requested : null;
+}
+
+export function publicReturnPath(requested: string | null): string | null {
+  return giftReturnPath(requested) ?? communityReturnPath(requested);
+}
+
 export function giftReturnPath(requested: string | null): string | null {
   return requested && (['/gifts', '/gifts/claim'].includes(requested) || /^\/gift\/[A-Za-z0-9_-]{1,128}(?:\?resume=[a-f0-9]{64})?$/.test(requested)) ? requested : null;
 }
@@ -12,6 +20,6 @@ export function payoutReturnPath(requested: string | null, role: string): string
 }
 
 export function loginDestination(profile: { role: string; activeRole: string }, requested: string | null) {
-  return giftReturnPath(requested) ?? payoutReturnPath(requested, profile.role) ??
+  return publicReturnPath(requested) ?? payoutReturnPath(requested, profile.role) ??
     (profile.role === 'admin' ? '/admin' : profile.activeRole === 'seller' ? '/dashboard' : '/browse');
 }

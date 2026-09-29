@@ -5,6 +5,7 @@ import AgreementGate from '@/components/legal/AgreementGate';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {

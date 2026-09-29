@@ -88,7 +88,7 @@ export default function InstallPWA() {
           id={guideId}
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
-          className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-[#342c20] bg-[#141412] p-5 text-[#f5f2eb] shadow-2xl backdrop:bg-black/70 sm:p-6"
+          className="m-auto max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-[#342c20] bg-[#141412] p-5 text-[#f5f2eb] shadow-2xl backdrop:bg-black/70 sm:p-6"
           onClick={event => {
             if (event.target !== event.currentTarget) return;
             const bounds = event.currentTarget.getBoundingClientRect();

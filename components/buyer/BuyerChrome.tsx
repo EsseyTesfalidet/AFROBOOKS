@@ -18,11 +18,11 @@ export default function BuyerChrome() {
     <>
       <CatalogSync />
       <Suspense><ProfileLinkHandler /></Suspense>
-      {routeState.showBottomNav ? (
-        <div className="h-[92px] sm:hidden" aria-hidden="true" />
-      ) : null}
       <ReaderResumeBar />
       {routeState.showFooter ? <BuyerFooter /> : null}
+      {routeState.showBottomNav ? (
+        <div className="buyer-nav-space h-[92px] sm:hidden" aria-hidden="true" />
+      ) : null}
       {routeState.showDrawer ? <BuyerProfileDrawer /> : null}
       {routeState.showBottomNav ? <BuyerBottomNav /> : null}
     </>

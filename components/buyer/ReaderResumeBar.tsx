@@ -94,7 +94,7 @@ export default function ReaderResumeBar() {
   const bottomOffset = routeState.showBottomNav ? 90 : 16;
 
   return (
-    <div className="sm:hidden fixed inset-x-0 z-40 px-3" style={{ bottom: bottomOffset }}>
+    <div className="reader-resume-bar sm:hidden fixed inset-x-0 z-40 px-3" style={{ bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom))`, paddingLeft: 'max(12px, env(safe-area-inset-left))', paddingRight: 'max(12px, env(safe-area-inset-right))' }}>
       <div
         className="mx-auto max-w-md rounded-2xl border p-3 shadow-2xl"
         style={{
