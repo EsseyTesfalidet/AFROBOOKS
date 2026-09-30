@@ -11,3 +11,10 @@ functions/lib/
 *.log
 *.tsbuildinfo
 lint-results.json
+android/
+*.aab
+*.apk
+*.jks
+*.keystore
+*.p12
+*signing-secrets*

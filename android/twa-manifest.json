@@ -1,0 +1,62 @@
+{
+  "packageId": "com.afrobs.app",
+  "host": "afrobs.com",
+  "name": "AfroBooks",
+  "launcherName": "AfroBooks",
+  "display": "standalone",
+  "themeColor": "#101110",
+  "themeColorDark": "#000000",
+  "navigationColor": "#101110",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#101110",
+  "enableNotifications": false,
+  "startUrl": "/browse",
+  "iconUrl": "https://afrobs.com/pwa-512x512.png",
+  "maskableIconUrl": "https://afrobs.com/pwa-512x512.png",
+  "splashScreenFadeOutDuration": 200,
+  "signingKey": {
+    "path": "../../.android/afrobooks/afrobooks-upload.jks",
+    "alias": "afrobooks-upload"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Browse books",
+      "shortName": "Browse",
+      "url": "https://afrobs.com/browse",
+      "chosenIconUrl": "https://afrobs.com/pwa-192x192.png"
+    },
+    {
+      "name": "Your library",
+      "shortName": "Library",
+      "url": "https://afrobs.com/library",
+      "chosenIconUrl": "https://afrobs.com/pwa-192x192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://afrobs.com/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://afrobs.com/",
+  "minSdkVersion": 23,
+  "orientation": "any",
+  "fingerprints": [
+    {
+      "name": "Upload and local testing certificate",
+      "value": "DE:36:A5:A6:20:86:CC:40:78:54:9B:20:F0:71:F0:DD:E1:9C:27:CE:40:2F:46:90:EE:B3:D6:92:F2:6A:0A:BC"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

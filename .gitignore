@@ -52,3 +52,14 @@ public/sw.js
 public/workbox-*.js
 public/worker-*.js
 public/fallback-*.js
+
+# Android build output and private signing material
+android/.gradle/
+android/**/build/
+android/local.properties
+*.aab
+*.apk
+*.jks
+*.keystore
+*.p12
+*signing-secrets*

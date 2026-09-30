@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.afrobs.app",
+      "sha256_cert_fingerprints": [
+        "DE:36:A5:A6:20:86:CC:40:78:54:9B:20:F0:71:F0:DD:E1:9C:27:CE:40:2F:46:90:EE:B3:D6:92:F2:6A:0A:BC"
+      ]
+    }
+  }
+]
