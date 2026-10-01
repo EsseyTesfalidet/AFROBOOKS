@@ -80,3 +80,12 @@ are recognized in new imports. Legacy encoding repairs retain their old layout.
 - Page turns, saved position/preference, rotation and restoring the original
   layout passed. Author import/editor and reading-section preview/apply/navigation
   browser regressions also passed. Coverage uses Chromium/Edge, not native Safari.
+- Code `7fb26f7`, including reading-section code `494c8da`, deployed as
+  `dpl_7iK2v2HTt3DLmbFQg12gqNuctDF8` and was promoted to `afrobs.com`.
+  The production build passed. Actual deployed English and Tigrinya Firebase
+  previews passed content/paragraph conservation, page turns, saved position and
+  rotation checks. The Tigrinya preview retained all 1,465 paragraphs and changed
+  8,419 breaks to 11 in explicit paragraph mode. A second Tigrinya book currently
+  has no free preview; its access restriction was verified without bypassing it.
+  Deployed browser checks used the authorized Vercel deployment URL because of the
+  previously documented workspace DNSFilter restriction on the public domain.

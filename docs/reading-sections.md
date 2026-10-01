@@ -38,3 +38,12 @@ page navigation and progress saving.
   suggestions/discard/opt-out, existing-chapter preview/cancel/apply, exact HTML
   preservation, preview flags, reader contents, page turns and saved section
   progress. Chapter/account data were fixtures; no live book was published in tests.
+
+## Release — October 1, 2026
+
+Code `494c8da` shipped with multilingual paragraph follow-up `7fb26f7` in
+`dpl_7iK2v2HTt3DLmbFQg12gqNuctDF8`, promoted to `afrobs.com`.
+The combined release passed 78 unit tests, TypeScript, scoped lint, the production
+build, author/section browser workflows and deployed English/Tigrinya reader checks.
+The publish page retains two pre-existing lint warnings about effect state updates;
+the new helpers/components have no lint errors or warnings.
