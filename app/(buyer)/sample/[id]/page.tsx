@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import BookSampleReader from '@/components/reader/BookSampleReader';
 export default async function SamplePage({ params }: { params: Promise<{ id: string }> }) {
-  redirect(`/read/${encodeURIComponent((await params).id)}`);
+  return <BookSampleReader bookId={(await params).id} />;
 }

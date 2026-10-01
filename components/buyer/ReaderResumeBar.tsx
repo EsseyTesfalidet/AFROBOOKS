@@ -28,7 +28,7 @@ export default function ReaderResumeBar() {
   useEffect(() => {
     const userId = userProfile?.uid;
 
-    if (!userId || pathname.startsWith('/read')) {
+    if (!userId || pathname.startsWith('/read') || pathname.startsWith('/sample')) {
       setResumeState(null);
       return;
     }

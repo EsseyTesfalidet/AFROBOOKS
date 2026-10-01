@@ -10,6 +10,7 @@ import SellerHeader from '@/components/seller/SellerHeader';
 import ChapterEditor from '@/components/seller/ChapterEditor';
 import ManuscriptUpload from '@/components/seller/ManuscriptUpload';
 import ReadingSectionSplitter from '@/components/seller/ReadingSectionSplitter';
+import ChapterPreviewSummary from '@/components/seller/ChapterPreviewSummary';
 import BookPricing from '@/components/seller/BookPricing';
 import { useAuthStore } from '@/store/authStore';
 import { uploadCoverImage, uploadManuscript, uploadMagazinePdf } from '@/lib/firebase/storage';
@@ -620,6 +621,7 @@ export default function PublishPage() {
                 }} />
 
                 {editingChapter === null && !manuscriptImporting && <ReadingSectionSplitter chapters={chapters} onApply={setChapters} />}
+                <ChapterPreviewSummary chapters={chapters} />
 
                 <div className="rounded-xl border p-4" style={{ background: '#131313', borderColor: '#232323' }}>
                   <p className="text-sm font-medium text-white">Manual editing stays available</p>
@@ -636,6 +638,7 @@ export default function PublishPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => toggleChapterPreview(ch.chapterNumber)}
+                        aria-label={`Free preview for chapter ${ch.chapterNumber}: ${ch.title}`} aria-pressed={ch.isPreview === true}
                         className="text-xs px-2 py-0.5 rounded transition-colors"
                         style={{ background: ch.isPreview ? '#0f2e1a' : '#1a1a2e', color: ch.isPreview ? '#4ade80' : '#555' }}>
                         {ch.isPreview ? 'FREE PREVIEW' : 'LOCKED'}
@@ -670,7 +673,7 @@ export default function PublishPage() {
                   ? <BookPricing price={price} directSaleFee={directSaleFee} wordCount={chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0)} genre={genre} audience={ageGroup} publicationType={publicationType} onPriceChange={setPrice} onValidityChange={setPricingValid} />
                   : <p role={pricingError ? 'alert' : 'status'} className="text-sm text-[#aaa]">{pricingError || 'Loading pricing…'}</p>}
 
-                <p className="text-sm text-[#aaa]">Choose free preview chapters in Book Content. All other chapters require purchase.</p>
+                {contentFormat !== 'pdf' && <ChapterPreviewSummary chapters={chapters} />}
               </div>
             )}
 
@@ -678,6 +681,7 @@ export default function PublishPage() {
             {step === 4 && (
               <div className="space-y-5">
                 <h2 className="font-display text-display-sm text-white">Pre-Publish Checklist</h2>
+                {contentFormat !== 'pdf' && <ChapterPreviewSummary chapters={chapters} />}
                 <div className="space-y-2">
                   {checklist.map(({ label, done }) => (
                     <div key={label} className="flex items-center gap-3">

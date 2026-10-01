@@ -6,6 +6,7 @@ import {
   getDocFromServer,
   getDocs,
   getDocsFromServer,
+  getCountFromServer,
   addDoc,
   setDoc,
   updateDoc,
@@ -402,12 +403,23 @@ export async function createReport(
 
 // ── Sample Chapters ────────────────────────────────────────────────────────
 
+// Check availability without downloading a chapter (which can be a whole book).
+export async function hasPreviewChapters(bookId: string): Promise<boolean> {
+  const result = await getCountFromServer(query(
+    collection(db, 'books', bookId, 'chapters'),
+    where('isPreview', '==', true),
+    orderBy('chapterNumber', 'asc'),
+    limit(1)
+  ));
+  return result.data().count > 0;
+}
+
 export async function getPreviewChapters(bookId: string) {
   const q = query(
     collection(db, 'books', bookId, 'chapters'),
     where('isPreview', '==', true),
     orderBy('chapterNumber', 'asc')
   );
-  const snap = await getDocs(q);
+  const snap = await getDocsFromServer(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

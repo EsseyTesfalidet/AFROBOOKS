@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, BadgeCheck, Flag, X, BookOpen, Calendar, Share2, Copy, Check, Gift } from 'lucide-react';
+import { ShieldCheck, BadgeCheck, Flag, X, Calendar, Share2, Copy, Check, Gift } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import StarRating from '@/components/shared/StarRating';
 import StatusPill from '@/components/shared/StatusPill';
@@ -20,9 +20,11 @@ import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 import type { Review } from '@/types/review';
 import { isBookInWishlist, toggleWishlist } from '@/lib/firebase/firestore';
-import { canReadWithSubscription } from '@/lib/utils/bookAccess';
+import { canReadWithSubscription, isBookReleased } from '@/lib/utils/bookAccess';
 import { useCatalog } from '@/hooks/useCatalog';
 import { publicationLabel, publicationTitle } from '@/lib/utils/publication';
+import { useBookPreview } from '@/hooks/useBookPreview';
+import BookSampleLink from '@/components/buyer/BookSampleLink';
 
 const REPORT_REASONS = [
   'Inappropriate or offensive content',
@@ -43,6 +45,7 @@ export default function BookDetailPage() {
 
   const [error, setError] = useState('');
   const [book, setBook] = useState<Book | null>(null);
+  const preview = useBookPreview(book);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [similar, setSimilar] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +120,7 @@ export default function BookDetailPage() {
   }, [addRecentlyViewedBook, book?.id]);
 
   if (loading || catalog.loading || ownership.checking) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
-  if (ownership.error) return <main className="space-y-4 p-8"><p role="alert">{ownership.error}</p><Link href="/library" className="block underline">Open my library</Link><button onClick={() => window.location.reload()} className="min-h-11 underline">Try again</button></main>;
+  if (ownership.error) return <main className="space-y-4 p-8"><p role="alert">{ownership.error}</p><Link href="/library" className="block underline">Open my library</Link>{book && isBookReleased(book) && <BookSampleLink bookId={book.id} {...preview} />}<button onClick={() => window.location.reload()} className="min-h-11 underline">Try again</button></main>;
   if (catalog.error || !catalog.books.some(item => item.id === id)) return <div className="p-8"><p role="status">{catalog.error || 'This book is no longer available.'}</p><Link href="/browse">Back to catalog</Link></div>;
   if (error) return <div className="p-8"><p role="alert">{error}</p><Link href="/browse">Back to catalog</Link></div>;
   if (!book) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] text-[#444]">Book not found.</div>;
@@ -300,14 +303,9 @@ export default function BookDetailPage() {
             <Gift size={17} /> Gift this book
           </Link>
         )}
-        {!owned && !isPreorder && book.contentFormat !== 'pdf' && (
+        {!owned && !canSubRead && !isPreorder && book.contentFormat !== 'pdf' && (
           <div className="flex justify-center">
-            <Link href={`/sample/${book.id}`}
-              className="flex items-center gap-2 text-sm transition-colors"
-              style={{ color: '#888' }}>
-              <BookOpen size={14} />
-              Read free sample
-            </Link>
+            <BookSampleLink bookId={book.id} {...preview} />
           </div>
         )}
 
@@ -479,9 +477,7 @@ export default function BookDetailPage() {
 
             {!owned && !canSubRead && !isPreorder ? (
               <div className="mt-3 flex items-center justify-between gap-3">
-                <Link href={`/sample/${book.id}`} className="text-xs" style={{ color: '#888' }}>
-                  Read sample
-                </Link>
+                <BookSampleLink bookId={book.id} {...preview} compact />
                 <span className="text-xs" style={{ color: '#555' }}>
                   {selectedOption === 'subscribe' ? 'Unlimited access option selected' : 'Own this title forever'}
                 </span>

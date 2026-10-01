@@ -127,6 +127,7 @@ const ROUTE_STATE_RULES: Array<{
       subtitle: 'Read a sample before you decide to buy.',
       showBottomNav: false,
       showFooter: false,
+      showDrawer: false,
       showSwipe: false,
     },
   },
