@@ -8,6 +8,62 @@ import { pdfTextItemsToText } from '../lib/publishing/pdfManuscript';
 import { validateManuscriptFile } from '../lib/publishing/manuscriptImport';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import { abortable, createOcrWorker, OCR_LANGUAGES, type OcrLanguage } from '../lib/publishing/ocr';
+import { sectionWordCount, splitReadingSections } from '../lib/publishing/readingSections';
+
+const sectionFixture = (content: string, isPreview = true) => ({ chapterNumber: 1, title: 'An author title', content, wordCount: sectionWordCount(content), isPreview });
+const sectionParagraph = (index: number, size = 260) => `<p><strong>Paragraph ${index}</strong> ${'story '.repeat(size)}</p>`;
+
+test('reading sections preserve every HTML block in order and limit free preview to the first part', () => {
+  const content = Array.from({ length: 9 }, (_, index) => sectionParagraph(index)).join('\n');
+  const parts = splitReadingSections(sectionFixture(content), 750);
+  assert.equal(parts.length, 3);
+  assert.equal(parts.map(part => part.content).join(''), content);
+  assert.deepEqual(parts.map(part => part.chapterNumber), [1, 2, 3]);
+  assert.deepEqual(parts.map(part => part.isPreview), [true, false, false]);
+  assert.ok(parts.every(part => part.title.startsWith('Reading section ')));
+  assert.equal(parts.reduce((sum, part) => sum + part.wordCount, 0), sectionWordCount(content));
+  assert.ok(splitReadingSections(sectionFixture(content, false), 750).every(part => !part.isPreview));
+});
+
+test('headings stay with the following block and lists/verse are never cut inside', () => {
+  const heading = '<h2>A section heading</h2>';
+  const list = `<ul><li>${'first '.repeat(700)}</li><li>second item</li></ul>`;
+  const verse = '<p data-preserve-breaks="true">A line<br/>Another line</p>';
+  const content = sectionParagraph(1, 740) + heading + list + verse + sectionParagraph(2, 400);
+  const parts = splitReadingSections(sectionFixture(content), 750);
+  assert.equal(parts.map(part => part.content).join(''), content);
+  assert.ok(parts.some(part => part.content.includes(heading + list)));
+  assert.ok(parts.some(part => part.content.includes(verse)));
+  assert.ok(parts.every(part => !part.content.endsWith(heading)));
+});
+
+test('short chapters and one giant paragraph stay intact; bad lengths and malformed HTML fail safely', () => {
+  for (const content of ['<p>Short story.</p>', sectionParagraph(1, 4000)]) {
+    const parts = splitReadingSections(sectionFixture(content), 750);
+    assert.equal(parts.length, 1); assert.equal(parts[0].content, content); assert.equal(parts[0].title, 'An author title');
+  }
+  assert.throws(() => splitReadingSections(sectionFixture('<p>Text</p>'), Number.NaN), /section length/);
+  assert.throws(() => splitReadingSections(sectionFixture('<p>one<p>two'), 750), /formatting/);
+});
+
+test('section word estimates support Tigrinya, Arabic and unspaced Chinese without losing text', () => {
+  for (const phrase of ['ሰላም ዓለም። ', 'مرحبا بالعالم ', '中文故事']) {
+    const content = Array.from({ length: 8 }, () => `<p>${phrase.repeat(220)}</p>`).join('');
+    const parts = splitReadingSections(sectionFixture(content), 750);
+    assert.ok(parts.length > 1); assert.equal(parts.map(part => part.content).join(''), content);
+  }
+});
+
+test('heading-free uploads suggest sections, opt-out keeps one, and detected headings always win', async () => {
+  const text = Array.from({ length: 9 }, (_, i) => `Paragraph ${i}. ${'story '.repeat(270)}`).join('\n\n');
+  const automatic = await importManuscriptFile(new File([text], 'long.txt'), undefined, { sectionWords: 750 });
+  assert.equal(automatic.chapters.length, 3); assert.match(automatic.warnings.join(' '), /No chapter headings/);
+  const original = await importManuscriptFile(new File([text], 'long.txt'), undefined, { readingSections: 'off' });
+  assert.equal(original.chapters.length, 1);
+  assert.equal(automatic.chapters.map(chapter => chapter.content).join(''), original.chapters[0].content);
+  const headed = await importManuscriptFile(new File(['ምዕራፍ ፩: ትግርኛ\n\n' + text], 'headed.txt'), undefined, { sectionWords: 750 });
+  assert.equal(headed.chapters.length, 1); assert.equal(headed.chapters[0].title, 'ምዕራፍ ፩: ትግርኛ');
+});
 
 test('wrapped prose flows within paragraphs, retaining real blank paragraphs and inline formatting', async () => {
   const text = 'Chapter 1: Home\n\nThe river carried **stories\nacross generations** and people listened.\n  \nA separate paragraph\ncontinues here.';

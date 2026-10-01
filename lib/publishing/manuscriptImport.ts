@@ -1,9 +1,10 @@
 import { decodeManuscriptBytes } from './manuscriptEncoding';
 import type { PdfImportOptions } from './ocr';
 import { lineJoiner } from '@/lib/utils/paragraphFlow';
+import { splitReadingSections, sectionWordCount } from './readingSections';
 
 export type ManuscriptLineBreaks = 'paragraphs' | 'preserve' | 'legacy';
-export type ManuscriptImportOptions = PdfImportOptions & { lineBreaks?: Exclude<ManuscriptLineBreaks, 'legacy'> };
+export type ManuscriptImportOptions = PdfImportOptions & { lineBreaks?: Exclude<ManuscriptLineBreaks, 'legacy'>; readingSections?: 'auto' | 'off'; sectionWords?: number };
 
 export interface ImportedChapterDraft {
   chapterNumber: number;
@@ -220,17 +221,26 @@ export async function importManuscriptFile(file: File, onProgress?: (message: st
   if (options.mode === 'ocr' && !pdf) throw new Error('OCR accepts PDF files. Choose Text PDF / .txt / .md for this file.');
   const extracted = pdf ? await (await import('./pdfManuscript')).extractPdfManuscript(file, onProgress, options) : null;
   const rawText = extracted?.text ?? decodeManuscriptBytes(new Uint8Array(await file.arrayBuffer()));
-  const chapters = extractSectionsFromText(rawText, options.lineBreaks ?? 'paragraphs');
+  let chapters = extractSectionsFromText(rawText, options.lineBreaks ?? 'paragraphs');
 
   if (!chapters.length) {
     throw new Error('No readable manuscript content was found in the uploaded file.');
+  }
+
+  const warnings = [...(extracted?.warnings ?? [])];
+  const hasHeadings = rawText.replace(/\r\n?/g, '\n').split('\n').some(line => CHAPTER_HEADING_PATTERN.test(line.trim()) || SECOND_LEVEL_HEADING_PATTERN.test(line.trim()));
+  if (!hasHeadings && chapters.length === 1 && options.readingSections !== 'off') {
+    const target = options.sectionWords ?? 1500;
+    chapters = splitReadingSections(chapters[0], target);
+    if (chapters.length > 1) warnings.push(`No chapter headings were found. Suggested ${chapters.length} reading sections at paragraph boundaries. Review their titles and preview access before using them; these are not detected story chapters.`);
+    else if (sectionWordCount(chapters[0].content) > target) warnings.push('This text cannot be divided into shorter sections without cutting a paragraph, list or other block. Add paragraph breaks in the chapter editor, then use Split into reading sections.');
   }
 
   return {
     chapters,
     totalWords: chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0),
     fileName: file.name,
-    warnings: extracted?.warnings ?? [],
+    warnings,
     // Save the converted UTF-8 manuscript through the existing private text
     // storage path. The source PDF never needs to leave the author's browser.
     sourceFile: pdf ? new File([rawText], file.name.replace(/\.pdf$/i, '.txt'), { type: 'text/plain' }) : file,

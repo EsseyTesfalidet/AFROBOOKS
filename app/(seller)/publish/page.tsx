@@ -9,6 +9,7 @@ import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
 import ChapterEditor from '@/components/seller/ChapterEditor';
 import ManuscriptUpload from '@/components/seller/ManuscriptUpload';
+import ReadingSectionSplitter from '@/components/seller/ReadingSectionSplitter';
 import BookPricing from '@/components/seller/BookPricing';
 import { useAuthStore } from '@/store/authStore';
 import { uploadCoverImage, uploadManuscript, uploadMagazinePdf } from '@/lib/firebase/storage';
@@ -617,6 +618,8 @@ export default function PublishPage() {
                 <ManuscriptUpload chapterCount={chapters.length} fileName={manuscriptFileName} language={language} onBusy={setManuscriptImporting} onImport={imported => {
                   setChapters(imported.chapters); setManuscriptFileName(imported.fileName); setManuscriptFile(imported.sourceFile); setEditingChapter(null);
                 }} />
+
+                {editingChapter === null && !manuscriptImporting && <ReadingSectionSplitter chapters={chapters} onApply={setChapters} />}
 
                 <div className="rounded-xl border p-4" style={{ background: '#131313', borderColor: '#232323' }}>
                   <p className="text-sm font-medium text-white">Manual editing stays available</p>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { importManuscriptFile } from '@/lib/publishing/manuscriptImport';
 import { OCR_LANGUAGES, type OcrLanguage } from '@/lib/publishing/ocr';
+import { SECTION_LENGTHS } from '@/lib/publishing/readingSections';
 
 type ImportedManuscript = Awaited<ReturnType<typeof importManuscriptFile>>;
 
@@ -19,6 +20,8 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
   const [pending, setPending] = useState<ImportedManuscript | null>(null);
   const [mode, setMode] = useState<'text' | 'ocr'>('text');
   const [lineBreaks, setLineBreaks] = useState<'paragraphs' | 'preserve'>('paragraphs');
+  const [readingSections, setReadingSections] = useState<'auto' | 'off'>('auto');
+  const [sectionWords, setSectionWords] = useState(1500);
   const [ocrLanguage, setOcrLanguage] = useState<OcrLanguage>(() => OCR_LANGUAGES.find(item => item.label === language || (language === 'Chinese' && item.code === 'chi_sim'))?.code ?? 'eng');
   const controller = useRef<AbortController | null>(null);
   const active = useRef(true);
@@ -29,7 +32,7 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
     setBusy(true); onBusy(true); setError(''); setPending(null); setProgress('Reading manuscript…');
     controller.current = new AbortController();
     try {
-      const result = await importManuscriptFile(file, message => { if (active.current) setProgress(message); }, { mode, lineBreaks, language: ocrLanguage, signal: controller.current.signal });
+      const result = await importManuscriptFile(file, message => { if (active.current) setProgress(message); }, { mode, lineBreaks, readingSections, sectionWords, language: ocrLanguage, signal: controller.current.signal });
       if (active.current) setPending(result);
     } catch (cause) {
       if (active.current) setError(cause instanceof Error && cause.name === 'AbortError' ? 'Import cancelled. Your existing chapters are unchanged.' : cause instanceof Error ? cause.message : 'This manuscript could not be read.');
@@ -41,11 +44,13 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
   return <div className="space-y-3 rounded-xl border border-[#2a2a2a] bg-[#161616] p-4">
     <p className="text-sm font-medium text-white">Upload full book manuscript</p>
     <p className="text-xs leading-relaxed text-[#aaa]">Upload a PDF with selectable text (up to 20 MB / 500 pages), or a .txt / .md file (up to 5 MB). PDF text becomes editable chapters. For scanned pages, choose OCR below. Images and page designs are not imported.</p>
-    <p className="text-xs leading-relaxed text-[#aaa]">Headings such as Chapter 1: Opening, ምዕራፍ 1 or الفصل 1 split chapters automatically. Without chapter headings, your text becomes one reading section. Review and edit the result before publishing.</p>
+    <p className="text-xs leading-relaxed text-[#aaa]">Headings such as Chapter 1: Opening, ምዕራፍ 1 or الفصل 1 split chapters automatically. Without headings, long manuscripts can be divided into reading sections at paragraph boundaries. Review and edit the result before publishing.</p>
     <p className="text-xs leading-relaxed text-[#aaa]">Multilingual text is supported, including Tigrinya (ትግርኛ), Amharic, Arabic and Chinese, when the PDF stores readable characters. Check the preview for missing letters or incorrect reading order. Conversion keeps the original language.</p>
     <label className="block text-sm text-[#ddd]">Import method<select aria-label="Import method" value={mode} disabled={busy} onChange={event => { setMode(event.target.value as 'text' | 'ocr'); setPending(null); setError(''); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white"><option value="text">Text PDF / .txt / .md</option><option value="ocr">Scanned PDF / OCR</option></select></label>
     <label className="block text-sm text-[#ddd]">Text layout<select aria-label="Manuscript text layout" value={lineBreaks} disabled={busy} onChange={event => { setLineBreaks(event.target.value as 'paragraphs' | 'preserve'); setPending(null); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white"><option value="paragraphs">Flow as paragraphs</option><option value="preserve">Keep original lines (poetry / verse)</option></select></label>
     <p className="text-xs leading-relaxed text-[#aaa]">Paragraphs join wrapped lines and keep blank lines as paragraph breaks. Choose original lines when each line ending is intentional.</p>
+    <label className="block text-sm text-[#ddd]">When no chapter headings are found<select aria-label="Manuscript chapter organization" value={readingSections} disabled={busy} onChange={event => { setReadingSections(event.target.value as 'auto' | 'off'); setPending(null); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white"><option value="auto">Suggest reading sections</option><option value="off">Keep one section</option></select></label>
+    {readingSections === 'auto' && <label className="block text-sm text-[#ddd]">Approximate section length<select aria-label="Import section length" value={sectionWords} disabled={busy} onChange={event => { setSectionWords(Number(event.target.value)); setPending(null); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white">{SECTION_LENGTHS.map(size => <option key={size} value={size}>{size.toLocaleString()} words</option>)}</select></label>}
     {mode === 'ocr' && <div className="space-y-3">
       <label className="block text-sm text-[#ddd]">Language in the scan<select aria-label="OCR language" value={ocrLanguage} disabled={busy} onChange={event => setOcrLanguage(event.target.value as OcrLanguage)} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white">{OCR_LANGUAGES.map(item => <option key={item.code} value={item.code}>{item.label}{item.code === 'tir' ? ' (ትግርኛ)' : ''}</option>)}</select></label>
       <p className="text-xs leading-relaxed text-[#ccc]">OCR reads words from scanned pages on your device. Use clear, upright printed pages in the selected language, up to 20 MB / 50 pages. Keep this tab open; recognition may take several minutes and downloads language tools on first use. Review the result for mistakes. Handwriting and mixed-language pages may need manual correction.</p>
