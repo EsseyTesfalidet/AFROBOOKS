@@ -236,6 +236,7 @@ export default function BookDetailPage() {
               <span className="text-xs text-[#666]">({book.reviewCount})</span>
             </div>
             <p className="text-sm text-[#aaa] leading-relaxed line-clamp-4">{book.description}</p>
+            {book.publicationType === 'short_story' && book.price < 50 && <p className="mt-3 text-sm leading-relaxed text-[#dec18e]">This is the price for one story. Combine it with other titles in a cart totaling at least $1 after discounts, then pay once for everything.</p>}
             <div className="flex flex-wrap gap-2 mt-3">
               <span className="text-xs px-2 py-1 rounded-full border" style={{ borderColor: '#333', color: '#888' }}>{book.genre}</span>
               <span className="text-xs px-2 py-1 rounded-full border" style={{ borderColor: '#333', color: '#888' }}>{book.readTime}</span>
