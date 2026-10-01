@@ -24,6 +24,7 @@ import {
   AdminBadge,
 } from '@/components/admin/AdminUI';
 import type { Order } from '@/types/order';
+import SettlementReviewButton from '@/components/admin/SettlementReviewButton';
 
 export default function AdminRevenuePage() {
   const { data: orders, loading, error, retry } = useAdminCollection<Order>('orders');
@@ -340,6 +341,10 @@ export default function AdminRevenuePage() {
           </dl>
           <p className="text-xs text-[#a6afa3]">Order ID: {order.id}</p>
           <p className="text-xs text-[#a6afa3] mt-2">Payment ID: {order.stripePaymentIntentId}</p>
+          {order.sellerId && <div className="mt-5">
+            <p className="mb-2 text-sm text-[#a6afa3]">Verify this author’s payment records and clear resolved holds. No funds are moved.</p>
+            <SettlementReviewButton key={order.sellerId} sellerId={order.sellerId} />
+          </div>}
           {order.stripePaymentIntentId && (
             <a
               className="admin-secondary mt-6"

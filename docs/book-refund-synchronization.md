@@ -1,5 +1,31 @@
 # Book refund synchronization
 
+## Admin controls and fully reversed transfers
+
+In **Admin → Author payouts → Needs financial review**, select **Check Stripe &
+settle**. The same action is available in **Revenue → Order details**. It refreshes
+refund records, verifies Stripe account ownership and readiness, reconciles the
+whole author's order/transfer ledger and clears resolved financial holds. Blocked
+reviews explain the remaining issue. Recent resolved reviews show **Settled**.
+Every admin attempt is recorded with the authenticated admin ID in the private
+`paymentSettlementAudits` collection. Clients cannot supply a settlement status.
+
+Full refunds with fully reversed, matching transfers are now supported as well
+as refunds where nothing was transferred. Reversed payouts remain in history as
+`reversed`; they are excluded from current royalty liabilities and transferred
+totals. The scheduled worker verifies the recorded reversal against Stripe rather
+than flagging the historical transfer again. Refund, transfer-reversal and
+application-fee-refund events retry this reconciliation automatically.
+
+Retained application fees are reported separately. A fully reversed royalty can
+be settled even when the platform kept its fee: this does not pretend that the fee
+was refunded, and it does not create a refund or move any funds. Partial/unconfirmed
+refunds, incomplete transfer reversals, disputes, unknown transfers and unexplained
+balances remain blocked with a specific explanation.
+
+A reader can buy a fully refunded book again. A valid owned copy still opens with
+**Read**; the change does not permit accidental duplicate charges for that copy.
+
 Confirmed full Stripe refunds mark every order in that payment `refunded`.
 Admin revenue excludes these orders, while order history and receipts remain
 available. The receipt says **Purchase refunded** instead of confirming a sale.
@@ -28,21 +54,21 @@ refund leaves an otherwise completed sale intact. If a previously confirmed full
 refund later fails, the order returns to review without automatically granting
 access or charging again.
 
-Refunds initially hold author payouts for financial review. A narrow automatic
-reconciliation clears a `payment_review` hold when Stripe confirms full refunds,
-the author's account is ready and belongs to that author, and neither payout
-reservations nor any Stripe transfers exist for that author. Other completed
-payments are also checked for refunds/disputes; balances must exactly match the
-ledger before or after removing known unpaid refund credits. Resolved orders get
-a server-owned settlement marker so retries and the royalty worker do not reapply
-the hold. Checkout also attempts this reconciliation for an existing review hold.
+Refunds initially hold author payouts for financial review. Reconciliation clears
+supported financial holds when Stripe confirms full refunds, the author's account
+is ready and belongs to that author, and refunded royalties were either never
+transferred or fully reversed. Other completed payments are also checked for
+refunds/disputes; balances must exactly match the ledger before or after removing
+known refund credits and reservations. Resolved orders get a server-owned
+settlement marker so retries and the royalty worker do not reapply the hold.
+Checkout also attempts this reconciliation for an existing financial review hold.
 
-Partial refunds, disputes, reserved/transferred royalties, account mismatches,
-unexplained balances and other hold reasons stay under review. This synchronization
-does not issue refunds, reverse transfers, or claim transferred royalties have
-been recovered. Historical sales counters are retained; admin order-based revenue
-reflects changed order statuses. Checkout identifies an internal payment review
-separately from incomplete Stripe onboarding.
+Partial refunds, disputes, outstanding refund transfers, processing payout
+reservations, account mismatches, unexplained balances and security holds stay
+under review. This synchronization does not issue refunds or reverse transfers;
+it verifies existing Stripe reversals. Historical sales counters are retained;
+admin order-based revenue reflects changed order statuses. Checkout identifies an
+internal payment review separately from incomplete Stripe onboarding.
 
 Regression coverage includes duplicate events, delayed fulfillment, full and
 partial bundles, pending/failed refunds, gift copies, independent ownership,

@@ -16,6 +16,8 @@ import { reconcileBookRefunds } from '../lib/server/bookRefunds';
 import { salesSummary } from '../lib/admin/metrics';
 import { settleUnpaidRefunds } from '../lib/server/settleUnpaidRefunds';
 import { reviewPaymentRoyalties } from '../lib/server/authorPayments';
+import { reconcileAuthorSettlement } from '../lib/server/reconcileAuthorSettlement';
+import { reviewAdminSettlement } from '../lib/server/adminSettlement';
 import type Stripe from 'stripe';
 import { assertFails } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -523,6 +525,96 @@ function autoTransferFixture() {
   fixture.transfers.set('auto', { id: 'tr_auto', amount: 1000, currency: 'usd', destination: 'acct_author', source_transaction: 'ch_auto', reversed: false, amount_reversed: 0, metadata: {} });
   return fixture;
 }
+
+function reversedDestinationFixture() {
+  const transfer = { id: 'tr_auto', amount: 1000, currency: 'usd', destination: 'acct_author', source_transaction: 'ch_auto', reversed: true, amount_reversed: 1000, metadata: {} };
+  const fee = { amount: 200, amount_refunded: 0, currency: 'usd', account: 'acct_author', originating_transaction: 'ch_auto' };
+  const current = { ...payment, status: 'succeeded', transfer_data: { destination: 'acct_author' }, application_fee_amount: 200,
+    latest_charge: { id: 'ch_auto', paid: true, disputed: false, amount_refunded: 1000, transfer: 'tr_auto', application_fee: 'fee_auto' } };
+  const state = { refund: 1000, refundStatus: 'succeeded', fail: false };
+  const stripe = {
+    accounts: { retrieve: async () => ({ id: 'acct_author', details_submitted: true, payouts_enabled: true, capabilities: { transfers: 'active' }, metadata: { userId: 'author' } }) },
+    paymentIntents: { retrieve: async () => { if (state.fail) throw new Error('Provider unavailable'); return current; } },
+    refunds: { list: async function* () { yield { status: state.refundStatus, amount: state.refund }; } },
+    applicationFees: { retrieve: async () => fee },
+    transfers: { list: async function* () { yield transfer; } },
+  } as unknown as Stripe;
+  return { stripe, state, current, transfer, fee };
+}
+const settlementAdmin = { uid: 'admin', role: 'admin', status: 'active', email: null } as const;
+
+test('admin settles fully reversed destination refunds, records retained fees and permits repurchase without re-holding', async () => {
+  await seedDestinationOrder(); await fulfillPayment(db, { ...payment, destinationSettlement: autoSettlement });
+  const f = reversedDestinationFixture();
+  const result = await reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author');
+  assert.equal(result.settled, true);
+  assert.equal(result.retainedFeeCents, 200);
+  const seller = (await db.doc('sellers/author').get()).data()!;
+  assert.equal(seller.payoutHoldReason, undefined); assert.equal(seller.totalEarnings, 0); assert.equal(seller.pendingBalance, 0);
+  assert.equal((await db.doc('payouts/destination_pi_test').get()).data()?.status, 'reversed');
+  assert.equal((await db.doc('orders/order').get()).data()?.refundRoyaltyStatus, 'settled_reversed_transfer');
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  const audit = (await db.collection('paymentSettlementAudits').get()).docs[0].data();
+  assert.equal(audit.adminId, 'admin'); assert.equal(audit.status, 'settled');
+  const worker = autoTransferFixture(); worker.transfers.set('auto', f.transfer);
+  assert.equal(await reconcileAuthor(db, 'author', worker.gateway), true);
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  await reviewPaymentRoyalties(db, payment.id);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, undefined);
+  const fresh = purchaseFixture();
+  await createBookPurchase(db, fresh.gateway, 'reader', fresh.drafts, fresh.params);
+  assert.equal(fresh.payments.size, 1);
+});
+
+test('ordinary full destination-refund webhook settles a confirmed reversal automatically', async () => {
+  await seedDestinationOrder(); await fulfillPayment(db, { ...payment, destinationSettlement: autoSettlement });
+  const f = reversedDestinationFixture(); f.fee.amount_refunded = 200;
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, undefined);
+  assert.equal((await db.doc('payoutReviews/author').get()).data()?.retainedFeeCents, 0);
+  assert.equal((await db.doc('payouts/destination_pi_test').get()).data()?.retainedApplicationFeeCents, 0);
+});
+
+test('settlement blocks pending/partial refunds and missing, partial or mismatched transfer reversals', async () => {
+  await seedDestinationOrder(); await fulfillPayment(db, { ...payment, destinationSettlement: autoSettlement });
+  const f = reversedDestinationFixture();
+  f.transfer.reversed = false; f.transfer.amount_reversed = 0;
+  let result = await reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author');
+  assert.equal(result.settled, false); assert.match(result.message, /not been fully reversed/);
+  f.transfer.reversed = true; f.transfer.amount_reversed = 900;
+  assert.equal((await reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author')).settled, false);
+  f.transfer.amount_reversed = 1000; f.transfer.source_transaction = 'ch_wrong';
+  assert.equal((await reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author')).settled, false);
+  f.transfer.source_transaction = 'ch_auto'; f.state.refund = 500;
+  assert.equal((await reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author')).settled, false);
+  f.state.refund = 1000; f.state.refundStatus = 'pending';
+  assert.equal((await reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author')).settled, false);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, 'payment_review');
+});
+
+test('admin settlement refuses normal and suspended accounts and cannot silently overwrite a balance mismatch', async () => {
+  await seedDestinationOrder(); await fulfillPayment(db, { ...payment, destinationSettlement: autoSettlement });
+  const f = reversedDestinationFixture();
+  await assert.rejects(reviewAdminSettlement(db, f.stripe, { ...settlementAdmin, role: 'buyer' }, 'author'), /Admin access/);
+  await assert.rejects(reviewAdminSettlement(db, f.stripe, { ...settlementAdmin, status: 'suspended' }, 'author'), /Admin access/);
+  assert.equal((await db.collection('paymentSettlementAudits').get()).size, 0);
+  await db.doc('sellers/author').update({ totalEarnings: 1500 });
+  const result = await reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author');
+  assert.equal(result.settled, false); assert.match(result.message, /balances differ/);
+  assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 1500);
+});
+
+test('concurrent settlement requests do not deduct royalties twice and provider failure remains auditable', async () => {
+  await seedDestinationOrder(); await fulfillPayment(db, { ...payment, destinationSettlement: autoSettlement });
+  const f = reversedDestinationFixture(); f.state.fail = true;
+  await assert.rejects(reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author'), /Provider unavailable/);
+  assert.equal((await db.collection('paymentSettlementAudits').get()).docs[0].data()?.status, 'failed');
+  f.state.fail = false;
+  const results = await Promise.all([reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author'), reviewAdminSettlement(db, f.stripe, settlementAdmin, 'author')]);
+  assert.ok(results.every(r => r.settled));
+  assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 0);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+});
 
 test('destination fulfillment records one automatic net payout and retries never send another transfer', async () => {
   await seedDestinationOrder();

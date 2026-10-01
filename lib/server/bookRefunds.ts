@@ -1,10 +1,10 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
 import { isSettledRefund } from '@/functions/src/stripe/refundSettlement';
-import { settleUnpaidRefunds } from './settleUnpaidRefunds';
+import { reconcileAuthorSettlement } from './reconcileAuthorSettlement';
 
 /** Synchronize existing refunds only. Never refund a payment or reverse a transfer. */
-export async function reconcileBookRefunds(db: Firestore, stripe: Stripe, paymentId: string) {
+export async function reconcileBookRefunds(db: Firestore, stripe: Stripe, paymentId: string, options: { skipSettlement?: boolean } = {}) {
   const result = await db.runTransaction(async tx => {
     const markerRef = db.doc(`paymentFulfillments/${paymentId}`);
     const marker = await tx.get(markerRef);
@@ -79,9 +79,9 @@ export async function reconcileBookRefunds(db: Firestore, stripe: Stripe, paymen
     }, { merge: true });
     return { status: refundStatus, orders: orders.size };
   });
-  if (result.status === 'full') {
+  if (result.status === 'full' && !options.skipSettlement) {
     const orders = await db.collection('orders').where('stripePaymentIntentId', '==', paymentId).get();
-    for (const sellerId of new Set(orders.docs.map(o => o.data().sellerId as string))) await settleUnpaidRefunds(db, stripe, sellerId);
+    for (const sellerId of new Set(orders.docs.map(o => o.data().sellerId as string))) await reconcileAuthorSettlement(db, stripe, sellerId);
   }
   return result;
 }

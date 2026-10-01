@@ -1,6 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { accountReadiness, type ConnectedAccount } from './accountReadiness';
-import { isSettledRefund } from './refundSettlement';
+import { isSettledRefund, isSettledReversal } from './refundSettlement';
 
 export interface RoyaltyTransfer {
   id: string; amount: number; currency: string; destination: string | { id: string } | null;
@@ -63,6 +63,13 @@ export async function reconcileAuthor(db: Firestore, sellerId: string, gateway: 
   }
   for (const payout of payouts.docs) {
     const data = payout.data();
+    if (isSettledReversal(data)) {
+      const transfer = byId.get(data.stripeTransferId);
+      const ids: string[] = data.orderIds ?? [data.orderId];
+      if (!transfer || !matchesTransfer(transfer, data, payout.id) || !ids.length ||
+          ids.some(id => !orders.docs.some(o => o.id === id && isSettledRefund(o.data())))) { reason = 'transfer_mismatch'; break; }
+      continue;
+    }
     if (data.kind !== 'book_royalty' || !validAmount(data.amountCents) || !['pending', 'processing', 'paid', 'needs_review'].includes(data.status)) { reason = 'legacy_payout_review'; break; }
     reserved += data.amountCents;
     if (data.status === 'paid') {
@@ -103,16 +110,19 @@ export async function reconcileAuthor(db: Firestore, sellerId: string, gateway: 
 }
 
 function matchesTransfer(transfer: RoyaltyTransfer, payout: Record<string, unknown>, payoutId: string) {
+  const validReversal = isSettledReversal(payout)
+    ? transfer.reversed && transfer.amount_reversed === transfer.amount
+    : !transfer.reversed && transfer.amount_reversed === 0;
   if (payout.chargeRouting === 'destination') {
     return transfer.id === payout.stripeTransferId && transfer.amount === payout.grossAmountCents &&
       validAmount(payout.applicationFeeAmount) && validAmount(payout.amountCents) && transfer.amount - payout.applicationFeeAmount === payout.amountCents &&
       transfer.currency === 'usd' && objectId(transfer.destination) === payout.stripeAccountId &&
-      objectId(transfer.source_transaction) === payout.stripeChargeId && !transfer.reversed && transfer.amount_reversed === 0;
+      objectId(transfer.source_transaction) === payout.stripeChargeId && validReversal;
   }
   return transfer.amount === payout.amountCents && transfer.currency === 'usd' &&
     objectId(transfer.destination) === payout.stripeAccountId && objectId(transfer.source_transaction) === payout.stripeChargeId &&
     transfer.metadata.payoutId === payoutId && transfer.metadata.sellerId === payout.sellerId &&
-    !transfer.reversed && transfer.amount_reversed === 0;
+    validReversal;
 }
 
 export async function payAuthorOrder(db: Firestore, orderId: string, gateway: RoyaltyGateway, now = Date.now()) {

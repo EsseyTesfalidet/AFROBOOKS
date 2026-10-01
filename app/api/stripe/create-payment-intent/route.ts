@@ -14,7 +14,7 @@ import { giftEmailConfiguration } from '@/lib/server/giftEmail';
 import { bookRouting, routingParameters, type BookRouting } from '@/lib/stripe/bookRouting';
 import { createBookPurchase, BookPurchaseError } from '@/lib/server/bookPurchases';
 import { publicationTitle } from '@/lib/utils/publication';
-import { settleUnpaidRefunds } from '@/lib/server/settleUnpaidRefunds';
+import { reconcileAuthorSettlement } from '@/lib/server/reconcileAuthorSettlement';
 
 const checkoutSchema = z.object({
   items: z.array(z.object({ bookId: z.string().min(1).max(128).regex(/^[^/]+$/) })).min(1).max(20),
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     for (const sellerId of new Set(bookDetails.map(book => book.sellerId))) {
       const sellerRef = adminDb.doc(`sellers/${sellerId}`);
       let seller = (await sellerRef.get()).data();
-      if (seller?.payoutHoldReason === 'payment_review' && await settleUnpaidRefunds(adminDb, stripe, sellerId)) seller = (await sellerRef.get()).data();
+      if (['payment_review', 'balance_mismatch', 'transfer_mismatch', 'unrecorded_transfer'].includes(seller?.payoutHoldReason) && (await reconcileAuthorSettlement(adminDb, stripe, sellerId)).settled) seller = (await sellerRef.get()).data();
       if (!seller?.stripeAccountId) return NextResponse.json({ error: 'An author in your cart is still setting up payments. Please try again later.', code: 'AUTHOR_SETUP_REQUIRED' }, { status: 409 });
       if (seller.payoutHoldReason) return NextResponse.json({ error: 'An author’s payments are temporarily under review. No payment has been taken. Please try again later.', code: 'AUTHOR_PAYMENT_REVIEW' }, { status: 409 });
       const account = await stripe.accounts.retrieve(seller.stripeAccountId);

@@ -8,12 +8,21 @@ import { POST as setRole } from '../app/api/admin/set-role/route';
 import { POST as createSession, DELETE as deleteSession } from '../app/api/auth/session/route';
 import { requireRequestUser } from '../lib/server/auth';
 import { POST as syncLibrary } from '../app/api/library/sync/route';
+import { POST as settlePayments } from '../app/api/admin/settle-payments/route';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
 test('library recovery requires authentication and ignores a claimed buyer in the request body', async () => {
   const response = await syncLibrary(new NextRequest('https://afrobs.com/api/library/sync', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: 'another-reader' }),
+  }));
+  assert.equal(response.status, 401);
+});
+
+test('payment settlement rejects forged admin claims before contacting Stripe', async () => {
+  const response = await settlePayments(new NextRequest('https://afrobs.com/api/admin/settle-payments', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', cookie: 'ab_uid=admin; ab_role=admin' },
+    body: JSON.stringify({ sellerId: 'author', settled: true, role: 'admin' }),
   }));
   assert.equal(response.status, 401);
 });

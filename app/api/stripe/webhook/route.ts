@@ -101,7 +101,10 @@ export async function POST(req: NextRequest) {
         if (sourceId) {
           const charge = await stripe.charges.retrieve(sourceId);
           const paymentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
-          if (paymentId) await reviewPaymentRoyalties(adminDb, paymentId);
+          if (paymentId) {
+            await reviewPaymentRoyalties(adminDb, paymentId);
+            await reconcileBookRefunds(adminDb, stripe, paymentId);
+          }
         }
       } else {
         const object = event.data.object as Stripe.Charge | Stripe.Dispute;
@@ -136,7 +139,10 @@ export async function POST(req: NextRequest) {
       if (chargeId) {
         const charge = await stripe.charges.retrieve(chargeId);
         const paymentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
-        if (paymentId) await reviewPaymentRoyalties(adminDb, paymentId);
+        if (paymentId) {
+          await reviewPaymentRoyalties(adminDb, paymentId);
+          await reconcileBookRefunds(adminDb, stripe, paymentId);
+        }
       }
     } catch { return NextResponse.json({ error: 'Application fee review incomplete; retry required' }, { status: 500 }); }
   }

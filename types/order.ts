@@ -83,7 +83,8 @@ export interface Payout {
   salesEarnings: number;
   subscriptionEarnings: number;
   stripeTransferId: string | null;
-  status: 'pending' | 'processing' | 'paid' | 'failed' | 'needs_review';
+  status: 'pending' | 'processing' | 'paid' | 'reversed' | 'failed' | 'needs_review';
+  retainedApplicationFeeCents?: number;
   paidAt: Timestamp | null;
   createdAt: Timestamp;
 }

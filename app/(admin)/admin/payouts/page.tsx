@@ -13,6 +13,7 @@ import {
   AdminBadge,
 } from '@/components/admin/AdminUI';
 import type { Payout } from '@/types/order';
+import SettlementReviewButton from '@/components/admin/SettlementReviewButton';
 
 const reasons: Record<string, string> = {
   account_mismatch: 'Stripe account ownership needs review',
@@ -27,7 +28,7 @@ export default function AdminPayoutsPage() {
   const payouts = useAdminCollection<Payout & { orderId?: string; stripePaymentIntentId?: string }>(
     'payouts',
   );
-  const reviews = useAdminCollection<{ sellerId: string; reason: string; status: string }>(
+  const reviews = useAdminCollection<{ sellerId: string; reason: string; status: string; retainedFeeCents?: number; resolvedAt?: unknown }>(
     'payoutReviews',
   );
   const settings = useAdminCollection<{ automatedPayoutsEnabled?: boolean }>('platformSettings');
@@ -45,6 +46,7 @@ export default function AdminPayoutsPage() {
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
+  const [reviewMessage, setReviewMessage] = useState('');
   const filtered = payouts.data
     .filter(
       (item) =>
@@ -57,6 +59,7 @@ export default function AdminPayoutsPage() {
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 15)));
   const payout = payouts.data.find((item) => item.id === selected);
   const openReviews = reviews.data.filter((item) => item.status === 'open');
+  const resolvedReviews = reviews.data.filter(item => item.status === 'resolved').sort((a, b) => dateValue(b.resolvedAt) - dateValue(a.resolvedAt)).slice(0, 10);
   return (
     <main className="admin-page">
       <AdminHeading
@@ -116,12 +119,13 @@ export default function AdminPayoutsPage() {
                 </div>
               ))}
             </dl>
+            {reviewMessage && <p role="status" className="mb-4 text-sm text-[#c5c9c2]">{reviewMessage}</p>}
             {openReviews.length > 0 && (
               <section className="admin-panel mb-6">
                 <div className="admin-panel-heading">
                   <div>
                     <h2>Needs financial review</h2>
-                    <p>Further transfers are held until the payment and ledger are reconciled.</p>
+                    <p>Check Stripe to clear resolved holds. This action does not issue refunds or move money.</p>
                   </div>
                   <AdminBadge tone="warning">{openReviews.length} open</AdminBadge>
                 </div>
@@ -132,10 +136,19 @@ export default function AdminPayoutsPage() {
                       <small>{reasons[review.reason] ?? review.reason.replaceAll('_', ' ')}</small>
                       <small>Author ID: {review.sellerId}</small>
                     </div>
+                    <SettlementReviewButton sellerId={review.sellerId} onResult={setReviewMessage} />
                   </div>
                 ))}
               </section>
             )}
+            {resolvedReviews.length > 0 && <section className="admin-panel mb-6">
+              <div className="admin-panel-heading"><div><h2>Recently settled</h2><p>Verified reviews that no longer block new purchases.</p></div></div>
+              {resolvedReviews.map(review => <div key={review.id} className="admin-queue-row">
+                <div><p>{authorName(review.sellerId)}</p><small>{dateValue(review.resolvedAt) ? new Date(dateValue(review.resolvedAt)).toLocaleString() : 'Settlement recorded'}</small>
+                  {!!review.retainedFeeCents && <small>Platform fees retained in Stripe: {centsToDisplay(review.retainedFeeCents)}</small>}
+                </div><AdminBadge tone="good">Settled</AdminBadge>
+              </div>)}
+            </section>}
             <div className="admin-toolbar">
               <AdminSearch
                 label="Search author or transfer ID"
@@ -153,7 +166,7 @@ export default function AdminPayoutsPage() {
                   setPage(1);
                 }}
               >
-                {['all', 'paid', 'pending', 'processing', 'needs_review', 'failed'].map((value) => (
+                {['all', 'paid', 'reversed', 'pending', 'processing', 'needs_review', 'failed'].map((value) => (
                   <option value={value} key={value}>
                     {value === 'all'
                       ? 'All statuses'
@@ -230,6 +243,7 @@ export default function AdminPayoutsPage() {
               : payout.status.replaceAll('_', ' ')}
           </AdminBadge>
           <dl>
+            {!!payout.retainedApplicationFeeCents && <div><dt>Platform fee retained after refund</dt><dd>{centsToDisplay(payout.retainedApplicationFeeCents)}</dd></div>}
             <div>
               <dt>Order</dt>
               <dd>{payout.orderId ?? 'Historical payout'}</dd>
