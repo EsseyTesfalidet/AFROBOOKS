@@ -39,3 +39,20 @@ together. Automatic detection is conservative, not a guarantee of author intent.
   unchanged words and paragraph counts, reading position, persistence and rotation.
 - Existing page-reader and scrolling-reader browser scenarios are rerun. Browser
   coverage uses Chromium/Edge; native Safari is not exercised.
+
+## Release — October 1, 2026
+
+- Commit `dfb30a9` is deployed as `dpl_8wiZQzTE4nYCNXdZJPM8xVDHcMNk` and
+  promoted to `afrobs.com`; the domain alias was verified directly with Vercel.
+- All 70 unit tests, TypeScript, changed-file lint and the production build passed.
+  Author/reader flow browser tests, page-reader regressions and all eight existing
+  scrolling-reader scenarios passed.
+- A read-only audit of seven published books (70 chapters) confirmed unchanged
+  non-whitespace text and paragraph counts. Automatic display reflow removes 2,828
+  clearly wrapped line breaks. No stored manuscript or chapter was modified.
+- On an actual deployed Firebase preview, the original 37 line breaks became 30
+  in Automatic and zero in Paragraphs, while all 11 paragraph blocks and text were
+  retained. Switching back, page turns, saved position/preference and rotation
+  passed without browser exceptions. This used the authenticated deployment URL;
+  this workspace's public-domain DNSFilter limitation remains as documented in
+  `reader-pages.md`.
