@@ -20,12 +20,54 @@ test('reader preserves short verse, code, lists, intentional breaks and blank-li
   assert.equal(flowReaderParagraphs(verse), verse);
   assert.equal(flowReaderParagraphs(verse, 'paragraphs'), '<p>First line Second line</p>');
   const marked = sanitizeChapter('<p data-preserve-breaks="true" onclick="bad()">First<br>Second</p>');
-  assert.equal(flowReaderParagraphs(marked, 'paragraphs'), marked);
+  assert.equal(flowReaderParagraphs(marked, 'auto'), marked);
+  assert.equal(flowReaderParagraphs(marked, 'paragraphs'), '<p data-preserve-breaks="true">First Second</p>');
   assert.doesNotMatch(marked, /onclick/);
   const structures = '<pre><p>Code<br />line</p></pre><ul><li>One<br />two</li></ul><h2>Title<br />subtitle</h2><p>• First<br />• Second</p>';
   assert.equal(flowReaderParagraphs(structures, 'paragraphs'), structures);
   assert.equal(flowReaderParagraphs('<p>One<br>two<br><br>Three<br>four</p>', 'paragraphs'), '<p>One two<br><br>Three four</p>');
   assert.equal(flowReaderParagraphs('<p>中文<br>故事</p>', 'paragraphs'), '<p>中文故事</p>');
+});
+
+test('compact Tigrinya, Amharic, Arabic and CJK wrapping flows without English-length assumptions', () => {
+  const examples = [
+    ['ሰላም ዓለም ምንባብ መጽሓፍ ታሪኽ ሰላም ዓለም ታሪኽ', 'መጽሓፍ።'],
+    ['የአማርኛ ጽሑፍ የአማርኛ ጽሑፍ የአማርኛ ጽሑፍ መጽሐፍ', 'መጽሐፍ።'],
+    ['القراءة تفتح أبواب المعرفة والقصص الجميلة', 'لكل إنسان.'],
+    ['القِراءةُ تَفتَحُ أبوابَ المَعرِفَةِ والقِصَصِ الجَميلةِ', 'لكل إنسان.'],
+    ['中文故事中文故事中文故事中文故事中文故事', '故事结束。'],
+    ['物語を読みながら新しい世界のことを知る', 'ことができます。'],
+  ];
+  for (const [first, last] of examples) {
+    const input = `<p>${first}<br/><em>${last}</em></p><p>Another paragraph.</p>`;
+    const flowed = flowReaderParagraphs(input);
+    assert.doesNotMatch(flowed, /<br/);
+    assert.equal(flowed.replace(/<[^>]+>|\s/g, ''), input.replace(/<[^>]+>|\s/g, ''));
+    assert.equal((flowed.match(/<p>/g) ?? []).length, 2);
+    assert.ok(flowed.includes(`<em>${last}</em>`));
+    assert.equal(flowReaderParagraphs(input, 'original'), input);
+    assert.equal(flowReaderParagraphs(input, 'auto', true), input);
+    const marked = input.replace('<p>', '<p data-preserve-breaks="true">');
+    assert.equal(flowReaderParagraphs(marked, 'auto'), marked);
+    assert.doesNotMatch(flowReaderParagraphs(marked, 'paragraphs'), /<br/);
+  }
+  assert.equal(flowReaderParagraphs('<p>中文故事。<br>新的故事</p>', 'paragraphs'), '<p>中文故事。新的故事</p>');
+});
+
+test('multilingual verse, separate sentences, numbered items and blank paragraphs retain boundaries', () => {
+  const examples = [
+    '<p>ሰላም ዓለም<br>መጽሓፍ ታሪኽ</p>',
+    '<p>مرحبا بالعالم<br>إلى اللقاء</p>',
+    '<p>中文短诗<br>新的诗句</p>',
+    '<p>ሰላም ዓለም ምንባብ መጽሓፍ ታሪኽ ሰላም ዓለም።<br>መጽሓፍ።</p>',
+    '<p>القراءة تفتح أبواب المعرفة والقصص الجميلة.<br>إلى اللقاء.</p>',
+    '<p>١. القراءة تفتح أبواب المعرفة والقصص الجميلة<br>٢. لكل إنسان</p>',
+    '<p>፩. ሰላም ዓለም ምንባብ መጽሓፍ ታሪኽ<br>፪. መጽሓፍ</p>',
+    '<p>ሰላም ዓለም ምንባብ መጽሓፍ ታሪኽ ሰላም ዓለም</p><p>መጽሓፍ።</p>',
+  ];
+  for (const input of examples) assert.equal(flowReaderParagraphs(input), input);
+  const text = 'ሰላም ዓለም ምንባብ መጽሓፍ ታሪኽ ሰላም ዓለም ታሪኽ';
+  assert.equal(flowReaderParagraphs(`<p>${text}<br>መጽሓፍ።<br><br>${text}<br>መጽሓፍ።</p>`), `<p>${text} መጽሓፍ።<br><br>${text} መጽሓፍ።</p>`);
 });
 
 test('fractional phone widths do not accumulate page drift in a long chapter', () => {

@@ -24,7 +24,8 @@ export function decodeManuscriptBytes(bytes: Uint8Array): string {
       .replace(/[\u0080-\u009f]/g, character => String.fromCodePoint(WINDOWS_PUNCTUATION[character.charCodeAt(0) - 0x80]));
   }
   // Do not silently publish a file that already lost characters, or binary data.
-  if (/[\u0000-\u0008\u000b\u000e-\u001f\u007f-\u009f\ufffd]/u.test(text)) {
+  // U+0085 is a valid Unicode next-line separator in text exports.
+  if (/[\u0000-\u0008\u000b\u000e-\u001f\u007f-\u0084\u0086-\u009f\ufffd]/u.test(text)) {
     throw new Error(ENCODING_ERROR);
   }
   return text;

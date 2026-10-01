@@ -87,6 +87,15 @@ test('paragraph flow preserves multilingual words and escapes imported HTML', ()
   assert.equal(extractSectionsFromText('<script>alert(1)</script>\n& words')[0].content, '<p>&lt;script&gt;alert(1)&lt;/script&gt; &amp; words</p>');
 });
 
+test('Unicode line separators flow and Unicode paragraph/blank-line separators remain distinct', async () => {
+  const result = await importManuscriptFile(new File(['ምዕራፍ ፩: ትግርኛ\u2029ሰላም\u2028ዓለም።\u2029مرحبا\u0085بالعالم\n\u00a0\n中文\n故事。\n新的故事'], 'languages.txt'));
+  assert.equal(result.chapters.length, 1);
+  assert.equal(result.chapters[0].title, 'ምዕራፍ ፩: ትግርኛ');
+  assert.equal(result.chapters[0].content, '<p>ሰላም ዓለም።</p><p>مرحبا بالعالم</p><p>中文故事。新的故事</p>');
+  assert.equal(extractSectionsFromText('ሰላም\u2028ዓለም።', 'preserve')[0].content, '<p data-preserve-breaks="true">ሰላም<br/>ዓለም።</p>');
+  assert.equal(extractSectionsFromText('ሰላም\u2028ዓለም።', 'legacy')[0].content, '<p>ሰላም\u2028ዓለም።</p>');
+});
+
 test('legacy encoding repairs retain old line breaks instead of silently reformatting a book', () => {
   const bytes = Uint8Array.from([...new TextEncoder().encode('Chapter 1: Opening\n\nMero'), 0xeb, ...new TextEncoder().encode('\nhome.')]);
   const legacy = extractSectionsFromText(new TextDecoder().decode(bytes), 'legacy');

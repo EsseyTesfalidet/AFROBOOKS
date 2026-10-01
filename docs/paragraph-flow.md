@@ -16,11 +16,16 @@ encoding-only repair cannot also reformat a published manuscript.
 
 Published chapters are not rewritten. The reader's **Text flow** setting offers:
 
-- **Automatic** (default): join clearly wrapped, long lines within existing
-  paragraphs. Short or ambiguous lines, Poetry books, code, headings, list items
+- **Automatic** (default): join clearly wrapped lines within existing
+  paragraphs. Detection also recognizes compact prose with similarly sized
+  full lines and a continuing sentence, including Tigrinya/Amharic and Arabic.
+  Combining marks do not inflate lengths; full-width CJK characters count wider.
+  Short or ambiguous lines, Poetry books, code, headings, list items
   and author-marked line breaks retain their layout.
-- **Flow as paragraphs**: join other single line breaks within existing prose
-  paragraphs. Author-marked breaks and repeated blank separators remain.
+- **Flow as paragraphs**: explicitly join single line breaks within existing
+  prose paragraphs, including lines marked for preservation during import.
+  This lets a reader reflow an upload saved with **Keep original lines**.
+  Repeated blank separators, code, headings and list items remain intact.
 - **Keep original lines**: show the original sanitized chapter layout.
 
 The setting is saved on the device and works with Pages and Scroll. Paragraph
@@ -28,6 +33,8 @@ boundaries are never merged, keeping paragraph anchors available for position
 restoration. Already imported text with a separate paragraph for every line needs
 author review/reimport; the reader does not guess which distinct paragraphs belong
 together. Automatic detection is conservative, not a guarantee of author intent.
+Unicode line/paragraph separators and blank lines containing nonbreaking spaces
+are recognized in new imports. Legacy encoding repairs retain their old layout.
 
 ## Validation
 
@@ -56,3 +63,20 @@ together. Automatic detection is conservative, not a guarantee of author intent.
   passed without browser exceptions. This used the authenticated deployment URL;
   this workspace's public-domain DNSFilter limitation remains as documented in
   `reader-pages.md`.
+
+## Multilingual follow-up — October 1, 2026
+
+- Removed the English-length assumption for compact wrapped prose. Detection
+  uses the text itself, so an incorrectly selected book language does not block it.
+- The explicit **Flow as paragraphs** reader choice now also handles imports
+  marked **Keep original lines**. Automatic still respects those author markers;
+  original mode restores the sanitized source layout. No database text is rewritten.
+- All 78 unit tests, TypeScript and changed-file lint passed. Browser checks used
+  the actual reader and cached, read-only content from two published Tigrinya books,
+  plus an Arabic fixture. Original/automatic/paragraph-mode break counts were
+  2,358/155/4 and 8,419/8,419/11 for those Tigrinya snapshots; remaining breaks
+  belonged to protected structures. All text and 4,042/1,465 paragraph blocks
+  remained intact. Arabic diacritics and right-to-left direction were retained.
+- Page turns, saved position/preference, rotation and restoring the original
+  layout passed. Author import/editor and reading-section preview/apply/navigation
+  browser regressions also passed. Coverage uses Chromium/Edge, not native Safari.

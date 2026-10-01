@@ -19,6 +19,13 @@ const CHAPTER_HEADING_PATTERN =
 
 const SECOND_LEVEL_HEADING_PATTERN = /^##+\s+(.+)$/;
 
+function normalizeLineEndings(text: string, lineBreaks: ManuscriptLineBreaks) {
+  const normalized = text.replace(/\r\n?/g, '\n');
+  // Unicode line/paragraph separators occur in multilingual document exports.
+  // Keep encoding-only repairs byte-layout compatible with the old importer.
+  return lineBreaks === 'legacy' ? normalized : normalized.replace(/[\u0085\u2028]/g, '\n').replace(/\u2029/g, '\n\n');
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -76,7 +83,7 @@ function paragraphToHtml(paragraph: string, lineBreaks: ManuscriptLineBreaks) {
 
 function sectionBodyToHtml(body: string, lineBreaks: ManuscriptLineBreaks) {
   return body
-    .split(lineBreaks === 'legacy' ? /\n{2,}/ : /\n[\t ]*\n(?:[\t ]*\n)*/)
+    .split(lineBreaks === 'legacy' ? /\n{2,}/ : /\n[^\S\n]*\n(?:[^\S\n]*\n)*/)
     .flatMap(paragraph => {
       if (lineBreaks !== 'paragraphs') return [paragraph];
       const groups: string[] = [];
@@ -154,7 +161,7 @@ function flushSection(sections: ImportedChapterDraft[], buffer: SectionBuffer | 
 }
 
 export function extractSectionsFromText(text: string, lineBreaks: ManuscriptLineBreaks = 'paragraphs') {
-  const normalized = text.replace(/\r\n?/g, '\n').trim();
+  const normalized = normalizeLineEndings(text, lineBreaks).trim();
   if (!normalized) {
     return [];
   }
@@ -228,7 +235,7 @@ export async function importManuscriptFile(file: File, onProgress?: (message: st
   }
 
   const warnings = [...(extracted?.warnings ?? [])];
-  const hasHeadings = rawText.replace(/\r\n?/g, '\n').split('\n').some(line => CHAPTER_HEADING_PATTERN.test(line.trim()) || SECOND_LEVEL_HEADING_PATTERN.test(line.trim()));
+  const hasHeadings = normalizeLineEndings(rawText, options.lineBreaks ?? 'paragraphs').split('\n').some(line => CHAPTER_HEADING_PATTERN.test(line.trim()) || SECOND_LEVEL_HEADING_PATTERN.test(line.trim()));
   if (!hasHeadings && chapters.length === 1 && options.readingSections !== 'off') {
     const target = options.sectionWords ?? 1500;
     chapters = splitReadingSections(chapters[0], target);
