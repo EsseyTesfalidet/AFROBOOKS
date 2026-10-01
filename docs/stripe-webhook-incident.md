@@ -1,5 +1,20 @@
 # Stripe webhook investigation — September 30, 2026
 
+## Resolution update — October 1, 2026 UTC
+
+Real Stripe deliveries to the previous endpoint were confirmed returning HTTP 400 in Vercel request logs. Replaced the failing endpoint with a new endpoint using the same URL, event subscriptions and API version, securely updated the production signing secret, and redeployed. A real Stripe resend of the harmless `tax.settings.updated` event returned HTTP 200 at **03:36:27.799 UTC**, on deployment `dpl_7XNH7CtEvb1F5opUmMNUkXZpF4f4`. The previous endpoint was then disabled, preserving its delivery history.
+
+- Active endpoint: `we_1ULakRDjnbhpFDjEoPt3Y9rk`.
+- Previous disabled endpoint: `we_1UKBR1DjnbhpFDjE2RUVHcCF`.
+- `automatedPayoutsEnabled` is true. The updated hourly royalty worker is active, with its scheduler enabled.
+- The author involved in the reported purchases has an ownership-matched US connected account with active transfers and payouts, and no payout hold.
+- The two inspected $6.99 purchases were still pending in the application. One was already fully refunded; the second was also fully refunded by the time recovery ran. The recovery guard stopped before resending its success event. No author transfer, new charge or refund was initiated during this repair. The user requested leaving the refunds alone.
+- The author transfer for a new, non-refunded purchase remains to be verified. The existing separate-charge/automatic-transfer flow is enabled; direct destination charges remain off pending the eligible-account Stripe test described in `destination-charges.md`.
+
+The findings below describe the earlier investigation, before this repair. No secret values are stored in this document.
+
+## Original investigation
+
 Stripe reported 16 unsuccessful deliveries beginning September 27 at 09:37:45 UTC to `https://afrobs.com/api/stripe/webhook`.
 
 ## Verified findings

@@ -14,6 +14,8 @@ AfroBooks uses Stripe Elements and PaymentIntents, not Checkout Sessions, for bo
 
 ## Activation
 
+October 1, 2026 update: the updated Firebase royalty worker is deployed and active, and real Stripe webhook delivery now returns HTTP 200 after the endpoint/signing-secret repair. `platformSettings/global.automatedPayoutsEnabled` is true. `STRIPE_DESTINATION_CHARGES_ENABLED` remains false pending the eligible-account Stripe test; the existing separate-charge/automatic-transfer flow is enabled. See `stripe-webhook-incident.md` for verified evidence and the inspected payments' status.
+
 New destination charges default to **off**. Both `STRIPE_DESTINATION_CHARGES_ENABLED=true` in the server environment and `platformSettings/global.automatedPayoutsEnabled=true` are required. Disabling the flag affects new checkouts; already-created PaymentIntents retain their routing.
 
 Before enabling:
@@ -44,7 +46,7 @@ Guest browser checks passed on nine routes at 390×844, 844×390 and 1280×900: 
 
 The webhook now checks the current charge for refunds and disputes before granting a book. A delayed success notification for a refunded or disputed payment records a review state without granting access, crediting earnings or allowing another checkout. A regression test covers both separate and destination routing and stale retries. Existing completed purchases retain the established refund-review behavior.
 
-A Stripe test-account trial reached account creation but Stripe refused its destination payment because onboarding had not activated the recipient's transfer capability; the synthetic account was closed. No real charge or transfer was made. Complete the eligible-account Stripe test before live activation. The release keeps `STRIPE_DESTINATION_CHARGES_ENABLED=false`; the Firebase worker update must also be deployed before enabling it.
+A Stripe test-account trial reached account creation but Stripe refused its destination payment because onboarding had not activated the recipient's transfer capability; the synthetic account was closed. No real charge or transfer was made. Complete the eligible-account Stripe test before live activation. The release keeps `STRIPE_DESTINATION_CHARGES_ENABLED=false`; the Firebase worker update has since been deployed.
 
 ## Refunds
 
