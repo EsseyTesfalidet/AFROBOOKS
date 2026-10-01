@@ -23,6 +23,12 @@ Validation: 22 payment/library integration tests against the Firestore emulator,
 20 checkout/security tests, TypeScript checking, and the browser ownership
 regression passed. No live charges were created for testing.
 
+Released to `https://afrobs.com` on October 1, 2026 from commit `03a19d2`,
+deployment `dpl_DDHmZZiFUbqRXJtAKCwF39Zy7gid`. The production build passed,
+the buyerId/bookId index was confirmed READY, and the new authenticated endpoint
+and live browser smoke checks passed. Signed-in purchase scenarios were tested
+with fixtures and the emulator, not by making a real payment.
+
 Browser regression:
 
 ```powershell
