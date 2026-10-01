@@ -9,6 +9,28 @@ import { formatStripeAmount } from '../lib/utils/stripeMoney';
 import { bookRouting, routingParameters } from '../lib/stripe/bookRouting';
 import { destinationSettlement } from '../lib/server/destinationPayment';
 import type Stripe from 'stripe';
+import { pricingGuidance } from '../lib/utils/pricingGuidance';
+
+test('pricing guidance stays within checkout limits and quotes the current author fee', () => {
+  for (const count of [NaN, -1, 0, 9999, 10000, 39999, 40000, 200000]) {
+    const range = pricingGuidance(count);
+    assert.ok(range.low >= MIN_BOOK_PRICE_CENTS && range.high <= MAX_BOOK_PRICE_CENTS);
+    assert.ok(range.low <= range.suggested && range.suggested <= range.high);
+    for (const price of [range.low, range.suggested, range.high]) {
+      const fees = calculateFees(price, 20);
+      assert.equal(fees.sellerEarnings + fees.platformFee + fees.stripeFee, price);
+      assert.ok(fees.sellerEarnings > 0);
+    }
+  }
+  assert.equal(pricingGuidance(9999).suggested, 199);
+  assert.equal(pricingGuidance(10000).suggested, 399);
+  assert.equal(pricingGuidance(40000).suggested, 699);
+});
+
+test('poetry and children’s pricing guidance does not devalue a book based on word count', () => {
+  assert.deepEqual(pricingGuidance(1000, 'Poetry'), pricingGuidance(60000, 'Poetry'));
+  assert.deepEqual(pricingGuidance(1000, 'Fiction', 'children'), pricingGuidance(60000, 'Fiction', 'children'));
+});
 
 test('single-author destination charges retain fees and preserve quoted author earnings', () => {
   const pricing = calculateCartPricing([499, 699, 999]);

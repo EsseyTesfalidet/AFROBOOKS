@@ -688,7 +688,7 @@ export default function PublishPage() {
             {step === 3 && (
               <div className="space-y-5">
                 {directSaleFee !== null
-                  ? <BookPricing price={price} directSaleFee={directSaleFee} onPriceChange={setPrice} onValidityChange={setPricingValid} />
+                  ? <BookPricing price={price} directSaleFee={directSaleFee} wordCount={chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0)} genre={genre} audience={ageGroup} onPriceChange={setPrice} onValidityChange={setPricingValid} />
                   : <p role={pricingError ? 'alert' : 'status'} className="text-sm text-[#aaa]">{pricingError || 'Loading pricing…'}</p>}
 
                 <p className="text-sm text-[#aaa]">Choose free preview chapters in Book Content. All other chapters require purchase.</p>

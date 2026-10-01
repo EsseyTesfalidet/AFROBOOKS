@@ -1,22 +1,16 @@
-# Book pricing
+# Author-controlled pricing guidance
 
-`books.price` is the full retail price in USD cents. Authors can set that price directly or enter desired earnings in the publishing form. The earnings calculator finds the lowest valid retail price that covers those earnings, the configured commission, and estimated card processing. Existing listings keep their retail prices until an author changes them.
+The Pricing step in Publish suggests a range while the author keeps the final choice. Editing an existing book preserves its price. Choosing a suggestion changes the draft only; publishing/saving remains explicit. Prices outside the suggested range are allowed within the existing checkout limits. No paid AI or external pricing service is used.
 
-The default commission is 15% of proceeds after estimated processing, using the existing `platformSettings/global.directSaleFee` setting. This is AfroBooks revenue before other business costs, not a guarantee of net profit. There is no universal commission or retail price for ebooks.
+The first version uses editorial starting ranges, not observed market prices or sales forecasts. Manuscript word count informs ordinary prose suggestions; poetry and children's titles use a general range because word count alone poorly represents their value. Authors should compare similar titles and assess sales after launch.
 
-The processing estimate uses [Stripe's published US domestic card rate](https://stripe.com/pricing) of 2.9% + $0.30. Other payment methods, international cards, currency conversion, Connect costs and custom account pricing can differ. The ledger currently reserves this estimate; it does not reconcile the actual Stripe balance transaction fee. Author royalties use the reconciled, source-linked transfer flow described in [author payouts](author-payouts.md).
+| Manuscript | Range | Starting price |
+| --- | --- | --- |
+| Under 10,000 words | $0.99–$2.99 | $1.99 |
+| 10,000–39,999 words | $2.99–$5.99 | $3.99 |
+| 40,000 words or more | $4.99–$9.99 | $6.99 |
+| Poetry, children's titles, or unknown length | $2.99–$7.99 | $4.99 |
 
-For a single undiscounted payment at the default commission:
+Ranges are defined in `lib/utils/pricingGuidance.ts`. Each suggestion displays estimated author earnings using the current platform commission and the same fee calculation as checkout. Authors can also enter a custom customer price or desired net earnings. Existing bundle-discount and estimated processing-fee behavior is unchanged.
 
-| Included in customer price | Amount |
-| --- | ---: |
-| Author earnings | $5.00 |
-| AfroBooks share | $0.88 |
-| Estimated processing | $0.48 |
-| Customer price | $6.36 |
-
-For carts with three or more books, the existing 5% bundle discount is applied first. One PaymentIntent has one processing estimate, including one fixed $0.30 charge. Discounts and fees are allocated proportionally across book orders using integer arithmetic and stable largest-remainder rounding. Author earnings are the remainder, so every line and the complete payment balance exactly to the cent. Discounts can lower the earnings shown in the single-book estimate.
-
-The cart and server share the same totals calculation. Checkout reads prices and commission from the database. Orders record the applied commission, estimate basis and pricing version for later review. Buyer screens display the complete retail price and identify processing and platform fees as included.
-
-Validation covers earnings targets, configured commissions, invalid input, uneven allocations, zero-price lines, large amounts, single-payment fee allocation, buyer/server totals, and duplicate webhook fulfillment across multiple authors. Browser checks exercise the actual pricing component and cart store at desktop and mobile sizes. No live charges or transfers are needed for these checks.
+Validation: unit coverage checks range boundaries and checkout/fee compatibility. Browser checks confirm existing-price preservation, suggestion selection, custom prices outside the guide, invalid amount rejection, recovery from invalid input, target earnings and layouts at 320, 390, 844 and 1280 pixels. The combined production build passed.
