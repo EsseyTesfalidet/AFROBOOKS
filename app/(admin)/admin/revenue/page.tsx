@@ -58,8 +58,8 @@ export default function AdminRevenuePage() {
         'Status',
         'Date',
         'Customer paid USD',
-        'Platform earnings USD',
-        'Author earnings USD',
+        'Counted platform earnings USD',
+        'Counted author earnings USD',
         'Estimated processing USD',
         'Stripe payment',
       ],
@@ -69,8 +69,8 @@ export default function AdminRevenuePage() {
         item.status,
         new Date(dateValue(item.createdAt)).toISOString(),
         (item.finalPrice / 100).toFixed(2),
-        ((item.platformFee ?? 0) / 100).toFixed(2),
-        ((item.sellerEarnings ?? 0) / 100).toFixed(2),
+        ((item.status === 'completed' ? item.platformFee ?? 0 : 0) / 100).toFixed(2),
+        ((item.status === 'completed' ? item.sellerEarnings ?? 0 : 0) / 100).toFixed(2),
         ((item.stripeFee ?? 0) / 100).toFixed(2),
         item.stripePaymentIntentId,
       ]),
@@ -305,6 +305,10 @@ export default function AdminRevenuePage() {
             </AdminBadge>
           </div>
           <dl>
+            {order.refundStatus && <div>
+              <dt>Payment refund</dt>
+              <dd>{order.refundStatus} — {centsToDisplay(order.paymentRefundedAmount ?? 0)} refunded across this payment</dd>
+            </div>}
             <div>
               <dt>Customer paid</dt>
               <dd>{centsToDisplay(order.finalPrice)}</dd>

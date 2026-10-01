@@ -12,6 +12,7 @@ import { expirePromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharg
 import { reviewGiftPayment } from '@/lib/server/bookGifts';
 import { deliverBookGift } from '@/lib/server/giftEmail';
 import { currentBookPayment } from '@/lib/server/currentBookPayment';
+import { reconcileBookRefunds } from '@/lib/server/bookRefunds';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -106,7 +107,8 @@ export async function POST(req: NextRequest) {
         const object = event.data.object as Stripe.Charge | Stripe.Dispute;
         const paymentId = typeof object.payment_intent === 'string' ? object.payment_intent : object.payment_intent?.id;
         if (paymentId) {
-          await reviewGiftPayment(adminDb, paymentId);
+          if (event.type === 'charge.refunded') await reconcileBookRefunds(adminDb, stripe, paymentId);
+          else await reviewGiftPayment(adminDb, paymentId);
           await reviewPaymentRoyalties(adminDb, paymentId);
           const payment = await stripe.paymentIntents.retrieve(paymentId);
           if (event.type === 'charge.refunded') await reconcilePromotionRefund(adminDb, stripe, payment);
@@ -120,8 +122,11 @@ export async function POST(req: NextRequest) {
     try {
       const refund = event.data.object as Stripe.Refund;
       const paymentId = typeof refund.payment_intent === 'string' ? refund.payment_intent : refund.payment_intent?.id;
-      if (paymentId) await reconcilePromotionRefund(adminDb, stripe, await stripe.paymentIntents.retrieve(paymentId));
-    } catch { return NextResponse.json({ error: 'Promotion refund review incomplete; retry required' }, { status: 500 }); }
+      if (paymentId) {
+        await reconcileBookRefunds(adminDb, stripe, paymentId);
+        await reconcilePromotionRefund(adminDb, stripe, await stripe.paymentIntents.retrieve(paymentId));
+      }
+    } catch { return NextResponse.json({ error: 'Refund synchronization incomplete; retry required' }, { status: 500 }); }
   }
 
   if (event.type === 'application_fee.refunded') {

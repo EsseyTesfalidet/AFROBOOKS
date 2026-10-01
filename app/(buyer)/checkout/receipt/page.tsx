@@ -76,6 +76,7 @@ function ReceiptContent() {
   const total = orders.reduce((s, o) => s + o.finalPrice, 0);
   const status = receiptStatus(orderIds.length, orders);
   const completed = !error && status === 'completed';
+  const refunded = !error && orders.length === orderIds.length && orders.every(order => order.status === 'refunded');
   const needsReview = orders.some(order => order.status === 'needs_review');
   const isGift = orders.some(order => !!order.giftId);
   const StatusIcon = completed ? CheckCircle : Clock;
@@ -85,8 +86,8 @@ function ReceiptContent() {
       <div className="rounded-2xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
         <div className="px-6 py-8 text-center" style={{ background: '#0f2e1a' }}>
           <StatusIcon size={40} style={{ color: completed ? '#4ade80' : '#f5b800' }} className="mx-auto mb-3" />
-          <h1 className="font-display text-display-lg text-white">{completed ? isGift ? 'Gift purchased' : 'Purchase confirmed' : error || status === 'unavailable' ? 'Order needs attention' : 'Confirming your purchase'}</h1>
-          <p role="status" className="text-sm mt-2 text-[#aaa]">{error || (needsReview ? 'Your payment has been recorded for staff review. Please do not pay again.' : completed ? isGift ? 'Your gift is ready to claim. Check My gifts for email status and to share the claim link.' : 'Your purchase has been recorded. Available books can be opened from your library.' : status === 'unavailable' ? 'Check your order status before trying to read.' : 'Payment is still being confirmed. This page updates automatically; please do not pay again.')}</p>
+          <h1 className="font-display text-display-lg text-white">{refunded ? 'Purchase refunded' : completed ? isGift ? 'Gift purchased' : 'Purchase confirmed' : error || status === 'unavailable' ? 'Order needs attention' : 'Confirming your purchase'}</h1>
+          <p role="status" className="text-sm mt-2 text-[#aaa]">{error || (refunded ? 'This payment was refunded. These orders no longer provide reading access. Any other valid copies remain in your library.' : needsReview ? 'Your payment has been recorded for staff review. Please do not pay again.' : completed ? isGift ? 'Your gift is ready to claim. Check My gifts for email status and to share the claim link.' : 'Your purchase has been recorded. Available books can be opened from your library.' : status === 'unavailable' ? 'Check your order status before trying to read.' : 'Payment is still being confirmed. This page updates automatically; please do not pay again.')}</p>
         </div>
 
         <div className="p-6 space-y-5">
@@ -99,6 +100,7 @@ function ReceiptContent() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{order.bookTitle}</p>
                     <p className="text-xs text-[#666]">{book?.authorName}</p>
+                    <p className="text-xs text-[#aaa]">{order.status.replaceAll('_', ' ')}{order.refundStatus && order.refundStatus !== 'full' ? ` · Refund ${order.refundStatus}` : ''}</p>
                   </div>
                   <span className="text-sm font-medium" style={{ color: '#f5b800' }}>
                     {centsToDisplay(order.finalPrice)}
@@ -109,7 +111,7 @@ function ReceiptContent() {
           </div>
 
           <div className="border-t pt-4 flex justify-between items-center" style={{ borderColor: '#222' }}>
-            <span className="text-sm text-[#aaa]">{completed ? 'Total charged' : 'Order total'}</span>
+            <span className="text-sm text-[#aaa]">{refunded ? 'Total refunded' : completed ? 'Total charged' : 'Order total'}</span>
             <span className="font-display text-xl" style={{ color: '#f5b800' }}>{centsToDisplay(total)}</span>
           </div>
 

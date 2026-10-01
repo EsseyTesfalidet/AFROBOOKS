@@ -75,6 +75,11 @@ async function main() {
     await page.evaluate(() => fixture.emit('reader', true));
     await screen('Read');
     console.log('PASS cached missing ownership waits for server; a purchase changes Buy to Read without reloading');
+    await page.evaluate(() => fixture.emit('reader', false));
+    await screen('Buy');
+    await page.evaluate(() => fixture.emit('reader', true));
+    await screen('Read');
+    console.log('PASS a server refund removes ownership without reloading; a later valid copy restores Read');
 
     await page.evaluate(() => fixture.user('second-reader'));
     await screen('Checking');

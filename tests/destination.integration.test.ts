@@ -12,6 +12,8 @@ import { createBookPurchase, BookPurchaseError, type PurchaseGateway } from '../
 import { confirmBookPurchase } from '../lib/server/confirmBookPurchase';
 import { reconcileLibrary } from '../lib/server/reconcileLibrary';
 import { currentBookPayment } from '../lib/server/currentBookPayment';
+import { reconcileBookRefunds } from '../lib/server/bookRefunds';
+import { salesSummary } from '../lib/admin/metrics';
 import type Stripe from 'stripe';
 import { assertFails } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -32,6 +34,151 @@ async function seedOrder() {
   await db.doc('orders/order').set({ buyerId: 'reader', sellerId: 'author', bookId: 'book', bookTitle: 'Book', finalPrice: 1000, sellerEarnings: 800, stripePaymentIntentId: 'pi_test', status: 'pending' });
 }
 const payment = { id: 'pi_test', amount_received: 1000, currency: 'usd', metadata: { userId: 'reader' } };
+function refundFixture() {
+  const state = { amount: 1000, status: 'succeeded', fail: false };
+  const stripe = {
+    paymentIntents: { retrieve: async () => ({ ...payment, status: 'succeeded' }) },
+    refunds: { list: async function* () {
+      if (state.fail) throw new Error('Stripe unavailable');
+      yield { id: 're_test', status: state.status, amount: state.amount };
+    } },
+  } as unknown as Stripe;
+  return { state, stripe };
+}
+
+test('full refund removes paid access, corrects admin revenue and survives duplicate and late success events', async () => {
+  await seedOrder();
+  await db.doc('orders/order').update({ createdAt: new Date(), platformFee: 200 });
+  await fulfillPayment(db, payment);
+  const f = refundFixture();
+  await Promise.all([reconcileBookRefunds(db, f.stripe, payment.id), reconcileBookRefunds(db, f.stripe, payment.id)]);
+  const order = (await db.doc('orders/order').get()).data()!;
+  assert.equal(order.status, 'refunded');
+  assert.equal(order.paymentRefundedAmount, 1000);
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  assert.equal(salesSummary([order as { status: string }], 30).gross, 0);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, 'payment_review');
+  await fulfillPayment(db, payment);
+  await reconcileLibrary(db, f.stripe, 'reader');
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  await db.doc('notifications/order_purchase').update({ isRead: true });
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('notifications/order_purchase').get()).data()?.isRead, true);
+});
+
+test('refund before fulfillment never grants access or earnings on a delayed success', async () => {
+  await seedOrder();
+  await reconcileBookRefunds(db, refundFixture().stripe, payment.id);
+  assert.equal(await fulfillPayment(db, payment), false);
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 0);
+});
+
+test('partial and pending refunds preserve existing access and clearly require financial review', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  const f = refundFixture(); f.state.status = 'pending';
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('orders/order').get()).data()?.refundStatus, 'pending');
+  assert.equal((await db.doc('library/reader_book').get()).exists, true);
+  f.state.status = 'succeeded'; f.state.amount = 200;
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('orders/order').get()).data()?.status, 'needs_review');
+  assert.equal((await db.doc('orders/order').get()).data()?.refundStatus, 'partial');
+  assert.equal((await db.doc('library/reader_book').get()).exists, true);
+});
+
+test('a failed refund never revokes access and a later failure of a full refund stays under review', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  const f = refundFixture(); f.state.status = 'failed';
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('orders/order').get()).data()?.status, 'completed');
+  assert.equal((await db.doc('library/reader_book').get()).exists, true);
+  f.state.status = 'succeeded';
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  f.state.status = 'failed';
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('orders/order').get()).data()?.status, 'needs_review');
+  assert.equal((await db.doc('orders/order').get()).data()?.refundStatus, 'failed');
+});
+
+test('refund preserves another completed purchase and free or independently owned copies', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  const old = (await db.doc('orders/order').get()).data()!;
+  await db.doc('orders/other').set({ ...old, stripePaymentIntentId: 'pi_other' });
+  const f = refundFixture();
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('library/reader_book').get()).data()?.orderId, 'other');
+  await db.doc('library/reader_book').update({ purchaseType: 'free_copy', orderId: 'order' });
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('library/reader_book').get()).data()?.purchaseType, 'free_copy');
+});
+
+test('full refund releases only its own checkout reservation so a new purchase can be made', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  await db.doc('orders/order').update({ bookCheckoutId: 'old' });
+  await db.doc('bookPurchaseLocks/reader_book').set({ checkoutId: 'old' });
+  await reconcileBookRefunds(db, refundFixture().stripe, payment.id);
+  assert.equal((await db.doc('bookPurchaseLocks/reader_book').get()).exists, false);
+  const f = purchaseFixture();
+  await createBookPurchase(db, f.gateway, 'reader', f.drafts, f.params);
+  assert.equal(f.payments.size, 1);
+  const newLock = (await db.doc('bookPurchaseLocks/reader_book').get()).data()?.checkoutId;
+  await reconcileBookRefunds(db, refundFixture().stripe, payment.id);
+  assert.equal((await db.doc('bookPurchaseLocks/reader_book').get()).data()?.checkoutId, newLock);
+});
+
+test('Stripe failure commits no refund changes and unrelated payments do not touch orders', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  const f = refundFixture(); f.state.fail = true;
+  await assert.rejects(reconcileBookRefunds(db, f.stripe, payment.id), /Stripe unavailable/);
+  assert.equal((await db.doc('orders/order').get()).data()?.status, 'completed');
+  assert.equal((await db.doc('library/reader_book').get()).exists, true);
+  assert.equal((await reconcileBookRefunds(db, f.stripe, 'pi_unrelated')).status, 'unrelated');
+});
+
+test('gift refunds revoke only the claimed gift after full settlement, preserving other copies', async () => {
+  await seedOrder();
+  await db.doc('orders/order').update({ status: 'completed', giftId: 'gift' });
+  await db.doc('bookGifts/gift').set({ status: 'claimed', recipientId: 'friend', orderId: 'order', bookId: 'book' });
+  await db.doc('library/friend_book').set({ userId: 'friend', bookId: 'book', purchaseType: 'bought', orderId: 'order', giftId: 'gift' });
+  const f = refundFixture(); f.state.amount = 100;
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('library/friend_book').get()).exists, true);
+  f.state.amount = 1000;
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('library/friend_book').get()).exists, false);
+  assert.equal((await db.doc('bookGifts/gift').get()).data()?.reviewReason, 'payment_refunded');
+  await db.doc('library/friend_book').set({ userId: 'friend', bookId: 'book', purchaseType: 'bought', orderId: 'independent' });
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('library/friend_book').get()).data()?.orderId, 'independent');
+});
+
+test('multiple successful refunds are summed while failed refund amounts are ignored', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  const f = refundFixture();
+  f.stripe.refunds.list = (() => (async function* () {
+    yield { status: 'succeeded', amount: 400 };
+    yield { status: 'failed', amount: 1000 };
+    yield { status: 'succeeded', amount: 600 };
+  })()) as unknown as Stripe['refunds']['list'];
+  assert.equal((await reconcileBookRefunds(db, f.stripe, payment.id)).status, 'full');
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+});
+
+test('full bundle refund removes all purchased titles while partial bundle refund preserves them', async () => {
+  await seedOrder();
+  await db.doc('orders/order').update({ finalPrice: 500, sellerEarnings: 400 });
+  await db.doc('books/book2').set({ status: 'live', totalSales: 0 });
+  await db.doc('orders/order2').set({ ...(await db.doc('orders/order').get()).data(), bookId: 'book2' });
+  await fulfillPayment(db, payment);
+  const f = refundFixture(); f.state.amount = 500;
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.collection('library').get()).size, 2);
+  f.state.amount = 1000;
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.collection('library').get()).size, 0);
+  assert.ok((await db.collection('orders').get()).docs.every(o => o.data().status === 'refunded'));
+});
 const giftInput = { senderId: 'reader', senderName: 'Alex', recipientEmail: 'friend@example.test', message: 'Enjoy this story!', attemptId: 'e85c20fc-031a-43ba-a289-383c25ae1823', order: { buyerId: 'reader', bookId: 'book', bookTitle: 'Story', sellerId: 'author', finalPrice: 1000, sellerEarnings: 800, status: 'pending' } };
 
 function purchaseFixture() {

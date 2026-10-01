@@ -21,6 +21,8 @@ export interface Order {
   processingFeeBasis?: 'estimated_us_domestic_card';
   pricingVersion?: number;
   status: 'pending' | 'completed' | 'refunded' | 'disputed' | 'needs_review' | 'failed';
+  refundStatus?: 'full' | 'partial' | 'pending' | 'failed';
+  paymentRefundedAmount?: number;
   receiptEmailSent: boolean;
   createdAt: Timestamp;
 }
