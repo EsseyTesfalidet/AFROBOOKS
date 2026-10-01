@@ -1,17 +1,17 @@
 # AfroBooks Android release
 
-The Android app opens the live AfroBooks website at `https://afrobs.com/browse` using a Trusted Web Activity. This is the first Android release, generated with Bubblewrap 1.25.0. Website updates appear without rebuilding the wrapper; a network connection and a compatible browser are required.
+The Android app opens the live AfroBooks website at `https://afrobs.com/browse` using a Trusted Web Activity, generated with Bubblewrap 1.25.0. This build increments the version code to 2 for closed testing because version code 1 has already been used. Website updates appear without rebuilding the wrapper; a network connection and a compatible browser are required.
 
 | Setting | Value |
 | --- | --- |
 | Application ID | `com.afrobs.app` |
-| Version | `1.0.0` |
-| Version code | `1` |
+| Version | `1.0.1` |
+| Version code | `2` |
 | Minimum Android API | `23` |
 | Target and compile API | `36` (Android 16) |
 | Orientation | Any; portrait and landscape |
-| Signed Play upload | `dist/android/afrobooks-1.0.0.aab` |
-| Signed device-test install | `dist/android/afrobooks-1.0.0.apk` |
+| Signed Play upload | `dist/android/afrobooks-1.0.1.aab` |
+| Signed device-test install | `dist/android/afrobooks-1.0.1.apk` |
 | Public upload certificate | `dist/android/afrobooks-upload-certificate.pem` |
 | File hashes and certificate fingerprint | `dist/android/release-info.json` |
 
@@ -19,7 +19,7 @@ The bundle is signed and passes Google's bundletool validation. The APK signatur
 
 ## Upload to Google Play
 
-1. Create the AfroBooks listing in Play Console, then use its internal testing release workflow to upload the `.aab`. The `.apk` is for direct installation on a test device; it is not the Play upload artifact.
+1. Open the existing AfroBooks listing in Play Console, then upload `afrobooks-1.0.1.aab` to the closed testing release. The `.apk` is for direct installation on a test device; it is not the Play upload artifact.
 2. Enroll in Play App Signing. The generated local key signs uploads. If Google generates the app-signing key, Play-installed copies will have a different certificate from this local upload key.
 3. In Play Console's app-signing section, copy the **app signing key certificate SHA-256 fingerprint**. Add it alongside the existing fingerprint in `public/.well-known/assetlinks.json`, then deploy the website. The current entry identifies the locally signed APK, not an as-yet-unknown Google-generated certificate. The fingerprint is public; never share the private key or passwords.
 4. Verify `https://afrobs.com/.well-known/assetlinks.json` returns the JSON directly over HTTPS. Test the Play-installed app to confirm the website opens as a Trusted Web Activity. Until the Play certificate is added, it can fall back to a browser tab with visible browser controls.
