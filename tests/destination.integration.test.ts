@@ -10,6 +10,7 @@ import { processAuthorRoyalties, reconcileAuthor, payAuthorOrder } from '../func
 import { seedRoyalty, royaltyFixture } from './royalty-fixture';
 import { createBookPurchase, BookPurchaseError, type PurchaseGateway } from '../lib/server/bookPurchases';
 import { confirmBookPurchase } from '../lib/server/confirmBookPurchase';
+import { reconcileLibrary } from '../lib/server/reconcileLibrary';
 import { currentBookPayment } from '../lib/server/currentBookPayment';
 import type Stripe from 'stripe';
 import { assertFails } from '@firebase/rules-unit-testing';
@@ -64,6 +65,90 @@ test('owned books cannot start another payment, and a missing library record is 
   await db.doc('orders/order').delete();
   await assert.rejects(createBookPurchase(db, f.gateway, 'reader', f.drafts, f.params), /already own/);
   assert.equal(f.payments.size, 0);
+});
+
+test('opening the library recovers a paid purchase without the receipt page, once, and prevents a second charge', async () => {
+  await seedOrder();
+  const stripe = { paymentIntents: { retrieve: async () => ({ ...payment, status: 'succeeded', latest_charge: { paid: true, amount_refunded: 0, disputed: false } }) } } as unknown as Stripe;
+  await Promise.all([reconcileLibrary(db, stripe, 'reader'), reconcileLibrary(db, stripe, 'reader', { bookId: 'book' })]);
+  assert.equal((await db.doc('orders/order').get()).data()?.status, 'completed');
+  assert.equal((await db.doc('library/reader_book').get()).data()?.purchaseType, 'bought');
+  await reconcileLibrary(db, stripe, 'reader');
+  assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 800);
+  assert.equal((await db.doc('books/book').get()).data()?.totalSales, 1);
+  const f = purchaseFixture();
+  await assert.rejects(createBookPurchase(db, f.gateway, 'reader', f.drafts, f.params), error => error instanceof BookPurchaseError && error.code === 'BOOK_ALREADY_OWNED');
+  assert.equal(f.payments.size, 0);
+});
+
+test('a completed receipt repairs a missing library entry even after fulfillment was marked complete', async () => {
+  await seedOrder();
+  await fulfillPayment(db, payment);
+  const addedAt = (await db.doc('orders/order').get()).data()?.fulfilledAt;
+  await db.doc('library/reader_book').delete();
+  const stripe = { paymentIntents: { retrieve: async () => { throw new Error('Completed receipts need no new Stripe request'); } } } as unknown as Stripe;
+  const result = await reconcileLibrary(db, stripe, 'reader', { bookId: 'book' });
+  assert.equal(result.restored, 1);
+  assert.equal((await db.doc('library/reader_book').get()).data()?.addedAt.toMillis(), addedAt.toMillis());
+  assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 800);
+  assert.equal((await db.doc('books/book').get()).data()?.totalSales, 1);
+  assert.equal((await reconcileLibrary(db, stripe, 'reader')).restored, 0);
+});
+
+test('library recovery excludes other readers, gifts, refunded or disputed charges, and unreadable payments', async () => {
+  await seedOrder();
+  let calls = 0;
+  const current = { ...payment, status: 'succeeded', latest_charge: { paid: true, amount_refunded: 1000, disputed: false } };
+  const stripe = { paymentIntents: { retrieve: async () => { calls++; return current; } } } as unknown as Stripe;
+  assert.equal((await reconcileLibrary(db, stripe, 'other')).restored, 0);
+  assert.equal(calls, 0);
+  await db.doc('orders/gift').set({ ...giftInput.order, giftId: 'gift', status: 'completed' });
+  assert.deepEqual((await reconcileLibrary(db, stripe, 'reader')).pendingOrderIds, ['order']);
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  current.latest_charge.amount_refunded = 0; current.latest_charge.disputed = true;
+  await reconcileLibrary(db, stripe, 'reader');
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  current.latest_charge.disputed = false; current.status = 'requires_payment_method';
+  await reconcileLibrary(db, stripe, 'reader');
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  assert.equal((await db.doc('orders/order').get()).data()?.status, 'pending');
+  assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 0);
+});
+
+test('library recovery does not revive removed books or orders under review', async () => {
+  await seedOrder();
+  const stripe = {} as Stripe;
+  await db.doc('orders/order').update({ status: 'completed' });
+  await db.doc('bookDeletions/book').set({ status: 'completed' });
+  assert.equal((await reconcileLibrary(db, stripe, 'reader')).restored, 0);
+  await db.doc('bookDeletions/book').delete();
+  await db.doc('books/book').update({ status: 'removed' });
+  assert.equal((await reconcileLibrary(db, stripe, 'reader')).restored, 0);
+  await db.doc('books/book').update({ status: 'live' });
+  await db.doc('orders/order').update({ status: 'needs_review' });
+  assert.deepEqual((await reconcileLibrary(db, stripe, 'reader')).pendingOrderIds, ['order']);
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+});
+
+test('library recovery paginates old receipts without timestamps and scopes a book lookup', async () => {
+  const batch = db.batch();
+  for (let i = 0; i < 25; i++) {
+    batch.set(db.doc(`orders/order${i}`), { buyerId: 'reader', bookId: `book${i}`, status: 'completed' });
+    batch.set(db.doc(`books/book${i}`), { status: 'live' });
+  }
+  await batch.commit();
+  const stripe = {} as Stripe;
+  const first = await reconcileLibrary(db, stripe, 'reader');
+  assert.equal(first.restored, 20);
+  assert.ok(first.nextCursor);
+  const second = await reconcileLibrary(db, stripe, 'reader', { cursor: first.nextCursor });
+  assert.equal(second.restored, 5);
+  assert.equal(second.nextCursor, null);
+  assert.equal((await db.collection('library').get()).size, 25);
+  await db.doc('library/reader_book1').delete();
+  await db.doc('library/reader_book2').delete();
+  assert.equal((await reconcileLibrary(db, stripe, 'reader', { bookId: 'book1' })).restored, 1);
+  assert.equal((await db.doc('library/reader_book2').get()).exists, false);
 });
 
 test('simultaneous checkout requests reserve one order and reuse the same Stripe payment', async () => {

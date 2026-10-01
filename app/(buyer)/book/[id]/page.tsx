@@ -11,7 +11,8 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ReviewCard from '@/components/buyer/ReviewCard';
 import ReviewForm from '@/components/buyer/ReviewForm';
 import FollowButton from '@/components/shared/FollowButton';
-import { getBook, getBookReviews, isBookInLibrary, getSimilarBooks } from '@/lib/firebase/firestore';
+import { getBook, getBookReviews, getSimilarBooks } from '@/lib/firebase/firestore';
+import { useBookOwnership } from '@/hooks/useBookOwnership';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
@@ -45,7 +46,8 @@ export default function BookDetailPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [similar, setSimilar] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
-  const [owned, setOwned] = useState(false);
+  const ownership = useBookOwnership(id);
+  const owned = ownership.owned;
   const [selectedOption, setSelectedOption] = useState<'buy' | 'subscribe'>('buy');
   const [reviewsLoaded, setReviewsLoaded] = useState(false);
   const [reviewsError, setReviewsError] = useState('');
@@ -82,18 +84,13 @@ export default function BookDetailPage() {
     let active = true;
     setLoading(true);
     setError('');
-    setOwned(false);
     setReviews([]);
     setReviewsLoaded(false);
     setReviewsError('');
     setSimilar([]);
-    Promise.all([
-      getBook(id),
-      firebaseUser ? isBookInLibrary(firebaseUser.uid, id) : Promise.resolve(false),
-    ]).then(([b, o]) => {
+    getBook(id).then(b => {
       if (!active) return;
       setBook(b);
-      setOwned(o);
       setLoading(false);
       if (b) getSimilarBooks(b.genre, id).then((items) => { if (active) setSimilar(items); }).catch(() => {});
     }).catch(() => {
@@ -119,7 +116,8 @@ export default function BookDetailPage() {
     }
   }, [addRecentlyViewedBook, book?.id]);
 
-  if (loading || catalog.loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (loading || catalog.loading || ownership.checking) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (ownership.error) return <main className="space-y-4 p-8"><p role="alert">{ownership.error}</p><Link href="/library" className="block underline">Open my library</Link><button onClick={() => window.location.reload()} className="min-h-11 underline">Try again</button></main>;
   if (catalog.error || !catalog.books.some(item => item.id === id)) return <div className="p-8"><p role="status">{catalog.error || 'This book is no longer available.'}</p><Link href="/browse">Back to catalog</Link></div>;
   if (error) return <div className="p-8"><p role="alert">{error}</p><Link href="/browse">Back to catalog</Link></div>;
   if (!book) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e] text-[#444]">Book not found.</div>;

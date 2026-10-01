@@ -8,10 +8,11 @@ import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCover from '@/components/shared/BookCover';
 import ProgressBar from '@/components/shared/ProgressBar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { subscribeUserLibrary, getBook, getReadingProgress } from '@/lib/firebase/firestore';
+import { subscribeUserLibrary, getUserLibrary, getBook, getReadingProgress } from '@/lib/firebase/firestore';
+import { syncPurchasedLibrary } from '@/lib/firebase/syncLibrary';
 import { useAuthStore } from '@/store/authStore';
 import type { Book } from '@/types/book';
-import { useCatalog } from '@/hooks/useCatalog';
+import type { LibraryItem } from '@/types/order';
 
 interface LibraryEntry {
   bookId: string;
@@ -21,27 +22,31 @@ interface LibraryEntry {
 }
 
 export default function LibraryPage() {
-  const userProfile = useAuthStore((s) => s.userProfile);
-  const [storedEntries, setEntries] = useState<LibraryEntry[]>([]);
+  const user = useAuthStore((s) => s.firebaseUser);
+  const authLoading = useAuthStore((s) => s.loading);
+  const [entries, setEntries] = useState<LibraryEntry[]>([]);
+  const [loadedUid, setLoadedUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const catalog = useCatalog();
-  const entries = storedEntries.filter(entry => catalog.books.some(book => book.id === entry.bookId));
+  const [syncing, setSyncing] = useState(true);
+  const [syncError, setSyncError] = useState('');
+  const [pendingOrders, setPendingOrders] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!userProfile) return;
+    if (authLoading || !user) return;
     let active = true;
     let revision = 0;
-    setLoading(true); setError(''); setEntries([]);
-    const unsubscribe = subscribeUserLibrary(userProfile.uid, async (items) => {
+    setLoading(true); setError(''); setEntries([]); setLoadedUid(user.uid);
+    setSyncing(true); setSyncError(''); setPendingOrders([]);
+    const populate = async (items: LibraryItem[]) => {
       const current = ++revision;
       try {
       const populated: LibraryEntry[] = await Promise.all(
         items.map(async (item) => {
           const [book, prog] = await Promise.all([
             getBook(item.bookId),
-            getReadingProgress(userProfile.uid, item.bookId),
+            getReadingProgress(user.uid, item.bookId),
           ]);
           return {
             bookId: item.bookId,
@@ -52,22 +57,31 @@ export default function LibraryPage() {
         })
       );
       if (!active || current !== revision) return;
-      setEntries(populated.filter((entry) => entry.book));
+      setEntries(populated);
       setError('');
       setLoading(false);
       } catch { if (active && current === revision) { setError('Your library could not be loaded. Please try again.'); setLoading(false); } }
-    }, () => { if (active) { setError('Your library could not be loaded. Please try again.'); setLoading(false); } });
+    };
+    const unsubscribe = subscribeUserLibrary(user.uid, populate, () => { if (active) { setError('Your library could not be loaded. Please try again.'); setLoading(false); } });
+    void syncPurchasedLibrary(user.uid).then(async result => {
+      if (!active) return;
+      setPendingOrders(result.pendingOrderIds);
+      await populate(await getUserLibrary(user.uid));
+    }).catch(() => {
+      if (active) setSyncError('We could not check for recent purchases. Your saved books are below. Please try again before paying for a missing book.');
+    }).finally(() => { if (active) setSyncing(false); });
     return () => { active = false; unsubscribe(); };
-  }, [userProfile?.uid, attempt]);
+  }, [user?.uid, authLoading, attempt]);
 
-  if (loading || catalog.loading) return (
+  if (!authLoading && !user) return <main className="p-8"><Link href="/login" className="underline">Sign in to open your library</Link></main>;
+  if (authLoading || loading || syncing || loadedUid !== user?.uid) return (
     <div className="min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
       <div className="flex justify-center pt-16"><LoadingSpinner size={36} /></div>
     </div>
   );
 
-  if (error || catalog.error) return <div role="alert" className="p-8 text-[14px] text-red-300">{error || catalog.error}<button type="button" className="ml-4 min-h-11 underline" onClick={() => { setAttempt(value => value + 1); catalog.retry(); }}>Try again</button></div>;
+  if (error) return <div role="alert" className="p-8 text-[14px] text-red-300">{error}<button type="button" className="ml-4 min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>;
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">
@@ -77,10 +91,12 @@ export default function LibraryPage() {
           <h1 className="font-display text-display-lg text-white">My Library</h1>
           <Link href="/gifts" className="text-sm text-[#f5b800] underline">My gifts</Link>
         </div>
+        {syncError && <div role="alert" className="mb-6 rounded-xl border border-amber-800 p-4 text-sm text-amber-200">{syncError}<button className="ml-3 min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>}
+        {pendingOrders.length > 0 && <div role="status" className="mb-6 rounded-xl border border-amber-800 p-4 text-sm text-amber-200">A previous payment needs checking. Please review your receipt before paying again. <Link className="underline" href={`/checkout/receipt?orders=${pendingOrders.slice(0, 20).map(encodeURIComponent).join(',')}`}>View receipt</Link></div>}
 
         {/* Continue Reading — swipe carousel */}
         {(() => {
-          const inProgress = entries.filter((e) => e.progress > 0 && e.progress < 95);
+          const inProgress = entries.filter((e) => e.book && e.progress > 0 && e.progress < 95);
           if (inProgress.length === 0) return null;
           return (
             <div className="mb-7">
@@ -142,13 +158,13 @@ export default function LibraryPage() {
                 </div>
 
                 {/* Action */}
-                <Link
+                {book ? <Link
                   href={`/read/${bookId}`}
                   className="px-4 py-2 rounded-lg text-xs font-medium flex-shrink-0"
                   style={{ background: progress > 0 ? '#1a1a1a' : '#e8442a', color: progress > 0 ? '#aaa' : '#fff', border: progress > 0 ? '1px solid #333' : 'none' }}
                 >
                   {progress >= 95 ? 'Re-read' : progress > 0 ? 'Continue' : 'Read'}
-                </Link>
+                </Link> : <span className="text-xs text-[#aaa]">Currently unavailable</span>}
               </div>
             ))}
           </div>

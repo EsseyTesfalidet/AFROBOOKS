@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getBook, isBookInLibrary } from '@/lib/firebase/firestore';
+import { getBook } from '@/lib/firebase/firestore';
+import { useBookOwnership } from '@/hooks/useBookOwnership';
 import { useAuthStore } from '@/store/authStore';
 import InAppReader from '@/components/reader/InAppReader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -25,7 +26,8 @@ export default function ReadPage() {
 
   const [error, setError] = useState('');
   const [book, setBook] = useState<Book | null>(null);
-  const [hasAccess, setHasAccess] = useState(false);
+  const ownership = useBookOwnership(id);
+  const hasAccess = !!firebaseUser && !!book && (ownership.owned || canReadWithSubscription(book, userProfile) || firebaseUser.uid === book.sellerId || userProfile?.role === 'admin');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,20 +36,12 @@ export default function ReadPage() {
     setLoading(true);
     setError('');
     setBook(null);
-    setHasAccess(false);
 
-    Promise.all([
-      getBook(id),
-      firebaseUser ? isBookInLibrary(firebaseUser.uid, id) : Promise.resolve(false),
-    ]).then(([b, owned]) => {
+    getBook(id).then(b => {
       if (!active) return;
       if (!b) { router.replace('/browse'); return; }
       if (!isBookReleased(b) && firebaseUser?.uid !== b.sellerId && userProfile?.role !== 'admin') { router.replace(`/book/${id}`); return; }
       setBook(b);
-
-      const canSubRead = canReadWithSubscription(b, userProfile);
-      const isAuthor = firebaseUser?.uid === b.sellerId;
-      setHasAccess(!!firebaseUser && (owned || canSubRead || isAuthor || userProfile?.role === 'admin'));
 
       setLoading(false);
     }).catch(() => {
@@ -56,7 +50,8 @@ export default function ReadPage() {
     return () => { active = false; };
   }, [id, authLoading, firebaseUser?.uid, userProfile?.subscriptionStatus, userProfile?.subscriptionPlan, userProfile?.role, router]);
 
-  if (loading || catalog.loading) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (loading || catalog.loading || (!hasAccess && ownership.checking)) return <div className="min-h-screen flex items-center justify-center bg-[#0e0e0e]"><LoadingSpinner size={36} /></div>;
+  if (!hasAccess && ownership.error) return <main className="space-y-4 p-8"><p role="alert">{ownership.error}</p><Link href="/library" className="block underline">Open my library</Link><button onClick={() => window.location.reload()} className="min-h-11 underline">Try again</button></main>;
   if (catalog.error || !catalog.books.some(item => item.id === id)) return <div className="p-8"><p role="status">{catalog.error || 'This book is no longer available.'}</p><Link href="/browse">Back to catalog</Link></div>;
   if (error) return <div className="p-8"><p role="alert">{error}</p><Link href={`/book/${id}`}>Back to book</Link></div>;
   if (!book) return null;

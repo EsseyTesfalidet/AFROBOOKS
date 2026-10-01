@@ -7,8 +7,16 @@ import { POST as sendEmail } from '../app/api/email/route';
 import { POST as setRole } from '../app/api/admin/set-role/route';
 import { POST as createSession, DELETE as deleteSession } from '../app/api/auth/session/route';
 import { requireRequestUser } from '../lib/server/auth';
+import { POST as syncLibrary } from '../app/api/library/sync/route';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+
+test('library recovery requires authentication and ignores a claimed buyer in the request body', async () => {
+  const response = await syncLibrary(new NextRequest('https://afrobs.com/api/library/sync', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: 'another-reader' }),
+  }));
+  assert.equal(response.status, 401);
+});
 
 test('cross-site browser mutations and opaque origins fail; same-origin and non-browser requests work', () => {
   for (const origin of ['https://evil.example', 'https://afrobs.com.evil.example', 'http://afrobs.com', 'null', 'invalid']) {
