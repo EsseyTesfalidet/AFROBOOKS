@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin';
+import { isSameOriginMutation } from './requestOrigin';
 
 export interface AuthenticatedRequestUser {
   uid: string;
@@ -18,9 +19,6 @@ function getBearerToken(request: NextRequest) {
 export async function requireRequestUser(
   request: NextRequest
 ): Promise<AuthenticatedRequestUser> {
-  const adminAuth = await getAdminAuth();
-  const adminDb = await getAdminDb();
-
   const bearerToken = getBearerToken(request);
   const sessionCookie = request.cookies.get('__session')?.value ?? null;
 
@@ -28,16 +26,24 @@ export async function requireRequestUser(
     throw new Error('Unauthorized');
   }
 
+  if (!bearerToken && !isSameOriginMutation(request)) throw new Error('Unauthorized');
+  const adminAuth = await getAdminAuth();
+  const adminDb = await getAdminDb();
+
   let decodedToken: { uid: string; email?: string | null } | null = null;
 
-  if (bearerToken) {
-    decodedToken = await adminAuth.verifyIdToken(bearerToken);
-  } else if (sessionCookie) {
-    try {
-      decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-    } catch {
-      decodedToken = await adminAuth.verifyIdToken(sessionCookie);
+  try {
+    if (bearerToken) {
+      decodedToken = await adminAuth.verifyIdToken(bearerToken, true);
+    } else if (sessionCookie) {
+      try {
+        decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+      } catch {
+        decodedToken = await adminAuth.verifyIdToken(sessionCookie, true);
+      }
     }
+  } catch {
+    throw new Error('Unauthorized');
   }
 
   if (!decodedToken) {

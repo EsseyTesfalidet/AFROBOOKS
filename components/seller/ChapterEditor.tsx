@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import { Bold, Italic, Underline as UnderlineIcon, Heading2, List, X } from 'lucide-react';
 import type { Chapter } from '@/types/book';
 
@@ -22,7 +21,8 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial
   const [title, setTitle] = useState(initial?.title ?? '');
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [StarterKit.configure({ link: false })],
+    immediatelyRender: false,
     content: initial?.content ?? '',
     editorProps: {
       attributes: {

@@ -3,7 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', 'active') in ['active', 'warned'];
     }
 
     function isOwner(uid) {
@@ -11,19 +12,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.get('role', '') == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isSeller() {
-      return isSignedIn() && (
-        request.auth.token.get('role', '') == 'seller' ||
-        request.auth.token.get('role', '') == 'both' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'both'
-      );
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['seller', 'both'];
     }
 
     function hasBookAccess(bookId) {
@@ -46,7 +39,7 @@ service cloud.firestore {
     // Users
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow create: if isOwner(uid) && request.resource.data.uid == uid &&
+      allow create: if request.auth != null && request.auth.uid == uid && request.resource.data.uid == uid &&
         !request.resource.data.keys().hasAny(['legalAgreement']) &&
         request.resource.data.role in ['buyer', 'seller'] &&
         request.resource.data.status == 'active' &&
@@ -66,7 +59,8 @@ service cloud.firestore {
 
     // Acceptance receipts are recorded only by the authenticated server route.
     match /legalAgreements/{uid}/versions/{version} {
-      allow read: if isOwner(uid) || isAdmin();
+      // Signup checks for a missing profile; suspended users must also see their status.
+      allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
       allow write: if false;
     }
 

@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin';
+import { isSameOriginMutation } from '@/lib/server/requestOrigin';
 
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginMutation(request)) return NextResponse.json({ error: 'Invalid request origin' }, { status: 403 });
   try {
     const { idToken } = await request.json();
-    if (!idToken) {
+    if (typeof idToken !== 'string' || !idToken || idToken.length > 16384) {
       return NextResponse.json({ error: 'Missing idToken' }, { status: 400 });
     }
 
     const adminAuth = await getAdminAuth();
     const adminDb = await getAdminDb();
 
-    const decoded = await adminAuth.verifyIdToken(idToken);
+    const decoded = await adminAuth.verifyIdToken(idToken, true);
     await adminAuth.getUser(decoded.uid);
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn: SESSION_MAX_AGE_MS,
@@ -63,7 +65,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  if (!isSameOriginMutation(request)) return NextResponse.json({ error: 'Invalid request origin' }, { status: 403 });
   const response = NextResponse.json({ ok: true });
   const secure = process.env.NODE_ENV === 'production';
 

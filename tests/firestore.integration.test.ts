@@ -46,6 +46,32 @@ const adminApp = initializeApp({ projectId }, 'integration');
 const db = getFirestore(adminApp);
 const profile = { uid: 'reader', role: 'buyer', status: 'active', subscriptionStatus: 'none', subscriptionPlan: 'none', subscriptionId: null, stripeCustomerId: null, referralCredits: 0 };
 
+test('suspended accounts lose paid content, profile writes and uploads even with an existing token', async () => {
+  await db.doc('library/reader_book').set({ userId: 'reader', bookId: 'book' });
+  const reader = env.authenticatedContext('reader').firestore();
+  await assertSucceeds(getDoc(doc(reader, 'books/book/chapters/locked')));
+  await db.doc('users/reader').update({ status: 'suspended' });
+  await assertFails(getDoc(doc(reader, 'books/book/chapters/locked')));
+  await assertFails(getDoc(doc(reader, 'library/reader_book')));
+  await assertFails(updateDoc(doc(reader, 'users/reader'), { firstName: 'Changed' }));
+  await assertFails(uploadBytes(ref(env.authenticatedContext('reader').storage(), 'avatars/reader/blocked.png'), new Uint8Array([1]), { contentType: 'image/png' }));
+  await db.doc('users/reader').update({ status: 'warned' });
+  await assertSucceeds(getDoc(doc(reader, 'books/book/chapters/locked')));
+});
+
+test('database role changes override stale admin claims in Firestore and Storage', async () => {
+  const staleAdmin = env.authenticatedContext('reader', { role: 'admin' });
+  await assertFails(getDoc(doc(staleAdmin.firestore(), 'users/author')));
+  const path = `verification/author/${Date.now()}.pdf`;
+  await assertSucceeds(uploadBytes(ref(env.authenticatedContext('author').storage(), path), new Uint8Array([1]), { contentType: 'application/pdf' }));
+  await assertFails(getMetadata(ref(staleAdmin.storage(), path)));
+  const admin = env.authenticatedContext('admin', { role: 'admin' });
+  await assertSucceeds(getMetadata(ref(admin.storage(), path)));
+  await db.doc('users/admin').update({ role: 'buyer' });
+  await assertFails(getMetadata(ref(admin.storage(), path)));
+  await assertFails(getDoc(doc(admin.firestore(), 'users/author')));
+});
+
 test('PDF issues validate uploads, publish, and grant private file access only after purchase', async () => {
   const document = await PDFDocument.create(); document.addPage().drawText('Magazine with original layout'); document.addPage();
   const bytes = await document.save();

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import AuthProvider from '@/components/shared/AuthProvider';
 import AgreementGate from '@/components/legal/AgreementGate';
+import ServiceWorkerRegistration from '@/components/shared/ServiceWorkerRegistration';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-[#0e0e0e] text-[#f5f2eb] font-body antialiased">
+        <ServiceWorkerRegistration />
         <AuthProvider>
           <AgreementGate>{children}</AgreementGate>
         </AuthProvider>

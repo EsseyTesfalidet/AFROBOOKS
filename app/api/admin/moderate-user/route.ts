@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       action?: ModerationAction;
     };
 
-    if (!uid || !action) {
+    if (typeof uid !== 'string' || !uid || uid.includes('/') || !action || !['active', 'warned', 'suspended', 'delete'].includes(action)) {
       return NextResponse.json({ error: 'Missing moderation payload' }, { status: 400 });
     }
 
@@ -68,6 +68,10 @@ export async function POST(request: NextRequest) {
       status: action,
       updatedAt: new Date(),
     });
+
+    // Rules enforce the database status immediately, even if Auth is temporarily unavailable.
+    await adminAuth.updateUser(uid, { disabled: action === 'suspended' });
+    if (action === 'suspended') await adminAuth.revokeRefreshTokens(uid);
 
     await adminDb.collection('notifications').add({
       userId: uid,

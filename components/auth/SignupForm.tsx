@@ -91,11 +91,6 @@ export default function SignupForm() {
       setFirebaseUser(fbUser);
       setLoading(false);
       setClientAuthHints(fbUser.uid, role);
-      fetch('/api/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'welcome', to: email, data: { firstName } }),
-      }).catch(() => undefined);
       finishAuthNavigation(loginDestination({ role, activeRole: role }, new URLSearchParams(window.location.search).get('redirect')));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
