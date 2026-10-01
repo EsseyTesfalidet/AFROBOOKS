@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Book } from '@/types/book';
 import { calculateCartTotals } from '@/lib/utils/fees';
+import { publicationTitle } from '@/lib/utils/publication';
 
 export interface CartItem {
   bookId: string;
@@ -48,7 +49,7 @@ export const useCartStore = create<CartState>()(
             ...items,
             {
               bookId: book.id,
-              title: book.title,
+              title: publicationTitle(book),
               authorName: book.authorName,
               coverUrl: book.coverUrl,
               coverBgColor: book.coverBgColor,
@@ -75,7 +76,7 @@ export const useCartStore = create<CartState>()(
         const live = new Map(books.map(book => [book.id, book]));
         const items = state.items.flatMap(item => {
           const book = live.get(item.bookId);
-          return book ? [{ ...item, title: book.title, authorName: book.authorName, coverUrl: book.coverUrl, coverBgColor: book.coverBgColor, coverAccentColor: book.coverAccentColor, price: book.price }] : [];
+          return book ? [{ ...item, title: publicationTitle(book), authorName: book.authorName, coverUrl: book.coverUrl, coverBgColor: book.coverBgColor, coverAccentColor: book.coverAccentColor, price: book.price }] : [];
         });
         return JSON.stringify(items) === JSON.stringify(state.items) ? state : { items };
       }),

@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytes, getMetadata, deleteObject } from 'firebase/storage';
+import { PDFDocument } from 'pdf-lib';
+import type { Bucket } from '@google-cloud/storage';
+import { inspectMagazinePdf, verifyMagazinePdf, authorizedMagazineFile } from '../lib/server/magazinePdf';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { fulfillPayment } from '../lib/server/fulfillPayment';
@@ -42,6 +45,55 @@ let env: RulesTestEnvironment;
 const adminApp = initializeApp({ projectId }, 'integration');
 const db = getFirestore(adminApp);
 const profile = { uid: 'reader', role: 'buyer', status: 'active', subscriptionStatus: 'none', subscriptionPlan: 'none', subscriptionId: null, stripeCustomerId: null, referralCredits: 0 };
+
+test('PDF issues validate uploads, publish, and grant private file access only after purchase', async () => {
+  const document = await PDFDocument.create(); document.addPage().drawText('Magazine with original layout'); document.addPage();
+  const bytes = await document.save();
+  assert.equal(await inspectMagazinePdf(bytes), 2);
+  await assert.rejects(inspectMagazinePdf(new Uint8Array([1, 2, 3])));
+  await db.doc('books/issue').set({ sellerId: 'author', title: 'Culture Review', authorName: 'Community Press', genre: 'History', publicationType: 'magazine', contentFormat: 'pdf', issueLabel: 'October', status: 'draft', price: 299, chapterCount: 0, copyrightBasis: 'original', copyrightAttestationAccepted: true });
+  await assert.rejects(publishBook(db, 'issue', 'author'), /verify/);
+  const path = 'magazines/author/issue/test.pdf';
+  const bucket = { file: () => ({ getMetadata: async () => [{ contentType: 'application/pdf', size: bytes.length, generation: '123' }], download: async () => [bytes] }) } as unknown as Bucket;
+  await assert.rejects(verifyMagazinePdf(db, bucket, 'issue', 'reader', path), /Invalid/);
+  await assert.rejects(verifyMagazinePdf(db, bucket, 'issue', 'author', 'magazines/author/other/test.pdf'), /Invalid/);
+  await verifyMagazinePdf(db, bucket, 'issue', 'author', path);
+  assert.equal(await publishBook(db, 'issue', 'author'), 'in_review');
+  await db.doc('books/issue').update({ status: 'live' });
+  await assert.rejects(authorizedMagazineFile(db, 'issue', { uid: 'reader', role: 'buyer' }), /access/);
+  const buyer = env.authenticatedContext('reader').firestore();
+  await assertFails(getDoc(doc(buyer, 'publicationFiles/issue')));
+  await assertFails(setDoc(doc(env.authenticatedContext('author').firestore(), 'publicationFiles/issue'), { path: 'fake' }));
+  await db.doc('orders/issue-order').set({ buyerId: 'reader', bookId: 'issue', bookTitle: 'Culture Review — October', sellerId: 'author', finalPrice: 299, sellerEarnings: 220, status: 'pending', stripePaymentIntentId: 'pi_issue' });
+  await fulfillPayment(db, { id: 'pi_issue', amount_received: 299, currency: 'usd', metadata: { userId: 'reader' } });
+  assert.equal((await authorizedMagazineFile(db, 'issue', { uid: 'reader', role: 'buyer' })).path, path);
+  await assert.rejects(authorizedMagazineFile(db, 'issue', { uid: 'other', role: 'buyer' }), /access/);
+  await db.doc('bookDeletions/issue').set({ status: 'pending' });
+  await assert.rejects(authorizedMagazineFile(db, 'issue', { uid: 'reader', role: 'buyer' }), /access/);
+});
+
+test('PDF Storage uploads require an owned magazine draft and cannot be read, replaced or deleted by clients', async () => {
+  await db.doc('books/pdf-issue').set({ sellerId: 'author', publicationType: 'magazine', contentFormat: 'pdf', status: 'draft' });
+  const uploadPath = `magazines/author/pdf-issue/${Date.now()}.pdf`;
+  const authorFile = ref(env.authenticatedContext('author').storage(), uploadPath);
+  const bytes = new Uint8Array([37, 80, 68, 70, 45]);
+  await assertFails(uploadBytes(ref(env.authenticatedContext('reader').storage(), 'magazines/author/pdf-issue/other.pdf'), bytes, { contentType: 'application/pdf' }));
+  await assertSucceeds(uploadBytes(authorFile, bytes, { contentType: 'application/pdf' }));
+  await assertFails(uploadBytes(authorFile, bytes, { contentType: 'application/pdf' }));
+  await assertFails(getMetadata(authorFile));
+  await assertFails(getMetadata(ref(env.unauthenticatedContext().storage(), uploadPath)));
+  await assertFails(deleteObject(authorFile));
+  await db.doc('books/pdf-issue').update({ status: 'live' });
+  await assertFails(uploadBytes(ref(env.authenticatedContext('author').storage(), 'magazines/author/pdf-issue/new.pdf'), bytes, { contentType: 'application/pdf' }));
+});
+
+test('short stories can publish at ten cents while ordinary books retain their price minimum', async () => {
+  await db.doc('books/story').set({ sellerId: 'author', title: 'A brief story', authorName: 'Author', genre: 'Fiction', publicationType: 'short_story', contentFormat: 'text', status: 'draft', price: 10, chapterCount: 1, copyrightBasis: 'original', copyrightAttestationAccepted: true });
+  await db.doc('books/story/chapters/one').set({ chapterNumber: 1, content: '<p>A complete short story.</p>' });
+  assert.equal(await publishBook(db, 'story', 'author'), 'in_review');
+  await db.doc('books/story').update({ status: 'draft', publicationType: 'book' });
+  await assert.rejects(publishBook(db, 'story', 'author'), /0.50/);
+});
 
 before(async () => {
   env = await initializeTestEnvironment({ projectId, firestore: { rules: readFileSync('firestore.rules', 'utf8') }, storage: { rules: readFileSync('storage.rules', 'utf8') } });
@@ -919,7 +971,7 @@ test('book deletion removes content and references, retaining financial history 
     assert.equal((await db.doc('bookDeletions/book').get()).data()?.status, 'pending');
   };
   await deleteBookRecords(db, 'book', { deleteFiles });
-  assert.deepEqual(fileCalls, [['covers/author/book/', 'manuscripts/author/book/']]);
+  assert.deepEqual(fileCalls, [['covers/author/book/', 'manuscripts/author/book/', 'magazines/author/book/']]);
   for (const path of ['books/book', 'books/book/chapters/locked', 'books/book/chapters/sample', ...Object.keys(linked)]) {
     assert.equal((await db.doc(path).get()).exists, false, path);
   }

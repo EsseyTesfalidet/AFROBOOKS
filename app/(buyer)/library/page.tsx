@@ -1,4 +1,5 @@
 'use client';
+import { publicationTitle, publicationLabel } from '@/lib/utils/publication';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -128,7 +129,8 @@ export default function LibraryPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{book?.title ?? bookId}</p>
+                  <p className="text-sm font-medium text-white truncate">{book ? publicationTitle(book) : bookId}</p>
+                  {book?.publicationType === 'magazine' && <p className="text-xs text-[#dec18e]">{publicationLabel(book)}</p>}
                   <p className="text-xs text-[#666] mb-2">{book?.authorName}</p>
                   <div className="flex items-center gap-2">
                     <ProgressBar value={progress} color="#e8442a" height={3} />

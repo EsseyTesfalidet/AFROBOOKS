@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export type CopyrightBasis = 'original' | 'licensed' | 'public_domain' | 'commissioned' | 'other';
 export type CopyrightReviewStatus = 'not_needed' | 'pending' | 'approved' | 'flagged';
+export type PublicationType = 'book' | 'magazine' | 'short_story';
 
 export interface Book {
   id: string;
@@ -11,6 +12,10 @@ export interface Book {
   sellerVerified: boolean;
   title: string;
   authorName: string;
+  publicationType?: PublicationType;
+  issueLabel?: string | null;
+  contentFormat?: 'text' | 'pdf';
+  pdfPageCount?: number;
   description: string;
   coverUrl: string;
   coverBgColor: string;

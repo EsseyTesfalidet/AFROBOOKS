@@ -7,7 +7,15 @@ export interface PricingGuidance {
 
 // Editorial starting ranges in USD cents, not market estimates. These guide
 // authors without changing the saved price, platform fees or checkout limits.
-export function pricingGuidance(wordCount: number, genre = '', audience = 'all'): PricingGuidance {
+export function pricingGuidance(wordCount: number, genre = '', audience = 'all', publicationType: 'book' | 'magazine' | 'short_story' = 'book'): PricingGuidance {
+  if (publicationType === 'short_story') return {
+    low: 10, suggested: 25, high: 99,
+    basis: 'An affordable starting range for one short story. Prices under $0.50 are combined in a cart totaling at least $1 after discounts.',
+  };
+  if (publicationType === 'magazine') return {
+    low: 99, suggested: 299, high: 499,
+    basis: 'A starting range for one magazine issue. Consider the original reporting, articles and audience of this edition.',
+  };
   if (genre === 'Poetry' || audience === 'children') return {
     low: 299, suggested: 499, high: 799,
     basis: 'For poetry and children’s titles, illustrations, presentation and the reading experience can matter more than word count.',

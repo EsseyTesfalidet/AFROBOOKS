@@ -1,25 +1,29 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { calculateFees, MAX_BOOK_PRICE_CENTS, MIN_BOOK_PRICE_CENTS, priceForSellerEarnings } from '@/lib/utils/fees';
+import { calculateFees, calculateCartPricing, MAX_BOOK_PRICE_CENTS, minimumPublicationPrice, priceForSellerEarnings } from '@/lib/utils/fees';
 import { pricingGuidance } from '@/lib/utils/pricingGuidance';
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-export default function BookPricing({ price, directSaleFee, wordCount = 0, genre = '', audience = 'all', onPriceChange, onValidityChange }: {
+export default function BookPricing({ price, directSaleFee, wordCount = 0, genre = '', audience = 'all', publicationType = 'book', onPriceChange, onValidityChange }: {
   price: number;
   directSaleFee: number;
   wordCount?: number;
   genre?: string;
   audience?: string;
+  publicationType?: 'book' | 'magazine' | 'short_story';
   onPriceChange: (price: number) => void;
   onValidityChange: (valid: boolean) => void;
 }) {
   const id = useId();
   const [editing, setEditing] = useState<{ field: 'price' | 'earnings'; value: string } | null>(null);
   const [error, setError] = useState('');
-  const fees = calculateFees(price, directSaleFee);
-  const guidance = pricingGuidance(wordCount, genre, audience);
+  const isStory = publicationType === 'short_story';
+  const exampleCount = Math.max(5, Math.ceil(100 / (Math.max(10, price) * 0.95)));
+  const storyExample = isStory ? calculateCartPricing(Array(exampleCount).fill(price), directSaleFee) : null;
+  const fees = storyExample ?? calculateFees(price, directSaleFee);
+  const guidance = pricingGuidance(wordCount, genre, audience, publicationType);
 
   function choosePrice(value: number) {
     setEditing(null);
@@ -35,7 +39,7 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
       const [dollars, cents = ''] = value.split('.');
       const amount = Number(dollars) * 100 + Number(cents.padEnd(2, '0'));
       const retail = field === 'earnings' ? priceForSellerEarnings(amount, directSaleFee) : amount;
-      if (retail < MIN_BOOK_PRICE_CENTS || retail > MAX_BOOK_PRICE_CENTS) throw new Error('The customer price must be between $0.50 and $999,999.99.');
+      if (retail < minimumPublicationPrice(publicationType) || retail > MAX_BOOK_PRICE_CENTS) throw new Error(`The customer price must be between $${(minimumPublicationPrice(publicationType) / 100).toFixed(2)} and $999,999.99.`);
       onPriceChange(retail);
       onValidityChange(true);
       setError('');
@@ -48,8 +52,8 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
   return (
     <section className="space-y-5" aria-labelledby={`${id}-title`}>
       <div>
-        <h2 id={`${id}-title`} className="font-display text-display-sm text-white">Book pricing</h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#aaa]">Set a customer price, or enter your desired earnings and we’ll calculate a price that includes AfroBooks’ share and estimated processing.</p>
+        <h2 id={`${id}-title`} className="font-display text-display-sm text-white">{isStory ? 'Short story pricing' : publicationType === 'magazine' ? 'Issue pricing' : 'Book pricing'}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-[#aaa]">{isStory ? 'Set a price for one story. Readers can choose several stories and pay once. The example below shows how sharing payment costs affects earnings.' : 'Set a customer price, or enter your desired earnings and we’ll calculate a price that includes AfroBooks’ share and estimated processing.'}</p>
       </div>
 
       <div className="rounded-2xl border border-[#54441e] bg-[#211c12] p-4 sm:p-5">
@@ -69,7 +73,7 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
               className="rounded-xl border border-[#66532b] bg-[#17150f] p-3 text-left transition hover:border-[#f5b800] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f5b800] aria-pressed:border-[#f5b800]">
               <span className="block text-xs text-[#ccc]">{option.label}</span>
               <span className="mt-1 block text-lg font-medium text-white">{money(option.value)}</span>
-              <span className="mt-1 block text-xs text-[#9cddb0]">You earn about {money(calculateFees(option.value, directSaleFee).sellerEarnings)}</span>
+              {!isStory && <span className="mt-1 block text-xs text-[#9cddb0]">You earn about {money(calculateFees(option.value, directSaleFee).sellerEarnings)}</span>}
             </button>
           ))}
         </div>
@@ -80,7 +84,7 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
         {([
           { field: 'price', label: 'Customer price (USD)', amount: price },
           { field: 'earnings', label: 'Your estimated earnings (USD)', amount: fees.sellerEarnings },
-        ] as const).map(({ field, label, amount }) => (
+        ] as const).filter(({ field }) => !isStory || field === 'price').map(({ field, label, amount }) => (
           <div key={field}>
             <label htmlFor={`${id}-${field}`} className="mb-2 block text-sm text-[#ddd]">{label}</label>
             <input
@@ -100,10 +104,11 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
       {directSaleFee === 100 && <p className="text-sm text-amber-200">The current platform commission leaves no author earnings. Contact support before publishing.</p>}
 
       <div className="rounded-xl border border-[#2a2a2a] bg-[#171717] p-5">
-        <h3 className="mb-4 text-sm font-medium text-white">What the price includes</h3>
+        <h3 className="mb-4 text-sm font-medium text-white">{isStory ? `Example cart: ${exampleCount} stories at ${money(price)} each` : 'What the price includes'}</h3>
+        {storyExample && <p className="mb-4 text-xs leading-relaxed text-[#aaa]">Includes the 5% bundle discount. Author earnings below are the total across these {exampleCount} stories, shared between their authors. Actual earnings depend on the reader’s cart.</p>}
         <dl className="space-y-3 text-sm" aria-live="polite">
           {[
-            { label: 'Your estimated earnings', value: fees.sellerEarnings, color: 'text-[#4ade80]' },
+            { label: isStory ? 'Authors’ estimated earnings (total)' : 'Your estimated earnings', value: fees.sellerEarnings, color: 'text-[#4ade80]' },
             { label: `AfroBooks’ share (${directSaleFee}%)`, value: fees.platformFee, color: 'text-[#eee]' },
             { label: 'Estimated payment processing', value: fees.stripeFee, color: 'text-[#eee]' },
           ].map(({ label, value, color }) => (
@@ -112,7 +117,7 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
             </div>
           ))}
           <div className="flex justify-between gap-4 border-t border-[#333] pt-4 text-base font-medium">
-            <dt className="text-white">Customer price</dt><dd className="tabular-nums text-[#f5b800]">{money(price)}</dd>
+            <dt className="text-white">{isStory ? 'Example cart total' : 'Customer price'}</dt><dd className="tabular-nums text-[#f5b800]">{money(storyExample?.total ?? price)}</dd>
           </div>
         </dl>
       </div>

@@ -21,6 +21,7 @@ import type { Review } from '@/types/review';
 import { isBookInWishlist, toggleWishlist } from '@/lib/firebase/firestore';
 import { canReadWithSubscription } from '@/lib/utils/bookAccess';
 import { useCatalog } from '@/hooks/useCatalog';
+import { publicationLabel, publicationTitle } from '@/lib/utils/publication';
 
 const REPORT_REASONS = [
   'Inappropriate or offensive content',
@@ -223,7 +224,8 @@ export default function BookDetailPage() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-display-md text-white leading-none mb-1">{book.title}</h1>
+            <h1 className="font-display text-display-md text-white leading-none mb-1">{publicationTitle(book)}</h1>
+            {book.publicationType === 'magazine' && <p className="mb-2 text-sm text-[#dec18e]">{publicationLabel(book)}{book.contentFormat === 'pdf' ? ` · PDF · ${book.pdfPageCount} pages` : ''}</p>}
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Link href={`/author/${book.sellerId}`} className="text-sm text-[#aaa] hover:text-white transition-colors">{book.authorName}</Link>
               {book.sellerVerified && <BadgeCheck size={14} style={{ color: '#f5b800' }} />}
@@ -299,7 +301,7 @@ export default function BookDetailPage() {
             <Gift size={17} /> Gift this book
           </Link>
         )}
-        {!owned && !isPreorder && (
+        {!owned && !isPreorder && book.contentFormat !== 'pdf' && (
           <div className="flex justify-center">
             <Link href={`/sample/${book.id}`}
               className="flex items-center gap-2 text-sm transition-colors"

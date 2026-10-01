@@ -38,7 +38,7 @@ Account deletion and content removal retain their existing behavior; this change
 
 ## Validation status
 
-Validation passed: 45 unit tests, 70 core Firestore/Storage integration tests, 17 purchase/destination integration tests and 5 Community integration tests. Coverage includes simultaneous checkout, lost Stripe responses, payment/cancellation races, delayed-webhook recovery, receipt authorization, library persistence, automatic-transfer reconciliation, protected uploads and account permissions. The Firebase CLI startup was slow in this environment; the cached Firestore and Storage emulators were started directly, with both emulators registered for cross-service rules checks.
+Validation passed: 47 unit tests, 73 core Firestore/Storage integration tests, 17 purchase/destination integration tests and 5 Community integration tests. Coverage includes simultaneous checkout, lost Stripe responses, payment/cancellation races, delayed-webhook recovery, receipt authorization, library persistence, automatic-transfer reconciliation, protected uploads and account permissions. The Firebase CLI startup was slow in this environment; the cached Firestore and Storage emulators were started directly, with both emulators registered for cross-service rules checks.
 
 Guest browser checks passed on nine routes at 390×844, 844×390 and 1280×900: browse, discover, cart, checkout, library, receipt, Community, login and signup. Protected routes redirected to login, layouts had no horizontal overflow and there were no uncaught browser exceptions. These are browser checks, not physical iOS/Android or real-payment tests. Staging endpoints also rejected unauthenticated payment/receipt requests and unsigned webhooks with the expected 401/403/400 responses.
 

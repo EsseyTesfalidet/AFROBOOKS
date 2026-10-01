@@ -49,6 +49,15 @@ service firebase.storage {
       allow delete: if isOwner(sellerId) || isAdmin();
     }
 
+    // Immutable paid magazine files. Only the authenticated server can read
+    // them after checking library access; cleanup is also server-owned.
+    match /magazines/{sellerId}/{bookId}/{filename} {
+      allow read, update, delete: if false;
+      allow create: if resource == null && canUploadBook(sellerId, bookId) &&
+        firestore.get(/databases/(default)/documents/books/$(bookId)).data.publicationType == 'magazine' &&
+        request.resource.size <= 20 * 1024 * 1024 && request.resource.contentType == 'application/pdf';
+    }
+
     // User avatars — public read, owner write/delete
     match /avatars/{userId}/{filename} {
       allow read: if true;

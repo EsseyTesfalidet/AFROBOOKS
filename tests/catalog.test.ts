@@ -1,9 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { catalogShelves, newestBooks } from '../lib/utils/catalog';
+import { catalogShelves, newestBooks, filterCatalog } from '../lib/utils/catalog';
+import { publicationTitle, validatePublicationDetails } from '../lib/utils/publication';
 import type { Book } from '../types/book';
 
 const book = (id: string, fields: Partial<Book> = {}) => ({ id, title: id, genre: 'History', status: 'live', totalSales: 0, averageRating: 0, reviewCount: 0, ...fields } as Book);
+
+test('magazine filters distinguish legacy books and search issue or organization details', () => {
+  const books = [book('legacy'), book('issue', { publicationType: 'magazine', authorName: 'Community Press', issueLabel: 'October 2026' })];
+  assert.deepEqual(filterCatalog(books, '', 'All', 'book').map(b => b.id), ['legacy']);
+  assert.deepEqual(filterCatalog(books, 'October', 'All', 'magazine').map(b => b.id), ['issue']);
+  assert.equal(filterCatalog(books, 'Community Press', 'All', 'magazine').length, 1);
+  assert.equal(publicationTitle(books[1]), 'issue — October 2026');
+  assert.doesNotThrow(() => validatePublicationDetails({}));
+  assert.throws(() => validatePublicationDetails({ publicationType: 'subscription' }));
+  assert.throws(() => validatePublicationDetails({ publicationType: 'book', contentFormat: 'pdf' }));
+});
 
 test('a catalog without sales, reviews, featured flags or a matching genre still provides recommendations', () => {
   const books = [book('a'), book('b'), book('c')];

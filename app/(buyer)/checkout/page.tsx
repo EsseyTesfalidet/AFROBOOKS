@@ -9,6 +9,8 @@ import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useOwnedCart } from '@/hooks/useOwnedCart';
+import Link from 'next/link';
+import { cartMinimum } from '@/lib/utils/fees';
 
 const CheckoutPaymentPanel = dynamic(() => import('@/components/buyer/CheckoutPaymentPanel'), {
   ssr: false,
@@ -26,6 +28,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const bundle = getBundleDiscount();
   const tot = getTotal();
+  const minimum = cartMinimum(items.map(item => item.price));
 
   useEffect(() => {
     if (items.length === 0) {
@@ -38,6 +41,7 @@ export default function CheckoutPage() {
   if (ownership.loading) return <div role="status" className="p-8 text-[#aaa]">Checking your library…</div>;
   if (catalog.loading || (!catalog.error && items.some(item => !catalog.books.some(book => book.id === item.bookId)))) return <div role="status" className="flex justify-center py-20"><LoadingSpinner size={28} /><span className="sr-only">Checking book availability…</span></div>;
   if (catalog.error) return <div role="alert" className="p-8 text-[14px] text-red-300">{catalog.error}<button type="button" onClick={catalog.retry} className="ml-4 min-h-11 underline">Try again</button></div>;
+  if (minimum.remaining || items.length > 20) return <main className="mx-auto max-w-lg space-y-4 p-8"><h1 className="text-xl">Finish your story bundle</h1><p>{items.length > 20 ? 'Choose up to 20 titles per payment.' : `Add ${centsToDisplay(minimum.remaining)} more after discounts to reach the ${centsToDisplay(minimum.minimum)} cart minimum.`}</p><Link href="/cart" className="block underline">Review your cart</Link><Link href="/browse" className="block underline">Choose more stories</Link></main>;
 
   return (
     <div className="min-h-screen bg-[#0e0e0e]">

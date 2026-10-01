@@ -2,6 +2,16 @@ export const DEFAULT_PLATFORM_FEE_PERCENT = 15;
 export const MIN_BOOK_PRICE_CENTS = 50;
 export const MAX_BOOK_PRICE_CENTS = 99_999_999;
 
+export function minimumPublicationPrice(type?: string) { return type === 'short_story' ? 10 : MIN_BOOK_PRICE_CENTS; }
+
+// Low-priced titles share one payment. Apply the minimum to the discounted
+// total, never add a fee or silently charge more than the cart's actual price.
+export function cartMinimum(prices: number[]) {
+  const minimum = prices.some(price => price > 0 && price < 50) ? 100 : 50;
+  const { total } = calculateCartTotals(prices);
+  return { minimum, remaining: Math.max(0, minimum - total) };
+}
+
 // Estimate for a standard US domestic card payment. Stripe's actual charge can
 // vary by payment method, country and account pricing.
 export function calculateFees(amountCents: number, directSaleFee = DEFAULT_PLATFORM_FEE_PERCENT): {

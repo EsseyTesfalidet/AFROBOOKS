@@ -4,7 +4,11 @@ import { sanitizeChapter } from '@/lib/utils/sanitizeChapter';
 export class BookContentError extends Error {}
 
 // Validate stored chapters, not the count claimed by the publishing form.
-export function validateBookContent(book: DocumentData, chapters: QueryDocumentSnapshot[]) {
+export function validateBookContent(book: DocumentData, chapters: QueryDocumentSnapshot[], pdf?: DocumentData) {
+  if (book.contentFormat === 'pdf') {
+    if (book.publicationType !== 'magazine' || !pdf || pdf.sellerId !== book.sellerId || !pdf.path?.startsWith(`magazines/${book.sellerId}/`) || !pdf.generation || !Number.isSafeInteger(pdf.pageCount) || pdf.pageCount < 1 || pdf.pageCount > 500) throw new BookContentError('Upload and verify the magazine PDF before publishing or selling it.');
+    return;
+  }
   if (!Number.isSafeInteger(book.chapterCount) || book.chapterCount < 1 || chapters.length !== book.chapterCount) {
     throw new BookContentError('The book is missing chapters. Upload all chapters before publishing.');
   }

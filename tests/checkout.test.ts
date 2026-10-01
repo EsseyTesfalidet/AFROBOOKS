@@ -10,6 +10,23 @@ import { bookRouting, routingParameters } from '../lib/stripe/bookRouting';
 import { destinationSettlement } from '../lib/server/destinationPayment';
 import type Stripe from 'stripe';
 import { pricingGuidance } from '../lib/utils/pricingGuidance';
+import { cartMinimum, minimumPublicationPrice } from '../lib/utils/fees';
+
+test('short story bundles enforce an affordable minimum after discounts and share one processing fee', () => {
+  assert.equal(minimumPublicationPrice('short_story'), 10);
+  assert.equal(minimumPublicationPrice('magazine'), 50);
+  assert.equal(cartMinimum([25]).remaining, 75);
+  assert.equal(cartMinimum(Array(10).fill(10)).remaining, 5);
+  assert.equal(cartMinimum(Array(11).fill(10)).remaining, 0);
+  assert.equal(cartMinimum([50]).remaining, 0);
+  const cart = calculateCartPricing(Array(5).fill(25));
+  assert.equal(cart.total, 119);
+  assert.equal(cart.stripeFee, 33);
+  assert.equal(cart.sellerEarnings, 73);
+  assert.equal(cart.lines.reduce((sum, line) => sum + line.sellerEarnings, 0), cart.sellerEarnings);
+  assert.ok(cart.lines.every(line => line.sellerEarnings > 0));
+  assert.equal(pricingGuidance(1000, '', 'all', 'short_story').suggested, 25);
+});
 
 test('pricing guidance stays within checkout limits and quotes the current author fee', () => {
   for (const count of [NaN, -1, 0, 9999, 10000, 39999, 40000, 200000]) {

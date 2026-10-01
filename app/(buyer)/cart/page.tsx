@@ -10,6 +10,7 @@ import BuyerHeader from '@/components/buyer/BuyerHeader';
 import { useCartStore } from '@/store/cartStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { useOwnedCart } from '@/hooks/useOwnedCart';
+import { cartMinimum } from '@/lib/utils/fees';
 
 export default function CartPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function CartPage() {
   const sub = getSubtotal();
   const bundle = getBundleDiscount();
   const tot = getTotal();
+  const minimum = cartMinimum(items.map(item => item.price));
 
   if (ownership.error) return <div role="alert" className="p-8 text-red-300">{ownership.error} <Link href="/library" className="underline">Open your library</Link></div>;
   if (ownership.loading || catalog.loading || (!catalog.error && items.some(item => !catalog.books.some(book => book.id === item.bookId)))) return <div role="status" className="flex justify-center py-20"><LoadingSpinner size={28} /><span className="sr-only">Checking book availability…</span></div>;
@@ -99,11 +101,14 @@ export default function CartPage() {
               </div>
 
               <p className="text-xs leading-relaxed text-[#aaa]">Platform and payment processing fees are included in the book prices.</p>
+              {minimum.remaining > 0 && <p role="status" className="text-sm leading-relaxed text-[#f5b800]">Add {centsToDisplay(minimum.remaining)} more after discounts to reach the {centsToDisplay(minimum.minimum)} cart minimum. You pay once for all your titles. <Link href="/browse" className="underline">Choose more stories</Link></p>}
+              {items.length > 20 && <p role="status" className="text-sm text-[#f5b800]">Choose up to 20 titles per payment.</p>}
 
               <button
                 type="button"
+                disabled={minimum.remaining > 0 || items.length > 20}
                 onClick={() => router.push('/checkout')}
-                className="w-full py-3 rounded-xl text-sm font-medium"
+                className="w-full py-3 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ background: '#e8442a', color: '#fff' }}
               >
                 Checkout — {centsToDisplay(tot)}

@@ -4,7 +4,7 @@ export function bookFilePrefixes(sellerId: string, bookId: string) {
   if (!sellerId || !bookId || sellerId.includes('/') || bookId.includes('/')) {
     throw new Error('Invalid book file owner or identifier');
   }
-  return [`covers/${sellerId}/${bookId}/`, `manuscripts/${sellerId}/${bookId}/`];
+  return [`covers/${sellerId}/${bookId}/`, `manuscripts/${sellerId}/${bookId}/`, `magazines/${sellerId}/${bookId}/`];
 }
 
 export async function deleteBookFiles(sellerId: string, bookId: string) {

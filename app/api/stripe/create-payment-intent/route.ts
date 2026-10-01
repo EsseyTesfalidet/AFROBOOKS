@@ -6,13 +6,14 @@ import { agreementRequiredResponse } from '@/lib/server/legalAgreement';
 import { z } from 'zod';
 import { validateBookContent, BookContentError } from '@/lib/server/bookContent';
 import { paymentConfiguration } from '@/lib/stripe/config';
-import { calculateCartPricing, MAX_BOOK_PRICE_CENTS } from '@/lib/utils/fees';
+import { calculateCartPricing, MAX_BOOK_PRICE_CENTS, cartMinimum, minimumPublicationPrice } from '@/lib/utils/fees';
 import { syncAuthorAccount } from '@/lib/server/authorPayments';
 import { giftCheckoutSchema } from '@/lib/gifts';
 import { prepareBookGift, attachGiftPayment, GiftError } from '@/lib/server/bookGifts';
 import { giftEmailConfiguration } from '@/lib/server/giftEmail';
 import { bookRouting, routingParameters, type BookRouting } from '@/lib/stripe/bookRouting';
 import { createBookPurchase, BookPurchaseError } from '@/lib/server/bookPurchases';
+import { publicationTitle } from '@/lib/utils/publication';
 
 const checkoutSchema = z.object({
   items: z.array(z.object({ bookId: z.string().min(1).max(128).regex(/^[^/]+$/) })).min(1).max(20),
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
         isPreorder?: boolean;
       };
 
-      if (book.status !== 'live' || !Number.isSafeInteger(book.price) || book.price < 0 || book.price > MAX_BOOK_PRICE_CENTS) {
+      if (book.status !== 'live' || !Number.isSafeInteger(book.price) || book.price < minimumPublicationPrice(bookSnap.data()?.publicationType) || book.price > MAX_BOOK_PRICE_CENTS) {
         return NextResponse.json({ error: `Book ${item.bookId} not available` }, { status: 400 });
       }
       if (book.isPreorder && (book.releaseDate?.toMillis() ?? Infinity) > Date.now()) {
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        validateBookContent(bookSnap.data()!, (await bookSnap.ref.collection('chapters').get()).docs);
+        validateBookContent(bookSnap.data()!, (await bookSnap.ref.collection('chapters').get()).docs, (await adminDb.doc(`publicationFiles/${bookSnap.id}`).get()).data());
       } catch (error) {
         if (!(error instanceof BookContentError)) throw error;
         return NextResponse.json({ error: `"${book.title}" is temporarily unavailable because its chapters are incomplete. No payment has been taken.` }, { status: 409 });
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
 
       bookDetails.push({
         bookId: bookSnap.id,
-        title: book.title,
+        title: publicationTitle({ ...bookSnap.data(), title: book.title }),
         sellerId: book.sellerId,
         sellerName: book.sellerName,
         authorName: book.authorName,
@@ -96,6 +97,8 @@ export async function POST(req: NextRequest) {
     }
 
     const pricing = calculateCartPricing(bookDetails.map(book => book.originalPrice), directSaleFee);
+    const minimum = cartMinimum(bookDetails.map(book => book.originalPrice));
+    if (minimum.remaining) return NextResponse.json({ error: `Add $${(minimum.remaining / 100).toFixed(2)} more to your discounted cart. These titles are paid together in one payment with a $${(minimum.minimum / 100).toFixed(2)} minimum.`, code: 'CART_MINIMUM', minimumCents: minimum.minimum, remainingCents: minimum.remaining }, { status: 409 });
     // An author must finish Connect setup before a buyer can pay. This lets us
     // link royalties to the purchase charge while its funds are still settling.
     const authorAccounts = new Map<string, string>();

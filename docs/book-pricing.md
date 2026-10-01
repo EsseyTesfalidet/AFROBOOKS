@@ -10,6 +10,10 @@ The first version uses editorial starting ranges, not observed market prices or 
 | 10,000–39,999 words | $2.99–$5.99 | $3.99 |
 | 40,000 words or more | $4.99–$9.99 | $6.99 |
 | Poetry, children's titles, or unknown length | $2.99–$7.99 | $4.99 |
+| Magazine issue | $0.99–$4.99 | $2.99 |
+| Short story | $0.10–$0.99 | $0.25 |
+
+Short stories use the [combined-cart pricing model](magazines-and-stories.md), including a $1 basket minimum after discounts when a title costs under $0.50. Their earnings panel shows a whole example cart so fixed payment costs are shared accurately.
 
 Ranges are defined in `lib/utils/pricingGuidance.ts`. Each suggestion displays estimated author earnings using the current platform commission and the same fee calculation as checkout. Authors can also enter a custom customer price or desired net earnings. Existing bundle-discount and estimated processing-fee behavior is unchanged.
 

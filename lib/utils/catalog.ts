@@ -1,4 +1,12 @@
 import type { Book } from '@/types/book';
+import { publicationType } from './publication';
+
+export function filterCatalog(books: Book[], search: string, genre: string, type: 'all' | 'book' | 'magazine' | 'short_story' = 'all') {
+  const term = search.trim().toLocaleLowerCase();
+  return books.filter(book => (type === 'all' || publicationType(book) === type) &&
+    (genre === 'All' || book.genre === genre) &&
+    `${book.title ?? ''} ${book.authorName ?? ''} ${book.genre ?? ''} ${book.issueLabel ?? ''}`.toLocaleLowerCase().includes(term));
+}
 
 export function newestBooks(books: Book[]): Book[] {
   return [...books].sort((a, b) => {

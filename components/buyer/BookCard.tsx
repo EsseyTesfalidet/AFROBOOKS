@@ -4,6 +4,7 @@ import Link from 'next/link';
 import BookCover from '@/components/shared/BookCover';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
+import { publicationLabel } from '@/lib/utils/publication';
 
 interface BookCardProps {
   book: Book;
@@ -28,6 +29,7 @@ export default function BookCard({ book, rank, badge, eager }: BookCardProps) {
       <div className="pt-3">
         <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-[#f5f2eb] group-hover:text-[#ffad91]">{book.title}</p>
         <p className="mt-1 truncate text-[12px] text-[#a8a49c]">{book.authorName}</p>
+        {book.publicationType && book.publicationType !== 'book' && <p className="mt-1 line-clamp-2 text-[11px] text-[#dec18e]">{publicationLabel(book)}</p>}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px]">
           <span className="font-medium text-[#dec18e]">{centsToDisplay(book.price ?? 0)}</span>
           {book.averageRating > 0 && book.reviewCount > 0 && <span aria-label={`Rated ${book.averageRating.toFixed(1)} out of 5`} className="text-[#b4b1a9]"><span className="text-[#dec18e]" aria-hidden="true">★</span> {book.averageRating.toFixed(1)}</span>}

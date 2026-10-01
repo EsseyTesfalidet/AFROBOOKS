@@ -10,10 +10,11 @@ import SellerHeader from '@/components/seller/SellerHeader';
 import ChapterEditor from '@/components/seller/ChapterEditor';
 import BookPricing from '@/components/seller/BookPricing';
 import { useAuthStore } from '@/store/authStore';
-import { uploadCoverImage, uploadManuscript } from '@/lib/firebase/storage';
+import { uploadCoverImage, uploadManuscript, uploadMagazinePdf } from '@/lib/firebase/storage';
 import { db } from '@/lib/firebase/config';
 import { collection, doc, getDoc, getDocs, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { calculateEarnings } from '@/lib/utils/calculateEarnings';
+import { minimumPublicationPrice } from '@/lib/utils/fees';
 import { getSellerPublishedBooksCount } from '@/lib/firebase/firestore';
 import {
   DEFAULT_SELLER_VERIFICATION_STATUS,
@@ -22,7 +23,7 @@ import {
   hasCompletedSellerVerification,
   requiresSellerIdVerificationForPublishing,
 } from '@/lib/sellerVerification';
-import type { Chapter } from '@/types/book';
+import type { Chapter, PublicationType } from '@/types/book';
 import type { CopyrightBasis } from '@/types/book';
 import type { Seller } from '@/types/user';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -57,6 +58,12 @@ export default function PublishPage() {
   // Form state
   const [title, setTitle] = useState('');
   const [authorName, setAuthorName] = useState(userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName}` : '');
+  const [publicationType, setPublicationType] = useState<PublicationType>('book');
+  const [issueLabel, setIssueLabel] = useState('');
+  const [contentFormat, setContentFormat] = useState<'text' | 'pdf'>('text');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
+  const isPdf = publicationType === 'magazine' && contentFormat === 'pdf';
   const [description, setDescription] = useState('');
   const [genre, setGenre] = useState('');
   const [language, setLanguage] = useState('English');
@@ -104,6 +111,8 @@ export default function PublishPage() {
       savedBookId.current = editId;
       setEditingBook(true);
       setTitle(book.title ?? ''); setAuthorName(book.authorName ?? ''); setDescription(book.description ?? '');
+      setPublicationType(book.publicationType === 'magazine' ? 'magazine' : book.publicationType === 'short_story' ? 'short_story' : 'book'); setIssueLabel(book.issueLabel ?? '');
+      setContentFormat(book.contentFormat === 'pdf' ? 'pdf' : 'text'); setPdfPageCount(book.pdfPageCount ?? 0);
       setGenre(book.genre ?? ''); setLanguage(book.language ?? 'English'); setAgeGroup(book.targetAgeGroup ?? 'all');
       setIsbn(book.isbn ?? ''); setPrice(book.price ?? 699); setBgColor(book.coverBgColor ?? BG_COLORS[0]);
       setAccentColor(book.coverAccentColor ?? ACCENT_COLORS[0]); setCopyrightBasis(book.copyrightBasis ?? 'original');
@@ -197,7 +206,7 @@ export default function PublishPage() {
     if (!userProfile || editLoading) return;
     if (new URL(window.location.href).searchParams.has('edit') && !savedBookId.current) return;
     setPublishError('');
-    if (!pricingValid || directSaleFee === null || !Number.isSafeInteger(price) || price < 50 || price > 99999999) {
+    if (!pricingValid || directSaleFee === null || !Number.isSafeInteger(price) || price < minimumPublicationPrice(publicationType) || price > 99999999) {
       setPublishError('Review the book price in Pricing before saving.');
       return;
     }
@@ -213,8 +222,8 @@ export default function PublishPage() {
       setPublishError('Choose a genre before publishing.');
       return;
     }
-    if (publishMode !== 'draft' && chapters.length === 0) {
-      setPublishError('Add at least one chapter or import a manuscript before publishing.');
+    if (publishMode !== 'draft' && (isPdf ? !pdfFile && !pdfPageCount : chapters.length === 0)) {
+      setPublishError(isPdf ? 'Choose a magazine PDF before publishing.' : 'Add at least one chapter or import a manuscript before publishing.');
       return;
     }
     if (publishMode !== 'draft' && !copyrightAttested) {
@@ -250,6 +259,9 @@ export default function PublishPage() {
         sellerVerified: seller?.isVerified ?? false,
         title,
         authorName,
+        publicationType,
+        contentFormat: isPdf ? 'pdf' : 'text',
+        issueLabel: publicationType === 'magazine' ? issueLabel.trim() || null : null,
         description,
         coverUrl: existingBook?.data()?.coverUrl ?? '',
         coverBgColor: bgColor,
@@ -299,6 +311,13 @@ export default function PublishPage() {
       }
       if (Object.keys(storageUpdates).length > 0) {
         await updateDoc(doc(db, 'books', bookRef.id), storageUpdates);
+      }
+
+      if (isPdf && pdfFile) {
+        const path = await uploadMagazinePdf(userProfile.uid, bookRef.id, pdfFile);
+        const verified = await authenticatedPost<{ pageCount: number }>(`/api/books/${bookRef.id}/pdf`, { path });
+        setPdfPageCount(verified.pageCount);
+        setPdfFile(null);
       }
 
       // Save chapters as subcollection
@@ -357,7 +376,7 @@ export default function PublishPage() {
     { label: 'Description added', done: !!description },
     { label: 'Genre selected', done: !!genre },
     { label: 'Cover configured', done: !!accentColor },
-    { label: 'Book content added', done: chapters.length > 0 },
+    { label: isPdf ? 'Magazine PDF added' : 'Book content added', done: isPdf ? !!pdfFile || pdfPageCount > 0 : chapters.length > 0 },
     { label: 'Customer price includes earnings and fees', done: pricingValid && directSaleFee !== null && price >= 50 },
     { label: 'Author name set', done: !!authorName },
     { label: 'Rights confirmed', done: copyrightAttested },
@@ -458,14 +477,25 @@ export default function PublishPage() {
             {/* Step 1: Details */}
             {step === 0 && (
               <div className="space-y-4">
-                <h2 className="font-display text-display-sm text-white">Book Details</h2>
+                <h2 className="font-display text-display-sm text-white">{publicationType === 'magazine' ? 'Magazine Details' : 'Book Details'}</h2>
                 <div>
-                  <label className="block text-sm text-[#aaa] mb-1.5">Book Title</label>
-                  <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter book title" className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                  <label htmlFor="publication-type" className="mb-1.5 block text-sm text-[#aaa]">What are you publishing?</label>
+                  <select id="publication-type" value={publicationType} onChange={event => setPublicationType(event.target.value as PublicationType)} className="min-h-11 w-full rounded-lg border border-[#333] bg-[#1a1a1a] px-3 text-sm text-[#f5f2eb]">
+                    <option value="book">Book</option><option value="magazine">Magazine issue</option><option value="short_story">Short story</option>
+                  </select>
+                  {publicationType === 'magazine' && <p className="mt-2 text-xs leading-relaxed text-[#aaa]">Publish one complete issue per listing. Readers buy this issue once and keep it in their library. Your author account receives the earnings for your publication.</p>}
                 </div>
                 <div>
-                  <label className="block text-sm text-[#aaa] mb-1.5">Author Name</label>
-                  <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                  <label htmlFor="publication-title" className="block text-sm text-[#aaa] mb-1.5">{publicationType === 'magazine' ? 'Magazine title' : 'Book Title'}</label>
+                  <input id="publication-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={publicationType === 'magazine' ? 'e.g. African Culture Review' : 'Enter book title'} className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                </div>
+                {publicationType === 'magazine' && <div>
+                  <label htmlFor="magazine-issue" className="mb-1.5 block text-sm text-[#aaa]">Issue / edition (optional)</label>
+                  <input id="magazine-issue" value={issueLabel} onChange={event => setIssueLabel(event.target.value)} maxLength={60} placeholder="e.g. Issue 12 · October 2026" className="min-h-11 w-full rounded-lg border border-[#333] bg-[#1a1a1a] px-3.5 text-sm text-[#f5f2eb]" />
+                </div>}
+                <div>
+                  <label htmlFor="publication-author" className="block text-sm text-[#aaa] mb-1.5">{publicationType === 'magazine' ? 'Publisher / organization name' : 'Author Name'}</label>
+                  <input id="publication-author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
                 </div>
                 <div>
                   <label className="block text-sm text-[#aaa] mb-1.5">Description</label>
@@ -600,7 +630,22 @@ export default function PublishPage() {
             {/* Step 3: Chapters */}
             {step === 2 && (
               <div className="space-y-4">
-                <h2 className="font-display text-display-sm text-white">Book Content</h2>
+                <h2 className="font-display text-display-sm text-white">{publicationType === 'magazine' ? 'Magazine Content' : 'Book Content'}</h2>
+                {publicationType === 'magazine' && <div>
+                  <label htmlFor="magazine-format" className="mb-2 block text-sm text-[#aaa]">How would you like readers to view this issue?</label>
+                  <select id="magazine-format" value={contentFormat} onChange={event => setContentFormat(event.target.value as 'text' | 'pdf')} className="min-h-11 w-full rounded-lg border border-[#333] bg-[#1a1a1a] px-3 text-sm text-white"><option value="text">Editor / text articles</option><option value="pdf">PDF — keep images and page layouts</option></select>
+                </div>}
+                {isPdf ? <div className="space-y-3 rounded-xl border border-[#333] bg-[#161616] p-4">
+                  <label htmlFor="magazine-pdf" className="block text-sm font-medium text-white">Upload the complete magazine PDF</label>
+                  <p className="text-sm leading-relaxed text-[#aaa]">Keep your photos, columns and page design. Readers can turn pages and zoom. Use an unencrypted PDF, up to 20 MB and 500 pages.</p>
+                  <input id="magazine-pdf" type="file" accept=".pdf,application/pdf" className="block w-full min-w-0 text-sm text-[#ccc]" onChange={event => {
+                    const file = event.target.files?.[0] ?? null;
+                    if (file && (file.size > 20 * 1024 * 1024 || !file.name.toLowerCase().endsWith('.pdf'))) { setPublishError('Choose a PDF of 20 MB or less.'); event.target.value = ''; return; }
+                    setPdfFile(file); setPublishError('');
+                  }} />
+                  <p className="text-xs text-[#aaa]">{pdfFile ? `${pdfFile.name} will be checked when you save.` : pdfPageCount ? `Saved PDF: ${pdfPageCount} pages.` : 'The file is checked when you save or publish.'}</p>
+                  <p className="text-xs text-[#aaa]">Your cover and description introduce the issue before purchase. Full PDF pages are available to purchasers.</p>
+                </div> : <>
                 <div
                   className="rounded-xl border p-4"
                   style={{ background: '#161616', borderColor: '#2a2a2a' }}
@@ -681,6 +726,7 @@ export default function PublishPage() {
                     + Add Chapter
                   </button>
                 )}
+                </>}
               </div>
             )}
 
@@ -688,7 +734,7 @@ export default function PublishPage() {
             {step === 3 && (
               <div className="space-y-5">
                 {directSaleFee !== null
-                  ? <BookPricing price={price} directSaleFee={directSaleFee} wordCount={chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0)} genre={genre} audience={ageGroup} onPriceChange={setPrice} onValidityChange={setPricingValid} />
+                  ? <BookPricing price={price} directSaleFee={directSaleFee} wordCount={chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0)} genre={genre} audience={ageGroup} publicationType={publicationType} onPriceChange={setPrice} onValidityChange={setPricingValid} />
                   : <p role={pricingError ? 'alert' : 'status'} className="text-sm text-[#aaa]">{pricingError || 'Loading pricing…'}</p>}
 
                 <p className="text-sm text-[#aaa]">Choose free preview chapters in Book Content. All other chapters require purchase.</p>
@@ -792,7 +838,7 @@ export default function PublishPage() {
             <div className="rounded-xl overflow-hidden mb-3 relative" style={{ height: 160, background: bgColor }}>
               <div className="absolute top-0 left-0 right-0 h-1.5" style={{ background: accentColor }} />
               <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85))' }} />
-              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-bold" style={{ background: '#f5b800', color: '#000', fontSize: 8 }}>EBOOK</span>
+              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-bold" style={{ background: '#f5b800', color: '#000', fontSize: 8 }}>{publicationType === 'magazine' ? 'MAGAZINE' : 'EBOOK'}</span>
               <div className="absolute bottom-0 left-0 right-0 p-2">
                 <p className="text-xs uppercase tracking-wider" style={{ color: accentColor, fontSize: 9 }}>{genre || 'Genre'}</p>
                 <p className="font-display text-white leading-tight" style={{ fontSize: 14 }}>{title || 'Book Title'}</p>
@@ -805,16 +851,16 @@ export default function PublishPage() {
 
             <div className="space-y-1.5 text-xs text-[#555]">
               <div className="flex justify-between">
-                <span>Chapters</span>
-                <span className="text-[#aaa]">{chapters.length}</span>
+                <span>{isPdf ? 'PDF pages' : publicationType === 'magazine' ? 'Articles' : 'Chapters'}</span>
+                <span className="text-[#aaa]">{isPdf ? pdfPageCount || 'Checked on save' : chapters.length}</span>
               </div>
               <div className="flex justify-between">
                 <span>Customer price</span>
                 <span style={{ color: '#f5b800' }}>${(price / 100).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Estimated earnings/sale</span>
-                <span style={{ color: '#4ade80' }}>{earnings?.sellerEarningsDisplay ?? '—'}</span>
+                <span>{publicationType === 'short_story' ? 'Earnings' : 'Estimated earnings/sale'}</span>
+                <span style={{ color: '#4ade80' }}>{publicationType === 'short_story' ? 'See cart example in Pricing' : earnings?.sellerEarningsDisplay ?? '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Status</span>

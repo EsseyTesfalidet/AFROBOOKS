@@ -176,6 +176,7 @@ export async function deleteBookRecords(
   await deleteDocumentRefs(adminDb, reviewsSnap.docs.map((doc) => doc.ref));
 
   await adminDb.recursiveDelete(adminDb.collection('privateBooks').doc(bookId));
+  await adminDb.recursiveDelete(adminDb.collection('publicationFiles').doc(bookId));
   await adminDb.recursiveDelete(bookRef);
 
   if (!options?.skipSellerVerificationSync) {
