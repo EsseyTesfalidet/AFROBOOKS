@@ -4,9 +4,10 @@ import './reader.css';
 
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, List, Type, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, List, Type, Check, BookOpen, ScrollText } from 'lucide-react';
 import { sanitizeChapter } from '@/lib/utils/sanitizeChapter';
 import { calculateReadingProgress } from '@/lib/utils/readingProgress';
+import { readerPageMetrics } from '@/lib/utils/readerPosition';
 import { useReaderSession } from '@/hooks/useReaderSession';
 import { useReaderStore, THEME_STYLES, FONT_SIZE_PX, LINE_SPACING_VALUE, FONT_FAMILIES, MARGIN_MAX_WIDTH, MARGIN_PADDING_X } from '@/store/readerStore';
 import type { Book } from '@/types/book';
@@ -18,11 +19,14 @@ interface Props { book: Book; userId: string | null; hasAccess: boolean }
 
 export default function InAppReader({ book, userId, hasAccess }: Props) {
   const prefs = useReaderStore();
-  const { chapters, chapter: chapterNumber, loading, loadError, saveError, percent, scrollerRef, bodyRef, changeChapter, onScroll, retry, retrySave } = useReaderSession(book.id, userId, hasAccess, `${prefs.fontSize}:${prefs.lineSpacing}:${prefs.fontFamily}:${prefs.marginSize}`);
+  const paged = prefs.readingMode === 'pages';
+  const { chapters, chapter: chapterNumber, loading, loadError, saveError, percent, pagination, turnPage, scrollerRef, bodyRef, changeChapter, onScroll, retry, retrySave } = useReaderSession(book.id, userId, hasAccess, `${prefs.readingMode}:${prefs.fontSize}:${prefs.lineSpacing}:${prefs.fontFamily}:${prefs.marginSize}`);
   const [panel, setPanel] = useState<'chapters' | 'appearance' | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
   const lastScroll = useRef(0);
   const toolbarRef = useRef<HTMLElement>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swiped = useRef(false);
   const index = chapters.findIndex(chapter => chapter.chapterNumber === chapterNumber);
   const chapter = chapters[index];
   const previous = chapters[index - 1];
@@ -45,27 +49,55 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
     requestAnimationFrame(() => scrollerRef.current?.focus({ preventScroll: true }));
   }
 
-  return <div className="reader-shell" style={style}>
+  return <div className="reader-shell" data-reading-mode={prefs.readingMode} style={style}>
     <header ref={toolbarRef} className="reader-toolbar" data-hidden={!controlsVisible && !panel} aria-label="Reader controls">
       <Link href={`/book/${book.id}`} aria-label="Back to book" title="Back to book" className="reader-icon-button"><ArrowLeft size={20} /></Link>
       <div className="reader-book-identity"><p>{book.title}</p><span>{book.authorName}</span></div>
+      <button type="button" className="reader-icon-button" aria-label={paged ? 'Switch to scrolling' : 'Switch to pages'} title={paged ? 'Switch to scrolling' : 'Switch to pages'} onClick={() => prefs.setReadingMode(paged ? 'scroll' : 'pages')}>{paged ? <ScrollText size={20} /> : <BookOpen size={20} />}</button>
       <button type="button" className="reader-icon-button" aria-label="Chapters" title="Chapters" aria-haspopup="dialog" onClick={() => setPanel('chapters')}><List size={21} /></button>
       <button type="button" className="reader-icon-button" aria-label="Reading appearance" title="Reading appearance" aria-haspopup="dialog" onClick={() => setPanel('appearance')}><Type size={21} /></button>
     </header>
 
-    <div ref={scrollerRef} className="reader-viewport" role="main" aria-label="Book reader" tabIndex={0}
+    <div ref={scrollerRef} className="reader-viewport" data-reading-mode={prefs.readingMode} data-empty={loading || !!loadError || !chapter} role="main" aria-label="Book reader" tabIndex={0}
+      onFocusCapture={event => {
+        if (!paged || event.target === event.currentTarget) return;
+        const viewport = event.currentTarget;
+        const { stride, count } = readerPageMetrics(viewport);
+        const rect = event.target.getClientRects()[0];
+        if (rect) viewport.scrollLeft = Math.max(0, Math.min(count - 1, Math.floor((rect.left - viewport.getBoundingClientRect().left + viewport.scrollLeft) / stride))) * stride;
+      }}
       onScroll={() => {
         if (!onScroll()) return;
+        if (paged) return;
         const top = scrollerRef.current?.scrollTop ?? 0;
         if (Math.abs(top - lastScroll.current) > 8 && !toolbarRef.current?.contains(document.activeElement)) setControlsVisible(top < lastScroll.current || top < 80);
         lastScroll.current = top;
       }}
       onClick={event => {
+        if (swiped.current) { swiped.current = false; return; }
         if ((event.target as HTMLElement).closest('a, button, input, select, dialog') || window.getSelection()?.toString()) return;
         setControlsVisible(visible => !visible);
       }}
+      onTouchStart={event => {
+        swiped.current = false;
+        touchStart.current = paged && event.touches.length === 1 && !(event.target as HTMLElement).closest('a, button, input, select')
+          ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+      }}
+      onTouchMove={event => { if (event.touches.length !== 1) touchStart.current = null; }}
+      onTouchCancel={() => { touchStart.current = null; }}
+      onTouchEnd={event => {
+        const start = touchStart.current; touchStart.current = null;
+        if (!start || !event.changedTouches.length || window.getSelection()?.toString()) return;
+        const dx = event.changedTouches[0].clientX - start.x;
+        const dy = event.changedTouches[0].clientY - start.y;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped.current = true; turnPage(dx < 0 ? 1 : -1); }
+      }}
       onKeyDown={event => {
         if (event.key === 'Escape') setControlsVisible(true);
+        if (paged && event.target === event.currentTarget && !event.altKey && !event.ctrlKey && !event.metaKey && !window.getSelection()?.toString()) {
+          if (['ArrowRight', 'PageDown', ' '].includes(event.key) && !event.shiftKey) { event.preventDefault(); turnPage(1); return; }
+          if (['ArrowLeft', 'PageUp'].includes(event.key) || event.key === ' ' && event.shiftKey) { event.preventDefault(); turnPage(-1); return; }
+        }
         if (event.target !== event.currentTarget || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || window.getSelection()?.toString()) return;
         if (event.key === 'ArrowRight' && next) { event.preventDefault(); navigate(next.chapterNumber); }
         if (event.key === 'ArrowLeft' && previous) { event.preventDefault(); navigate(previous.chapterNumber); }
@@ -91,6 +123,11 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
 
     {chapter && !loading && !loadError && <footer className="reader-progress" aria-label="Reading progress">
       {saveError && <div className="reader-sync-message" role="status">{saveError}<button type="button" onClick={retrySave}>Retry save</button></div>}
+      {paged && <nav className="reader-page-controls" aria-label="Page navigation">
+        <button type="button" className="reader-icon-button" aria-label="Previous page" disabled={pagination.page === 0 && !previous} onClick={() => turnPage(-1)}><ArrowLeft size={20} /></button>
+        <span role="status" aria-live="polite">Page {pagination.page + 1} of {pagination.count}<small>in this chapter</small></span>
+        <button type="button" className="reader-icon-button" aria-label="Next page" disabled={pagination.page >= pagination.count - 1 && !next} onClick={() => turnPage(1)}><ArrowRight size={20} /></button>
+      </nav>}
       <div className="reader-progress-track" aria-hidden="true"><span style={{ width: `${totalProgress}%` }} /></div>
       <div className="reader-progress-labels"><span>{hasAccess ? `Chapter ${index + 1} of ${chapters.length}` : `Preview ${index + 1} of ${chapters.length}`}<span aria-hidden="true"> · </span>{totalProgress}%</span><span>{minutesLeft ? `About ${minutesLeft} min left in chapter` : 'Chapter complete'}</span></div>
     </footer>}

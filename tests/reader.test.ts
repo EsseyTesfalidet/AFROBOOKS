@@ -2,8 +2,25 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateReadingProgress } from '../lib/utils/readingProgress';
 import { sanitizeChapter } from '../lib/utils/sanitizeChapter';
-import { localReaderPosition, newestReaderPosition, retainReaderPositions, storeReaderPosition, type ReaderPosition } from '../lib/utils/readerPosition';
+import { localReaderPosition, newestReaderPosition, retainReaderPositions, storeReaderPosition, readerPageMetrics, type ReaderPosition } from '../lib/utils/readerPosition';
 import type { ReadingProgress } from '../types/order';
+
+test('fractional phone widths do not accumulate page drift in a long chapter', () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'getComputedStyle');
+  Object.defineProperty(globalThis, 'getComputedStyle', { configurable: true, value: () => ({ getPropertyValue: () => '32px' }) });
+  try {
+    // Browser measurements for 200 columns at a fractional phone width.
+    const scroller = { clientWidth: 328, scrollWidth: 71887, scrollLeft: 71559,
+      getBoundingClientRect: () => ({ width: 327.59375 }) } as unknown as HTMLElement;
+    const metrics = readerPageMetrics(scroller);
+    assert.equal(metrics.count, 200);
+    assert.equal(metrics.page, 199);
+    assert.ok(Math.abs(metrics.page * metrics.stride - scroller.scrollLeft) < 1);
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'getComputedStyle', original);
+    else Reflect.deleteProperty(globalThis, 'getComputedStyle');
+  }
+});
 
 test('finishing an early chapter does not finish the book', () => {
   assert.deepEqual(calculateReadingProgress(0, 10, 100, true), { percentComplete: 10, isFinished: false });

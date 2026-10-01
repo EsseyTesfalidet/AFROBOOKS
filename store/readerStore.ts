@@ -6,6 +6,7 @@ export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type LineSpacing = 'compact' | 'normal' | 'relaxed';
 export type FontFamily = 'serif' | 'sans';
 export type MarginSize = 'narrow' | 'normal' | 'wide';
+export type ReadingMode = 'scroll' | 'pages';
 
 interface ReaderState {
   theme: ReaderTheme;
@@ -13,12 +14,14 @@ interface ReaderState {
   lineSpacing: LineSpacing;
   fontFamily: FontFamily;
   marginSize: MarginSize;
+  readingMode: ReadingMode;
   currentChapter: number;
   setTheme: (theme: ReaderTheme) => void;
   setFontSize: (size: FontSize) => void;
   setLineSpacing: (spacing: LineSpacing) => void;
   setFontFamily: (family: FontFamily) => void;
   setMarginSize: (size: MarginSize) => void;
+  setReadingMode: (mode: ReadingMode) => void;
   setCurrentChapter: (chapter: number) => void;
 }
 
@@ -30,12 +33,14 @@ export const useReaderStore = create<ReaderState>()(
       lineSpacing: 'normal',
       fontFamily: 'serif',
       marginSize: 'normal',
+      readingMode: 'scroll',
       currentChapter: 1,
       setTheme: (theme) => set({ theme }),
       setFontSize: (fontSize) => set({ fontSize }),
       setLineSpacing: (lineSpacing) => set({ lineSpacing }),
       setFontFamily: (fontFamily) => set({ fontFamily }),
       setMarginSize: (marginSize) => set({ marginSize }),
+      setReadingMode: (readingMode) => set({ readingMode }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
     }),
     { name: 'afrobooks-reader' }

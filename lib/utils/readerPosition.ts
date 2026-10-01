@@ -50,7 +50,24 @@ function blocks(body: HTMLElement) {
   return Array.from(body.querySelectorAll<HTMLElement>(BLOCKS)).filter(node => !node.querySelector(BLOCKS));
 }
 
+export function readerPageMetrics(scroller: HTMLElement) {
+  const gap = parseFloat(getComputedStyle(scroller).getPropertyValue('--reader-page-gap')) || 32;
+  // Columns can have fractional CSS widths on phones. Rounded clientWidth
+  // accumulates an offset on every turn and eventually clips the page edges.
+  const stride = scroller.getBoundingClientRect().width + gap;
+  const count = Math.max(1, Math.round((scroller.scrollWidth + gap) / Math.max(1, stride)));
+  return { stride, count, page: Math.max(0, Math.min(count - 1, Math.round(scroller.scrollLeft / Math.max(1, stride)))) };
+}
+
+function paged(scroller: HTMLElement) { return scroller.dataset.readingMode === 'pages'; }
+
 export function chapterPercent(scroller: HTMLElement, body: HTMLElement) {
+  if (paged(scroller)) {
+    const { page, stride } = readerPageMetrics(scroller);
+    const last = Array.from(body.getClientRects()).at(-1);
+    const endPage = last ? Math.round((last.left - scroller.getBoundingClientRect().left + scroller.scrollLeft) / stride) : 0;
+    return endPage <= 0 ? 100 : Math.round(clamp(page / endPage) * 100);
+  }
   // The purchase prompt and navigation are outside the chapter's reading area.
   const end = body.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop - scroller.clientHeight;
   return end <= 0 ? 100 : Math.round(clamp(scroller.scrollTop / end) * 100);
@@ -58,27 +75,52 @@ export function chapterPercent(scroller: HTMLElement, body: HTMLElement) {
 
 export function captureReaderPosition(scroller: HTMLElement, body: HTMLElement, chapter: number): ReaderPosition {
   const nodes = blocks(body);
-  const line = scroller.getBoundingClientRect().top + READING_LINE;
-  const index = nodes.findIndex(node => node.getBoundingClientRect().bottom > line);
-  const rect = nodes[index]?.getBoundingClientRect();
+  const viewport = scroller.getBoundingClientRect();
+  const isPaged = paged(scroller);
+  const line = viewport.top + (isPaged ? 0 : READING_LINE);
+  let fraction = 0;
+  const index = nodes.findIndex(node => {
+    const rects = Array.from(node.getClientRects());
+    const visible = rects.findIndex(rect => rect.bottom > line && (!isPaged || rect.right > viewport.left + 1 && rect.left < viewport.right - 1));
+    if (visible < 0) return false;
+    const height = rects.reduce((sum, rect) => sum + rect.height, 0);
+    fraction = clamp((rects.slice(0, visible).reduce((sum, rect) => sum + rect.height, 0) + Math.max(0, line - rects[visible].top)) / Math.max(1, height));
+    return true;
+  });
+  const metrics = isPaged ? readerPageMetrics(scroller) : null;
+  const offset = isPaged ? scroller.scrollLeft : scroller.scrollTop;
   return {
     currentChapter: chapter,
-    scrollPosition: scroller.scrollTop,
-    scrollFraction: clamp(scroller.scrollTop / Math.max(1, scroller.scrollHeight - scroller.clientHeight)),
-    positionAnchor: scroller.scrollTop > 4 && rect ? { block: index, fraction: clamp((line - rect.top) / Math.max(1, rect.height)) } : null,
+    scrollPosition: offset,
+    scrollFraction: metrics ? metrics.page / Math.max(1, metrics.count - 1) : clamp(offset / Math.max(1, scroller.scrollHeight - scroller.clientHeight)),
+    positionAnchor: offset > 4 && index >= 0 ? { block: index, fraction } : null,
     positionUpdatedAt: Date.now(),
   };
 }
 
 export function restoreReaderPosition(scroller: HTMLElement, body: HTMLElement, position: Partial<ReaderPosition>) {
+  const isPaged = paged(scroller);
+  const metrics = isPaged ? readerPageMetrics(scroller) : null;
   const anchor = position.positionAnchor;
   const node = anchor && Number.isInteger(anchor.block) && anchor.block >= 0 ? blocks(body)[anchor.block] : null;
   if (node && anchor && Number.isFinite(anchor.fraction)) {
-    const rect = node.getBoundingClientRect();
-    scroller.scrollTop += rect.top - scroller.getBoundingClientRect().top + rect.height * clamp(anchor.fraction) - READING_LINE;
+    const rects = Array.from(node.getClientRects());
+    let offset = rects.reduce((sum, rect) => sum + rect.height, 0) * clamp(anchor.fraction);
+    let rect = rects[0];
+    for (const [index, item] of rects.entries()) { rect = item; if (offset < item.height || index === rects.length - 1) break; offset -= item.height; }
+    if (!rect) return;
+    if (metrics) {
+      const left = rect.left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
+      scroller.scrollLeft = Math.max(0, Math.min(metrics.count - 1, Math.round(left / metrics.stride))) * metrics.stride;
+    } else scroller.scrollTop += rect.top - scroller.getBoundingClientRect().top + offset - READING_LINE;
   } else if (Number.isFinite(position.scrollFraction)) {
-    scroller.scrollTop = clamp(position.scrollFraction!) * (scroller.scrollHeight - scroller.clientHeight);
+    if (metrics) scroller.scrollLeft = Math.round(clamp(position.scrollFraction!) * (metrics.count - 1)) * metrics.stride;
+    else scroller.scrollTop = clamp(position.scrollFraction!) * (scroller.scrollHeight - scroller.clientHeight);
   } else {
-    scroller.scrollTop = Number.isFinite(position.scrollPosition) ? Math.max(0, position.scrollPosition!) : 0;
+    const offset = Number.isFinite(position.scrollPosition) ? Math.max(0, position.scrollPosition!) : 0;
+    if (metrics) scroller.scrollLeft = Math.min(metrics.count - 1, Math.round(offset / metrics.stride)) * metrics.stride;
+    else scroller.scrollTop = offset;
   }
+  if (isPaged) scroller.scrollTop = 0;
+  else scroller.scrollLeft = 0;
 }
