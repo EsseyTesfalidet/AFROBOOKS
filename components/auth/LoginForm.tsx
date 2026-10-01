@@ -161,7 +161,7 @@ export default function LoginForm() {
           <span className="eyebrow-chip">Secure Sign In</span>
           <div className="mt-5 text-center">
             <Logo size="lg" href="/" />
-            <h1 className="mt-6 font-display text-5xl leading-none text-white">Welcome back</h1>
+            <h1 className="mt-6 font-display text-[32px] leading-tight text-white sm:text-5xl">Welcome back</h1>
             <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[#9a9aa3]">
               Get back to your library, purchases, and reading progress without missing a beat.
             </p>

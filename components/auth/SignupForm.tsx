@@ -127,7 +127,7 @@ export default function SignupForm() {
           <span className="eyebrow-chip">Create Account</span>
           <div className="mt-5 text-center">
             <Logo size="lg" href="/" />
-            <h1 className="mt-6 font-display text-5xl leading-none text-white">Join AfroBooks</h1>
+            <h1 className="mt-6 font-display text-[32px] leading-tight text-white sm:text-5xl">Join AfroBooks</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#9a9aa3]">
               Create one polished account for discovering books, building your audience, and publishing when you are ready.
             </p>

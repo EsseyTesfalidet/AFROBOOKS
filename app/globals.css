@@ -5,6 +5,40 @@
 @tailwind utilities;
 
 @font-face {
+  font-family: 'AfroBooks UI';
+  src: url('/fonts/DMSans.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'AfroBooks Display';
+  src: url('/fonts/Manrope.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+:root {
+  --font-ui: 'AfroBooks UI', 'AfroBooks Ethiopic', system-ui, sans-serif;
+  --font-heading: 'AfroBooks Display', 'AfroBooks Ethiopic', 'AfroBooks UI', sans-serif;
+}
+
+@layer base {
+  body { font-size: 14px; line-height: 1.6; font-optical-sizing: auto; }
+  :where(h1, h2, h3):not(:where(.reader-shell *, .tiptap-editor *, .manuscript-preview *)) {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  :where(button, [role='button']) { font-weight: 600; }
+  :where(nav a) { font-weight: 500; }
+}
+
+@font-face {
   font-family: 'AfroBooks Ethiopic';
   src: url('/fonts/NotoSansEthiopic.ttf') format('truetype');
   font-style: normal;
@@ -27,7 +61,7 @@ html,
 body {
   background-color: #0e0e0e;
   color: #f5f2eb;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -83,7 +117,10 @@ body {
 }
 
 .font-display {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
 }
 
 .font-reader {
