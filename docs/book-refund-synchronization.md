@@ -38,3 +38,16 @@ partial bundles, pending/failed refunds, gift copies, independent ownership,
 repurchasing after a full refund, provider failures, and refund totals across
 multiple records. Browser coverage verifies that a server entitlement removal
 updates the ownership control without a reload.
+
+## October 1, 2026 verification
+
+- 61 unit tests and 112 database/rules integration tests passed, including ten
+  new refund regressions. TypeScript and the ownership browser test passed.
+- The live Stripe endpoint already subscribes to all four required refund events.
+- Two existing payments were verified as fully refunded in Stripe. Their two app
+  orders were synchronized and checked for stale purchased library entries.
+  A private pre-change journal was retained. No refund or transfer was created.
+- Commit `bffdf39` was deployed to `https://afrobs.com` as
+  `dpl_DML1GeSPtjwMqoViK6goMMs2rJWC`. Live payment/library authorization checks
+  passed. An existing Stripe `charge.refunded` event was replayed and returned
+  HTTP 200 at 04:36 UTC on this deployment.
