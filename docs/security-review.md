@@ -25,4 +25,6 @@ This review covers application code, dependencies, authorization rules, session 
 
 ## Operational follow-up
 
+The website, Firestore/Storage rules and all five Cloud Functions deployed successfully. Live checks confirmed the retired endpoints, origin protection, payment/private-file authorization, security headers, worker activation and new fonts. Firebase reported a non-blocking failure cleaning up old build images; review the project's Container Registry build artifacts to avoid unnecessary storage charges. No production payments or emails were manually sent during verification.
+
 Keep dependency scans and access-control tests in the release process. Protect the Firebase, Vercel, Stripe and GitHub administrator accounts with MFA, and review provider audit logs for unexpected activity. This review does not establish whether earlier abuse occurred. Stripe destination-charge activation remains a separate rollout requiring confirmed successful webhook delivery and connected-account validation.
