@@ -38,7 +38,11 @@ Account deletion and content removal retain their existing behavior; this change
 
 ## Validation status
 
-Validation passed: 21 payment-related unit tests, 16 local Firestore integration tests, the combined Next.js production build and the Firebase function build. The integration tests include simultaneous checkout, lost Stripe responses, payment/cancellation races, delayed-webhook recovery, receipt authorization, library persistence and automatic-transfer reconciliation. The broader Firebase CLI emulator command stalled at startup in this environment; the focused integration suite ran against the Firestore emulator directly.
+Validation passed: 43 unit tests, 70 core Firestore/Storage integration tests, 17 purchase/destination integration tests and 5 Community integration tests. Coverage includes simultaneous checkout, lost Stripe responses, payment/cancellation races, delayed-webhook recovery, receipt authorization, library persistence, automatic-transfer reconciliation, protected uploads and account permissions. The Firebase CLI startup was slow in this environment; the cached Firestore and Storage emulators were started directly, with both emulators registered for cross-service rules checks.
+
+Guest browser checks passed on nine routes at 390×844, 844×390 and 1280×900: browse, discover, cart, checkout, library, receipt, Community, login and signup. Protected routes redirected to login, layouts had no horizontal overflow and there were no uncaught browser exceptions. These are browser checks, not physical iOS/Android or real-payment tests. Staging endpoints also rejected unauthenticated payment/receipt requests and unsigned webhooks with the expected 401/403/400 responses.
+
+The webhook now checks the current charge for refunds and disputes before granting a book. A delayed success notification for a refunded or disputed payment records a review state without granting access, crediting earnings or allowing another checkout. A regression test covers both separate and destination routing and stale retries. Existing completed purchases retain the established refund-review behavior.
 
 A Stripe test-account trial reached account creation but Stripe refused its destination payment because onboarding had not activated the recipient's transfer capability; the synthetic account was closed. No real charge or transfer was made. Complete the eligible-account Stripe test before live activation. The release keeps `STRIPE_DESTINATION_CHARGES_ENABLED=false`; the Firebase worker update must also be deployed before enabling it.
 

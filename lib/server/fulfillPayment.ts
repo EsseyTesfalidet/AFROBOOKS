@@ -7,6 +7,7 @@ export interface SuccessfulPayment {
   currency: string;
   metadata: Record<string, string>;
   destinationSettlement?: DestinationSettlement;
+  reviewReason?: 'payment_review';
 }
 
 export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) {
@@ -28,7 +29,7 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
     const destination = payment.destinationSettlement;
     const destinationOrders = orders.docs.filter(doc => doc.data().chargeRouting === 'destination');
     const destinationEarnings = orders.docs.reduce((sum, doc) => sum + doc.data().sellerEarnings, 0);
-    if (destination || destinationOrders.length) {
+    if (!payment.reviewReason && (destination || destinationOrders.length)) {
       if (!destination || destinationOrders.length !== orders.size || pending.length !== orders.size ||
           new Set(orders.docs.map(doc => doc.data().sellerId)).size !== 1 ||
           destination.grossAmount !== total || !Number.isSafeInteger(destinationEarnings) || destinationEarnings < 0 ||
@@ -46,17 +47,18 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
     }
     const giftNeedsReview = gifts.some(gift => gift.data()?.status !== 'pending');
     const unavailable = books.filter((book, index) => !book.exists || book.data()?.deletionPending === true || book.data()?.status === 'removed' || deletions[index].exists);
-    if (unavailable.length || giftNeedsReview) {
+    if (unavailable.length || giftNeedsReview || payment.reviewReason) {
       // Record the received payment for staff review. Never reconstruct a book,
       // grant a dead entitlement, or credit earnings for unavailable content.
-      for (const order of pending) tx.update(order.ref, { status: 'needs_review', reviewReason: 'book_unavailable', paymentReceivedAt: new Date() });
+      const reviewReason = payment.reviewReason ?? 'book_unavailable';
+      for (const order of pending) tx.update(order.ref, { status: 'needs_review', reviewReason, paymentReceivedAt: new Date() });
       for (const gift of gifts) tx.update(gift.ref, { status: 'needs_review' });
       tx.set(db.collection('notifications').doc(`${payment.id}_review`), {
         userId, type: 'system', title: 'Payment needs review',
         message: 'Your payment has been recorded for review. Please check your receipt and do not pay again.',
         isRead: false, actionUrl: `/checkout/receipt?orders=${orders.docs.map(doc => doc.id).join(',')}`, relatedBookId: null, createdAt: new Date(),
       });
-      tx.create(fulfillmentRef, { userId, amount: total, status: 'needs_review', unavailableBookIds: unavailable.map(book => book.id), createdAt: new Date() });
+      tx.create(fulfillmentRef, { userId, amount: total, status: 'needs_review', reviewReason, unavailableBookIds: unavailable.map(book => book.id), createdAt: new Date() });
       return false;
     }
     const sellerIds = [...new Set(pending.map((doc) => doc.data().sellerId as string))];

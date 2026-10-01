@@ -10,6 +10,7 @@ import { processAuthorRoyalties, reconcileAuthor, payAuthorOrder } from '../func
 import { seedRoyalty, royaltyFixture } from './royalty-fixture';
 import { createBookPurchase, BookPurchaseError, type PurchaseGateway } from '../lib/server/bookPurchases';
 import { confirmBookPurchase } from '../lib/server/confirmBookPurchase';
+import { currentBookPayment } from '../lib/server/currentBookPayment';
 import type Stripe from 'stripe';
 import { assertFails } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -137,6 +138,30 @@ test('receipt verification recovers a delayed webhook once and refuses another b
   assert.equal((await db.doc('library/reader_book').get()).exists, true);
   assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 800);
   assert.equal((await db.doc('books/book').get()).data()?.totalSales, 1);
+});
+
+test('delayed success after a refund or dispute never grants access or author earnings', async () => {
+  for (const change of [{ amount_refunded: 100 }, { disputed: true }]) {
+   for (const routing of ['separate', 'destination']) {
+    await env.clearFirestore();
+    await db.doc('books/book').set({ sellerId: 'author', status: 'live', totalSales: 0 });
+    await db.doc('sellers/author').set({ pendingBalance: 0, totalEarnings: 0 });
+    await seedOrder();
+    await db.doc('orders/order').update({ chargeRouting: routing });
+    const stripe = {} as Stripe;
+    const current = { ...payment, status: 'succeeded', latest_charge: { paid: true, amount_refunded: 0, disputed: false, ...change } } as unknown as Stripe.PaymentIntent;
+    const verified = await currentBookPayment(stripe, current);
+    await fulfillPayment(db, verified);
+    await fulfillPayment(db, payment); // A stale retry cannot undo review.
+    assert.equal((await db.doc('orders/order').get()).data()?.status, 'needs_review');
+    assert.equal((await db.doc('orders/order').get()).data()?.reviewReason, 'payment_review');
+    assert.equal((await db.doc('library/reader_book').get()).exists, false);
+    assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 0);
+    const f = purchaseFixture();
+    await assert.rejects(createBookPurchase(db, f.gateway, 'reader', f.drafts, f.params), /needs review/);
+    assert.equal(f.payments.size, 0);
+   }
+  }
 });
 
 test('checkout reservations and paid library records cannot be edited by readers', async () => {

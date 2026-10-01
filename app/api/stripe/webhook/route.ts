@@ -11,7 +11,7 @@ import { sendBookRoyalties, reviewPaymentRoyalties } from '@/lib/server/authorPa
 import { expirePromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharge, reconcilePromotionRefund } from '@/lib/server/promotionPayments';
 import { reviewGiftPayment } from '@/lib/server/bookGifts';
 import { deliverBookGift } from '@/lib/server/giftEmail';
-import { destinationSettlement } from '@/lib/server/destinationPayment';
+import { currentBookPayment } from '@/lib/server/currentBookPayment';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -54,18 +54,15 @@ export async function POST(req: NextRequest) {
     const pi = event.data.object as SuccessfulPayment & Stripe.PaymentIntent;
     if (!pi.metadata.bookIds && pi.metadata.purchaseType !== 'books') return NextResponse.json({ received: true });
     try {
-      if (pi.metadata.giftId) {
-        const current = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
-        const charge = current.latest_charge as Stripe.Charge | null;
-        if (!charge || typeof charge === 'string') throw new Error('Gift charge missing');
-        if (charge.amount_refunded > 0 || charge.disputed) await reviewGiftPayment(adminDb, pi.id);
-      }
       // Fetch the current intent for every book payment: routing must never be
       // inferred from a stale event or a client-supplied author account.
       const latest = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
-      if (latest.status !== 'succeeded') throw new Error('Payment is not successful');
-      const destination = latest.transfer_data?.destination ? await destinationSettlement(stripe, latest) : undefined;
-      await fulfillPayment(adminDb, { ...latest, destinationSettlement: destination });
+      const verified = await currentBookPayment(stripe, latest);
+      if (verified.reviewReason) {
+        await reviewGiftPayment(adminDb, pi.id);
+        await reviewPaymentRoyalties(adminDb, pi.id);
+      }
+      await fulfillPayment(adminDb, verified);
     } catch (error) {
       console.error('Payment fulfillment failed:', error);
       return NextResponse.json({ error: 'Fulfillment incomplete; retry required' }, { status: 500 });
