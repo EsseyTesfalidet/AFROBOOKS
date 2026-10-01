@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, List, Type, Check, BookOpen, ScrollText } from '
 import { sanitizeChapter } from '@/lib/utils/sanitizeChapter';
 import { calculateReadingProgress } from '@/lib/utils/readingProgress';
 import { readerPageMetrics } from '@/lib/utils/readerPosition';
+import { flowReaderParagraphs } from '@/lib/utils/paragraphFlow';
 import { useReaderSession } from '@/hooks/useReaderSession';
 import { useReaderStore, THEME_STYLES, FONT_SIZE_PX, LINE_SPACING_VALUE, FONT_FAMILIES, MARGIN_MAX_WIDTH, MARGIN_PADDING_X } from '@/store/readerStore';
 import type { Book } from '@/types/book';
@@ -20,7 +21,7 @@ interface Props { book: Book; userId: string | null; hasAccess: boolean }
 export default function InAppReader({ book, userId, hasAccess }: Props) {
   const prefs = useReaderStore();
   const paged = prefs.readingMode === 'pages';
-  const { chapters, chapter: chapterNumber, loading, loadError, saveError, percent, pagination, turnPage, scrollerRef, bodyRef, changeChapter, onScroll, retry, retrySave } = useReaderSession(book.id, userId, hasAccess, `${prefs.readingMode}:${prefs.fontSize}:${prefs.lineSpacing}:${prefs.fontFamily}:${prefs.marginSize}`);
+  const { chapters, chapter: chapterNumber, loading, loadError, saveError, percent, pagination, turnPage, scrollerRef, bodyRef, changeChapter, onScroll, retry, retrySave } = useReaderSession(book.id, userId, hasAccess, `${prefs.readingMode}:${prefs.textFlow}:${prefs.fontSize}:${prefs.lineSpacing}:${prefs.fontFamily}:${prefs.marginSize}`);
   const [panel, setPanel] = useState<'chapters' | 'appearance' | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
   const lastScroll = useRef(0);
@@ -31,7 +32,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
   const chapter = chapters[index];
   const previous = chapters[index - 1];
   const next = chapters[index + 1];
-  const content = useMemo(() => sanitizeChapter(chapter?.content ?? ''), [chapter?.content]);
+  const content = useMemo(() => flowReaderParagraphs(sanitizeChapter(chapter?.content ?? ''), prefs.textFlow, book.genre === 'Poetry'), [chapter?.content, prefs.textFlow, book.genre]);
   const wordCount = useMemo(() => content.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length, [content]);
   const minutesLeft = Math.ceil(wordCount * (1 - percent / 100) / 238);
   const totalProgress = calculateReadingProgress(index, chapters.length, percent, hasAccess).percentComplete;

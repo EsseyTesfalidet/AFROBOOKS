@@ -11,8 +11,9 @@ interface StoredChapter {
 
 export function planManuscriptRepair(bytes: Uint8Array, stored: StoredChapter[]) {
   const chapters = [...stored].sort((a, b) => a.chapterNumber - b.chapterNumber);
-  const legacy = extractSectionsFromText(new TextDecoder('utf-8').decode(bytes));
-  const recovered = extractSectionsFromText(decodeManuscriptBytes(bytes));
+  // Encoding repairs must reproduce the original importer, not also reformat it.
+  const legacy = extractSectionsFromText(new TextDecoder('utf-8').decode(bytes), 'legacy');
+  const recovered = extractSectionsFromText(decodeManuscriptBytes(bytes), 'legacy');
   if (!chapters.length || chapters.length !== legacy.length || chapters.length !== recovered.length) {
     throw new Error('The original manuscript and stored chapter structure do not match.');
   }

@@ -4,6 +4,17 @@ import { abortable, createOcrWorker, type PdfImportOptions } from './ocr';
 // Keep the PDF's text order; use baseline changes and larger gaps to recover
 // lines and paragraphs. Complex columns still need an author's review.
 export function pdfTextItemsToText(items: Array<TextItem | TextMarkedContent>) {
+  // Learn regular line spacing: double-spaced PDFs can otherwise look like a
+  // separate paragraph on every line. Sparse/ambiguous pages keep the fallback.
+  const runs = items.filter((item): item is TextItem => 'str' in item && !!item.str.trim());
+  const gaps: number[] = [];
+  for (let index = 1; index < runs.length; index++) {
+    const height = Math.max(Math.abs(runs[index - 1].height), Math.abs(runs[index].height), 1);
+    const ratio = Math.abs(runs[index].transform[5] - runs[index - 1].transform[5]) / height;
+    if (ratio > 0.5 && ratio <= 2.5) gaps.push(ratio);
+  }
+  gaps.sort((a, b) => a - b);
+  const paragraphGap = gaps.length >= 3 ? Math.max(1.6, gaps[Math.floor((gaps.length - 1) / 4)] * 1.35) : 1.6;
   let text = '';
   let previous: TextItem | undefined;
   for (const item of items) {
@@ -13,7 +24,7 @@ export function pdfTextItemsToText(items: Array<TextItem | TextMarkedContent>) {
       const height = Math.max(Math.abs(previous.height), Math.abs(item.height), 1);
       const verticalGap = Math.abs(item.transform[5] - previous.transform[5]);
       if (verticalGap > height * 0.5) {
-        text = text.trimEnd() + (verticalGap > height * 1.6 ? '\n\n' : '\n');
+        text = text.trimEnd() + (verticalGap > height * paragraphGap ? '\n\n' : '\n');
       } else if (text && !/\s$/.test(text) && !/^\s/.test(value)) {
         const gap = item.dir === 'rtl' && previous.dir === 'rtl'
           ? previous.transform[4] - (item.transform[4] + item.width)

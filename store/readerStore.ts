@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { TextFlow } from '@/lib/utils/paragraphFlow';
 
 export type ReaderTheme = 'dark' | 'night' | 'sepia' | 'paper';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
@@ -15,6 +16,7 @@ interface ReaderState {
   fontFamily: FontFamily;
   marginSize: MarginSize;
   readingMode: ReadingMode;
+  textFlow: TextFlow;
   currentChapter: number;
   setTheme: (theme: ReaderTheme) => void;
   setFontSize: (size: FontSize) => void;
@@ -22,6 +24,7 @@ interface ReaderState {
   setFontFamily: (family: FontFamily) => void;
   setMarginSize: (size: MarginSize) => void;
   setReadingMode: (mode: ReadingMode) => void;
+  setTextFlow: (flow: TextFlow) => void;
   setCurrentChapter: (chapter: number) => void;
 }
 
@@ -34,6 +37,7 @@ export const useReaderStore = create<ReaderState>()(
       fontFamily: 'serif',
       marginSize: 'normal',
       readingMode: 'scroll',
+      textFlow: 'auto',
       currentChapter: 1,
       setTheme: (theme) => set({ theme }),
       setFontSize: (fontSize) => set({ fontSize }),
@@ -41,6 +45,7 @@ export const useReaderStore = create<ReaderState>()(
       setFontFamily: (fontFamily) => set({ fontFamily }),
       setMarginSize: (marginSize) => set({ marginSize }),
       setReadingMode: (readingMode) => set({ readingMode }),
+      setTextFlow: (textFlow) => set({ textFlow }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
     }),
     { name: 'afrobooks-reader' }

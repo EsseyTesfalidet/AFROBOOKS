@@ -4,6 +4,29 @@ import { calculateReadingProgress } from '../lib/utils/readingProgress';
 import { sanitizeChapter } from '../lib/utils/sanitizeChapter';
 import { localReaderPosition, newestReaderPosition, retainReaderPositions, storeReaderPosition, readerPageMetrics, type ReaderPosition } from '../lib/utils/readerPosition';
 import type { ReadingProgress } from '../types/order';
+import { flowReaderParagraphs } from '../lib/utils/paragraphFlow';
+
+test('legacy wrapped prose reflows without merging paragraphs or losing text and emphasis', () => {
+  const first = 'The river carried stories across generations and the people listened carefully';
+  const second = 'while the morning sunlight reached the old houses beyond the quiet hillside.';
+  const html = `<p>${first}<br/><em>${second}</em><br/>A final sentence.</p><p>Next paragraph.</p>`;
+  assert.equal(flowReaderParagraphs(html), `<p>${first} <em>${second}</em> A final sentence.</p><p>Next paragraph.</p>`);
+  assert.equal(flowReaderParagraphs(html, 'original'), html);
+  assert.equal(flowReaderParagraphs(html, 'auto', true), html);
+});
+
+test('reader preserves short verse, code, lists, intentional breaks and blank-line separators', () => {
+  const verse = '<p>First line<br />Second line</p>';
+  assert.equal(flowReaderParagraphs(verse), verse);
+  assert.equal(flowReaderParagraphs(verse, 'paragraphs'), '<p>First line Second line</p>');
+  const marked = sanitizeChapter('<p data-preserve-breaks="true" onclick="bad()">First<br>Second</p>');
+  assert.equal(flowReaderParagraphs(marked, 'paragraphs'), marked);
+  assert.doesNotMatch(marked, /onclick/);
+  const structures = '<pre><p>Code<br />line</p></pre><ul><li>One<br />two</li></ul><h2>Title<br />subtitle</h2><p>• First<br />• Second</p>';
+  assert.equal(flowReaderParagraphs(structures, 'paragraphs'), structures);
+  assert.equal(flowReaderParagraphs('<p>One<br>two<br><br>Three<br>four</p>', 'paragraphs'), '<p>One two<br><br>Three four</p>');
+  assert.equal(flowReaderParagraphs('<p>中文<br>故事</p>', 'paragraphs'), '<p>中文故事</p>');
+});
 
 test('fractional phone widths do not accumulate page drift in a long chapter', () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'getComputedStyle');

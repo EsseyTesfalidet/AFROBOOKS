@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, Underline as UnderlineIcon, Heading2, List, X } from 'lucide-react';
 import type { Chapter } from '@/types/book';
@@ -17,11 +17,32 @@ function countWords(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+// Keep the author's explicit verse/line-break choice across editor round trips.
+const PreserveParagraphBreaks = Extension.create({
+  name: 'preserveParagraphBreaks',
+  priority: 1000,
+  addKeyboardShortcuts() {
+    return { 'Shift-Enter': () => this.editor.chain().updateAttributes('paragraph', { preserveBreaks: true }).setHardBreak().run() };
+  },
+  addGlobalAttributes() {
+    return [{ types: ['paragraph'], attributes: { preserveBreaks: {
+      default: false,
+      parseHTML: element => element.getAttribute('data-preserve-breaks') === 'true',
+      renderHTML: attributes => attributes.preserveBreaks ? { 'data-preserve-breaks': 'true' } : {},
+    } } }];
+  },
+});
+
+function ToolBtn({ onClick, active, icon: Icon }: { onClick: () => void; active?: boolean; icon: React.ElementType }) {
+  return <button type="button" onClick={onClick} className="p-1.5 rounded transition-colors"
+    style={{ background: active ? '#e8442a' : 'transparent', color: active ? '#fff' : '#aaa' }}><Icon size={14} /></button>;
+}
+
 export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '');
 
   const editor = useEditor({
-    extensions: [StarterKit.configure({ link: false })],
+    extensions: [StarterKit.configure({ link: false }), PreserveParagraphBreaks],
     immediatelyRender: false,
     content: initial?.content ?? '',
     editorProps: {
@@ -39,17 +60,6 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial
     const wordCount = countWords(editor.getText());
     onSave({ chapterNumber, title, content, wordCount });
   }
-
-  const ToolBtn = ({ onClick, active, icon: Icon }: { onClick: () => void; active?: boolean; icon: React.ElementType }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className="p-1.5 rounded transition-colors"
-      style={{ background: active ? '#e8442a' : 'transparent', color: active ? '#fff' : '#aaa' }}
-    >
-      <Icon size={14} />
-    </button>
-  );
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#333', background: '#161616' }}>

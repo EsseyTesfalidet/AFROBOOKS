@@ -9,9 +9,51 @@ import { validateManuscriptFile } from '../lib/publishing/manuscriptImport';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import { abortable, createOcrWorker, OCR_LANGUAGES, type OcrLanguage } from '../lib/publishing/ocr';
 
+test('wrapped prose flows within paragraphs, retaining real blank paragraphs and inline formatting', async () => {
+  const text = 'Chapter 1: Home\n\nThe river carried **stories\nacross generations** and people listened.\n  \nA separate paragraph\ncontinues here.';
+  const result = await importManuscriptFile(new File([text], 'prose.md'));
+  assert.equal(result.chapters[0].content, '<p>The river carried <strong>stories across generations</strong> and people listened.</p><p>A separate paragraph continues here.</p>');
+});
+
+test('authors can preserve verse; explicit Markdown breaks and adjacent lists stay distinct', async () => {
+  const verse = 'Chapter 1: Song\n\nFirst line\nSecond line\n\nNext stanza';
+  const result = await importManuscriptFile(new File([verse], 'verse.txt'), undefined, { lineBreaks: 'preserve' });
+  assert.equal(result.chapters[0].content, '<p data-preserve-breaks="true">First line<br/>Second line</p><p data-preserve-breaks="true">Next stanza</p>');
+  assert.equal(extractSectionsFromText('First line  \nSecond line\\\nThird line')[0].content, '<p data-preserve-breaks="true">First line<br/>Second line<br/>Third line</p>');
+  assert.equal(extractSectionsFromText('Introduction\n- First\n- Second\nAfterwards\n3. Three\n4. Four')[0].content,
+    '<p>Introduction</p><ul><li>First</li><li>Second</li></ul><p>Afterwards</p><ol start="3"><li>Three</li><li>Four</li></ol>');
+});
+
+test('paragraph flow preserves multilingual words and escapes imported HTML', () => {
+  for (const [input, expected] of [['ሰላም\nዓለም።', 'ሰላም ዓለም።'], ['مرحبا\nبالعالم', 'مرحبا بالعالم'], ['中文\n故事', '中文故事'], ['well-\nknown', 'well-known']]) {
+    assert.equal(extractSectionsFromText(input)[0].content, `<p>${expected}</p>`);
+  }
+  assert.equal(extractSectionsFromText('<script>alert(1)</script>\n& words')[0].content, '<p>&lt;script&gt;alert(1)&lt;/script&gt; &amp; words</p>');
+});
+
+test('legacy encoding repairs retain old line breaks instead of silently reformatting a book', () => {
+  const bytes = Uint8Array.from([...new TextEncoder().encode('Chapter 1: Opening\n\nMero'), 0xeb, ...new TextEncoder().encode('\nhome.')]);
+  const legacy = extractSectionsFromText(new TextDecoder().decode(bytes), 'legacy');
+  const stored = legacy.map(chapter => ({ ...chapter, id: 'chapter' }));
+  const patches = planManuscriptRepair(bytes, stored);
+  assert.equal(patches[0].content, '<p>Meroë<br/>home.</p>');
+  assert.deepEqual(planManuscriptRepair(bytes, [{ ...stored[0], ...patches[0] }]), []);
+});
+
 function pdfItem(str: string, x: number, y: number, width: number, hasEOL = false): TextItem {
   return { str, dir: 'ltr', width, height: 12, transform: [12, 0, 0, 12, x, y], fontName: 'fixture', hasEOL };
 }
+
+test('PDF regular wide line spacing is not mistaken for a paragraph break on every line', () => {
+  const text = pdfTextItemsToText([
+    pdfItem('A paragraph starts here', 30, 700, 160, true),
+    pdfItem('and continues on the next line', 30, 676, 160, true),
+    pdfItem('with more words for its readers', 30, 652, 160, true),
+    pdfItem('before it ends.', 30, 628, 100, true),
+    pdfItem('A new paragraph follows.', 30, 580, 160, true),
+  ]);
+  assert.equal(extractSectionsFromText(text)[0].content, '<p>A paragraph starts here and continues on the next line with more words for its readers before it ends.</p><p>A new paragraph follows.</p>');
+});
 
 test('PDF text recovers word gaps, paragraphs and chapter headings without executing markup', () => {
   const text = pdfTextItemsToText([

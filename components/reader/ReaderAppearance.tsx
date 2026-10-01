@@ -1,6 +1,7 @@
 'use client';
 
 import { FONT_FAMILIES, FONT_LABELS, FONT_SIZE_PX, THEME_STYLES, useReaderStore, type ReaderTheme, type FontFamily, type FontSize, type LineSpacing, type MarginSize } from '@/store/readerStore';
+import type { TextFlow } from '@/lib/utils/paragraphFlow';
 
 const sizes: FontSize[] = ['small', 'medium', 'large', 'xlarge'];
 export default function ReaderAppearance() {
@@ -10,6 +11,7 @@ export default function ReaderAppearance() {
       <label><input type="radio" name="reading-mode" checked={prefs.readingMode === 'pages'} onChange={() => prefs.setReadingMode('pages')} /><span>Pages</span></label>
       <label><input type="radio" name="reading-mode" checked={prefs.readingMode === 'scroll'} onChange={() => prefs.setReadingMode('scroll')} /><span>Scroll</span></label>
     </div><p className="reader-panel-note mt-3">Turn pages with the arrows or swipe left and right. Scroll keeps the continuous reading layout.</p></fieldset>
+    <div><label className="reader-setting-label" htmlFor="reader-text-flow">Text flow</label><select id="reader-text-flow" className="reader-flow-select" value={prefs.textFlow} onChange={event => prefs.setTextFlow(event.target.value as TextFlow)}><option value="auto">Automatic</option><option value="paragraphs">Flow as paragraphs</option><option value="original">Keep original lines</option></select><p className="reader-panel-note mt-3">Automatic joins clearly wrapped text. Original lines preserve the published layout. Paragraphs keep separate paragraphs and author-marked line breaks.</p></div>
     <fieldset><legend>Page color</legend><div className="reader-theme-options">
       {(['paper', 'sepia', 'dark', 'night'] as ReaderTheme[]).map(key => <label key={key} className="reader-theme-option">
         <input type="radio" name="page-color" aria-label={THEME_STYLES[key].label} checked={prefs.theme === key} onChange={() => prefs.setTheme(key)} />

@@ -93,6 +93,7 @@
 .reader-select-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px; }
 .reader-select-grid > div { min-width: 0; }
 .reader-select-grid select { display: block; width: 100%; margin-top: 10px; min-height: 46px; padding: 8px 12px; background: var(--reader-surface); border: 1px solid var(--reader-border); border-radius: 10px; color: var(--reader-text); }
+.reader-flow-select { display: block; width: 100%; min-height: 46px; padding: 8px 12px; background: var(--reader-surface); border: 1px solid var(--reader-border); border-radius: 10px; color: var(--reader-text); font-size: 13px; }
 @media (max-width: 600px) {
   .reader-toolbar { padding-inline: max(8px, env(safe-area-inset-left)); }
   .reader-book-identity { padding-inline: 4px; }

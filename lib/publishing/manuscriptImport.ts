@@ -1,5 +1,9 @@
 import { decodeManuscriptBytes } from './manuscriptEncoding';
 import type { PdfImportOptions } from './ocr';
+import { lineJoiner } from '@/lib/utils/paragraphFlow';
+
+export type ManuscriptLineBreaks = 'paragraphs' | 'preserve' | 'legacy';
+export type ManuscriptImportOptions = PdfImportOptions & { lineBreaks?: Exclude<ManuscriptLineBreaks, 'legacy'> };
 
 export interface ImportedChapterDraft {
   chapterNumber: number;
@@ -31,7 +35,8 @@ function applyInlineFormatting(value: string) {
     .replace(/(^|[\s(])_(.+?)_(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
 }
 
-function paragraphToHtml(paragraph: string) {
+function paragraphToHtml(paragraph: string, lineBreaks: ManuscriptLineBreaks) {
+  const rawLines = paragraph.split('\n').filter(line => line.trim());
   const lines = paragraph
     .split('\n')
     .map((line) => line.trim())
@@ -49,13 +54,40 @@ function paragraphToHtml(paragraph: string) {
     return `<ul>${items}</ul>`;
   }
 
-  return `<p>${applyInlineFormatting(escapeHtml(lines.join('\n'))).replace(/\n/g, '<br/>')}</p>`;
+  if (lineBreaks === 'legacy') return `<p>${applyInlineFormatting(escapeHtml(lines.join('\n'))).replace(/\n/g, '<br/>')}</p>`;
+  if (lineBreaks === 'preserve') return `<p data-preserve-breaks="true">${applyInlineFormatting(escapeHtml(lines.join('\n'))).replace(/\n/g, '<br/>')}</p>`;
+  if (lines.every(line => /^\d+[.)]\s+/.test(line))) {
+    return `<ol start="${Number.parseInt(lines[0], 10)}">${lines.map(line => `<li>${applyInlineFormatting(escapeHtml(line.replace(/^\d+[.)]\s+/, '')))}</li>`).join('')}</ol>`;
+  }
+  let joined = '';
+  let explicitBreak = false;
+  for (const [index, line] of rawLines.entries()) {
+    const hardBreak = /(?: {2,}|\\)$/.test(line);
+    const value = (hardBreak ? line.replace(/(?: {2,}|\\)$/, '') : line).trim();
+    joined += value;
+    if (index < rawLines.length - 1) {
+      joined += hardBreak ? '\n' : lineJoiner(value, rawLines[index + 1]);
+      explicitBreak ||= hardBreak;
+    }
+  }
+  return `<p${explicitBreak ? ' data-preserve-breaks="true"' : ''}>${applyInlineFormatting(escapeHtml(joined)).replace(/\n/g, '<br/>')}</p>`;
 }
 
-function sectionBodyToHtml(body: string) {
+function sectionBodyToHtml(body: string, lineBreaks: ManuscriptLineBreaks) {
   return body
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraphToHtml(paragraph.trim()))
+    .split(lineBreaks === 'legacy' ? /\n{2,}/ : /\n[\t ]*\n(?:[\t ]*\n)*/)
+    .flatMap(paragraph => {
+      if (lineBreaks !== 'paragraphs') return [paragraph];
+      const groups: string[] = [];
+      let previous = '';
+      for (const line of paragraph.split('\n')) {
+        const kind = /^\s*[-*]\s+/.test(line) ? 'bullet' : /^\s*\d+[.)]\s+/.test(line) ? 'numbered' : 'prose';
+        if (kind === previous) groups[groups.length - 1] += '\n' + line;
+        else { groups.push(line); previous = kind; }
+      }
+      return groups;
+    })
+    .map((paragraph) => paragraphToHtml(paragraph, lineBreaks))
     .filter(Boolean)
     .join('');
 }
@@ -98,7 +130,7 @@ interface SectionBuffer {
   lines: string[];
 }
 
-function flushSection(sections: ImportedChapterDraft[], buffer: SectionBuffer | null) {
+function flushSection(sections: ImportedChapterDraft[], buffer: SectionBuffer | null, lineBreaks: ManuscriptLineBreaks) {
   if (!buffer) {
     return;
   }
@@ -109,7 +141,7 @@ function flushSection(sections: ImportedChapterDraft[], buffer: SectionBuffer | 
   }
 
   const chapterNumber = sections.length + 1;
-  const content = sectionBodyToHtml(body);
+  const content = sectionBodyToHtml(body, lineBreaks);
 
   sections.push({
     chapterNumber,
@@ -120,7 +152,7 @@ function flushSection(sections: ImportedChapterDraft[], buffer: SectionBuffer | 
   });
 }
 
-export function extractSectionsFromText(text: string) {
+export function extractSectionsFromText(text: string, lineBreaks: ManuscriptLineBreaks = 'paragraphs') {
   const normalized = text.replace(/\r\n?/g, '\n').trim();
   if (!normalized) {
     return [];
@@ -136,7 +168,7 @@ export function extractSectionsFromText(text: string) {
       CHAPTER_HEADING_PATTERN.test(line) || SECOND_LEVEL_HEADING_PATTERN.test(line);
 
     if (isChapterHeading) {
-      flushSection(sections, buffer);
+      flushSection(sections, buffer, lineBreaks);
       buffer = { heading: line, lines: [] };
       continue;
     }
@@ -148,13 +180,13 @@ export function extractSectionsFromText(text: string) {
     buffer.lines.push(rawLine);
   }
 
-  flushSection(sections, buffer);
+  flushSection(sections, buffer, lineBreaks);
 
   if (sections.length > 0) {
     return sections;
   }
 
-  const fallbackContent = sectionBodyToHtml(normalized);
+  const fallbackContent = sectionBodyToHtml(normalized, lineBreaks);
 
   return [
     {
@@ -181,14 +213,14 @@ export function validateManuscriptFile(file: File) {
   }
 }
 
-export async function importManuscriptFile(file: File, onProgress?: (message: string) => void, options: PdfImportOptions = {}) {
+export async function importManuscriptFile(file: File, onProgress?: (message: string) => void, options: ManuscriptImportOptions = {}) {
   validateManuscriptFile(file);
 
   const pdf = file.name.toLowerCase().endsWith('.pdf');
   if (options.mode === 'ocr' && !pdf) throw new Error('OCR accepts PDF files. Choose Text PDF / .txt / .md for this file.');
   const extracted = pdf ? await (await import('./pdfManuscript')).extractPdfManuscript(file, onProgress, options) : null;
   const rawText = extracted?.text ?? decodeManuscriptBytes(new Uint8Array(await file.arrayBuffer()));
-  const chapters = extractSectionsFromText(rawText);
+  const chapters = extractSectionsFromText(rawText, options.lineBreaks ?? 'paragraphs');
 
   if (!chapters.length) {
     throw new Error('No readable manuscript content was found in the uploaded file.');
