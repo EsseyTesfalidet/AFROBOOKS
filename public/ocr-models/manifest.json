@@ -1,0 +1,41 @@
+{
+  "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/65727574dfcd264acbb0c3e07860e4e9e9b22185",
+  "files": {
+    "eng": {
+      "sha256": "b130d16b69e3888bc099133991a50a5b50e1da0e3ff6ca31a5496fab0fb386c3",
+      "bytes": 1962155
+    },
+    "tir": {
+      "sha256": "8bee65373b2b362fef1fb294d125ae9f8d4006e3417d9050d8368f992bd3b6ce",
+      "bytes": 301934
+    },
+    "amh": {
+      "sha256": "29e65ad7ff3e43e5221d96c8a22b163e4dfb04cc97f0b7be807c49c531dcd89f",
+      "bytes": 2306374
+    },
+    "ara": {
+      "sha256": "a31fe90ef3eddeeb8f372fa66be3666c5932d7dc2f6bb45558fa5f4c221aec01",
+      "bytes": 715721
+    },
+    "fra": {
+      "sha256": "09ca4bc39c0764b4a7766204f64cf73b47720fad566b478ac46b2f364b1fff82",
+      "bytes": 605839
+    },
+    "por": {
+      "sha256": "d30dce9a259bc2b86cdd47daf02c1daffa875437ba1ecc44f0e0f0fefaf53cc3",
+      "bytes": 998523
+    },
+    "chi_sim": {
+      "sha256": "6a317f84d100103a0740334e01c3dedbe761a29d946b44a166cb322729094bec",
+      "bytes": 1722294
+    },
+    "swa": {
+      "sha256": "befeecd59ba7a077992e03703e7147d2a33f1b0a3ddb1df1c48492494ca0faa5",
+      "bytes": 1088073
+    },
+    "yor": {
+      "sha256": "26f990215d23cc8e293d8ce437a959b90ae2b81625d741063c99702c14d99f80",
+      "bytes": 593462
+    }
+  }
+}

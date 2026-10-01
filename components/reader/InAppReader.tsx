@@ -35,7 +35,7 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
   const style = {
     '--reader-bg': theme.bg, '--reader-text': theme.text, '--reader-muted': theme.muted,
     '--reader-surface': theme.surface, '--reader-border': theme.border, '--reader-accent': theme.accent,
-    '--reader-font': FONT_FAMILIES[prefs.fontFamily], '--reader-size': FONT_SIZE_PX[prefs.fontSize],
+    '--reader-font': `'AfroBooks Ethiopic', ${FONT_FAMILIES[prefs.fontFamily]}`, '--reader-size': FONT_SIZE_PX[prefs.fontSize],
     '--reader-leading': LINE_SPACING_VALUE[prefs.lineSpacing], '--reader-width': MARGIN_MAX_WIDTH[prefs.marginSize], '--reader-gutter': MARGIN_PADDING_X[prefs.marginSize],
     colorScheme: prefs.theme === 'paper' || prefs.theme === 'sepia' ? 'light' : 'dark',
   } as CSSProperties;
@@ -76,10 +76,10 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
         : <article className="reader-page" aria-labelledby="reader-chapter-title">
           <header className="reader-chapter-heading">
             <p className="reader-eyebrow">{!hasAccess && <span>Free sample <span aria-hidden="true">·</span> </span>}Chapter {chapter.chapterNumber}</p>
-            <h1 id="reader-chapter-title">{chapter.title}</h1>
+            <h1 id="reader-chapter-title" dir="auto">{chapter.title}</h1>
             <span className="reader-chapter-rule" aria-hidden="true" />
           </header>
-          <div ref={bodyRef} className="reader-content" dangerouslySetInnerHTML={{ __html: content }} />
+          <div ref={bodyRef} dir="auto" className="reader-content" dangerouslySetInnerHTML={{ __html: content }} />
           {!next && !hasAccess && <PreviewGate bookId={book.id} bookTitle={book.title} price={book.price} />}
           {!next && hasAccess && <div className="reader-book-end"><span aria-hidden="true">✦</span><p>You’ve reached the end of this book.</p><Link href={`/book/${book.id}`} className="reader-text-button">Return to book</Link></div>}
           {(previous || next) && <nav className="reader-chapter-navigation" aria-label="Chapter navigation">

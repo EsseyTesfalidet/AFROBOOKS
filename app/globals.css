@@ -4,6 +4,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'AfroBooks Ethiopic';
+  src: url('/fonts/NotoSansEthiopic.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+1200-137F, U+1380-139F, U+2D80-2DDF, U+AB00-AB2F, U+1E7E0-1E7FF;
+}
+
+.manuscript-preview, .tiptap-editor, .chapter-title-input {
+  font-family: 'AfroBooks Ethiopic', 'DM Sans', sans-serif;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -309,8 +322,8 @@ textarea::placeholder {
 
 /* ── In-app reader content typography ───────────────────── */
 .reader-content p {
-  margin-bottom: 1.25em;
-  text-align: left;
+    margin-bottom: 1.25em;
+    text-align: start;
   word-break: break-word;
   overflow-wrap: break-word;
 }

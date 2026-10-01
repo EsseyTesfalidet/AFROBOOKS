@@ -1,4 +1,5 @@
 import { decodeManuscriptBytes } from './manuscriptEncoding';
+import type { PdfImportOptions } from './ocr';
 
 export interface ImportedChapterDraft {
   chapterNumber: number;
@@ -9,7 +10,7 @@ export interface ImportedChapterDraft {
 }
 
 const CHAPTER_HEADING_PATTERN =
-  /^(?:#{1,6}\s*)?(chapter|chap\.?|part|act)\s+([a-z0-9ivxlcdm]+)(?:\s*[:.\-–—]\s*(.+))?$/i;
+  /^(?:#{1,6}\s*)?(chapter|chap\.?|part|act|ምዕራፍ|الفصل|فصل)\s+([\p{L}\p{N}]+)(?:\s*[:.\-–—]\s*(.+))?$/iu;
 
 const SECOND_LEVEL_HEADING_PATTERN = /^##+\s+(.+)$/;
 
@@ -168,21 +169,25 @@ export function extractSectionsFromText(text: string) {
 
 export function validateManuscriptFile(file: File) {
   const fileName = file.name.toLowerCase();
-  const validExtension = fileName.endsWith('.txt') || fileName.endsWith('.md') || fileName.endsWith('.markdown');
+  const pdf = fileName.endsWith('.pdf');
+  const validExtension = pdf || fileName.endsWith('.txt') || fileName.endsWith('.md') || fileName.endsWith('.markdown');
 
   if (!validExtension) {
-    throw new Error('Upload a .txt or .md manuscript file.');
+    throw new Error('Upload a .pdf, .txt or .md manuscript file.');
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error('The manuscript is too large. Use a file smaller than 5 MB.');
+  if (file.size > (pdf ? 20 : 5) * 1024 * 1024) {
+    throw new Error(`The manuscript is too large. Use a file no larger than ${pdf ? 20 : 5} MB.`);
   }
 }
 
-export async function importManuscriptFile(file: File) {
+export async function importManuscriptFile(file: File, onProgress?: (message: string) => void, options: PdfImportOptions = {}) {
   validateManuscriptFile(file);
 
-  const rawText = decodeManuscriptBytes(new Uint8Array(await file.arrayBuffer()));
+  const pdf = file.name.toLowerCase().endsWith('.pdf');
+  if (options.mode === 'ocr' && !pdf) throw new Error('OCR accepts PDF files. Choose Text PDF / .txt / .md for this file.');
+  const extracted = pdf ? await (await import('./pdfManuscript')).extractPdfManuscript(file, onProgress, options) : null;
+  const rawText = extracted?.text ?? decodeManuscriptBytes(new Uint8Array(await file.arrayBuffer()));
   const chapters = extractSectionsFromText(rawText);
 
   if (!chapters.length) {
@@ -193,5 +198,9 @@ export async function importManuscriptFile(file: File) {
     chapters,
     totalWords: chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0),
     fileName: file.name,
+    warnings: extracted?.warnings ?? [],
+    // Save the converted UTF-8 manuscript through the existing private text
+    // storage path. The source PDF never needs to leave the author's browser.
+    sourceFile: pdf ? new File([rawText], file.name.replace(/\.pdf$/i, '.txt'), { type: 'text/plain' }) : file,
   };
 }

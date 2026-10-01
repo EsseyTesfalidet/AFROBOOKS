@@ -53,6 +53,7 @@ public/workbox-*.js
 public/worker-*.js
 public/fallback-*.js
 public/pdfjs/
+public/ocr/
 
 # Android build output and private signing material
 android/.gradle/

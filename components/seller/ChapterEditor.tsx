@@ -28,6 +28,7 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial
       attributes: {
         class: 'tiptap-editor min-h-[280px] p-4 rounded-b-xl focus:outline-none',
         'data-placeholder': 'Start writing your chapter...',
+        dir: 'auto',
       },
     },
   });
@@ -72,7 +73,8 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Chapter title..."
-          className="w-full px-3 py-2 rounded-lg border text-sm"
+          dir="auto"
+          className="chapter-title-input w-full px-3 py-2 rounded-lg border text-sm"
           style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}
         />
       </div>

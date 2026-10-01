@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
 import ChapterEditor from '@/components/seller/ChapterEditor';
+import ManuscriptUpload from '@/components/seller/ManuscriptUpload';
 import BookPricing from '@/components/seller/BookPricing';
 import { useAuthStore } from '@/store/authStore';
 import { uploadCoverImage, uploadManuscript, uploadMagazinePdf } from '@/lib/firebase/storage';
@@ -28,7 +29,6 @@ import type { CopyrightBasis } from '@/types/book';
 import type { Seller } from '@/types/user';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { ShieldAlert } from 'lucide-react';
-import { importManuscriptFile } from '@/lib/publishing/manuscriptImport';
 import { COPYRIGHT_BASIS_OPTIONS, getCopyrightBasisLabel, requiresManualCopyrightReview } from '@/lib/utils/copyright';
 
 const STEPS = ['Details', 'Cover', 'Book Content', 'Pricing', 'Publish'];
@@ -79,7 +79,6 @@ export default function PublishPage() {
   const [manuscriptFileName, setManuscriptFileName] = useState('');
   const [manuscriptFile, setManuscriptFile] = useState<File | null>(null);
   const [manuscriptImporting, setManuscriptImporting] = useState(false);
-  const [manuscriptError, setManuscriptError] = useState('');
   const [price, setPrice] = useState(699);
   const [pricingValid, setPricingValid] = useState(true);
   const subscriptionType: 'sell_only' | 'sell_and_sub' | 'sub_only' = 'sell_only';
@@ -171,39 +170,8 @@ export default function PublishPage() {
     ));
   }
 
-  async function handleManuscriptSelection(file: File | null) {
-    if (!file) {
-      return;
-    }
-
-    const shouldReplaceExisting =
-      chapters.length === 0 ||
-      window.confirm('Replace the current chapter list with the uploaded manuscript?');
-
-    if (!shouldReplaceExisting) {
-      return;
-    }
-
-    setManuscriptImporting(true);
-    setManuscriptError('');
-
-    try {
-      const imported = await importManuscriptFile(file);
-      setChapters(imported.chapters);
-      setManuscriptFileName(imported.fileName);
-      setManuscriptFile(file);
-      setEditingChapter(null);
-    } catch (error) {
-      setManuscriptError(
-        error instanceof Error ? error.message : 'We could not import that manuscript.'
-      );
-    } finally {
-      setManuscriptImporting(false);
-    }
-  }
-
   async function handlePublish() {
-    if (!userProfile || editLoading) return;
+    if (!userProfile || editLoading || manuscriptImporting) return;
     if (new URL(window.location.href).searchParams.has('edit') && !savedBookId.current) return;
     setPublishError('');
     if (!pricingValid || directSaleFee === null || !Number.isSafeInteger(price) || price < minimumPublicationPrice(publicationType) || price > 99999999) {
@@ -517,7 +485,7 @@ export default function PublishPage() {
                   <div>
                     <label className="block text-sm text-[#aaa] mb-1.5">Language</label>
                     <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
-                      {['English', 'French', 'Swahili', 'Yoruba', 'Amharic', 'Arabic', 'Portuguese'].map((l) => <option key={l}>{l}</option>)}
+                      {['English', 'Tigrinya', 'Amharic', 'Arabic', 'French', 'Swahili', 'Yoruba', 'Portuguese', 'Chinese'].map((l) => <option key={l}>{l}</option>)}
                     </select>
                   </div>
                   <div>
@@ -646,47 +614,9 @@ export default function PublishPage() {
                   <p className="text-xs text-[#aaa]">{pdfFile ? `${pdfFile.name} will be checked when you save.` : pdfPageCount ? `Saved PDF: ${pdfPageCount} pages.` : 'The file is checked when you save or publish.'}</p>
                   <p className="text-xs text-[#aaa]">Your cover and description introduce the issue before purchase. Full PDF pages are available to purchasers.</p>
                 </div> : <>
-                <div
-                  className="rounded-xl border p-4"
-                  style={{ background: '#161616', borderColor: '#2a2a2a' }}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-white">Upload full book manuscript</p>
-                      <p className="text-xs text-[#777]">
-                        Drop in the whole book as a `.txt` or `.md` file. The app will import the full manuscript and turn it into publishable reading content.
-                      </p>
-                      <p className="text-xs text-[#555]">
-                        Use headings like `Chapter 1: Opening` or `## Chapter title` to split the book automatically. If there are no headings, the entire upload is still imported as one complete reading section.
-                      </p>
-                    </div>
-                    <label
-                      className="inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium"
-                      style={{ background: '#e8442a', color: '#fff' }}
-                    >
-                      <input
-                        type="file"
-                        accept=".txt,.md,.markdown,text/plain,text/markdown"
-                        className="hidden"
-                        onChange={(event) => {
-                          const selectedFile = event.target.files?.[0] ?? null;
-                          void handleManuscriptSelection(selectedFile);
-                          event.currentTarget.value = '';
-                        }}
-                      />
-                      {manuscriptImporting ? 'Importing…' : 'Upload manuscript'}
-                    </label>
-                  </div>
-
-                  {manuscriptFileName && (
-                    <p className="mt-3 text-xs text-[#4ade80]">
-                      Imported the full manuscript `{manuscriptFileName}` into {chapters.length} reading section{chapters.length === 1 ? '' : 's'}.
-                    </p>
-                  )}
-                  {manuscriptError && (
-                    <p className="mt-3 text-xs text-[#f5b800]">{manuscriptError}</p>
-                  )}
-                </div>
+                <ManuscriptUpload chapterCount={chapters.length} fileName={manuscriptFileName} language={language} onBusy={setManuscriptImporting} onImport={imported => {
+                  setChapters(imported.chapters); setManuscriptFileName(imported.fileName); setManuscriptFile(imported.sourceFile); setEditingChapter(null);
+                }} />
 
                 <div className="rounded-xl border p-4" style={{ background: '#131313', borderColor: '#232323' }}>
                   <p className="text-sm font-medium text-white">Manual editing stays available</p>
@@ -797,7 +727,7 @@ export default function PublishPage() {
                 </div>
 
                 <button type="button" onClick={handlePublish}
-                  disabled={editLoading || publishing || (publishMode === 'preorder' && !releaseDate) || publishActionBlocked}
+                  disabled={editLoading || publishing || manuscriptImporting || (publishMode === 'preorder' && !releaseDate) || publishActionBlocked}
                   className="w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40"
                   style={{ background: '#4ade80', color: '#000' }}>
                   {publishing ? <LoadingSpinner size={16} color="#000" /> : <Check size={16} />}
@@ -813,13 +743,13 @@ export default function PublishPage() {
 
             {/* Navigation */}
             <div className="flex justify-between pt-5 mt-5 border-t" style={{ borderColor: '#1a1a1a' }}>
-              <button type="button" onClick={prevStep} disabled={step === 0}
+              <button type="button" onClick={prevStep} disabled={step === 0 || manuscriptImporting}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border disabled:opacity-30"
                 style={{ borderColor: '#333', color: '#aaa' }}>
                 <ArrowLeft size={14} /> Back
               </button>
               {step < 4 && (
-                <button type="button" onClick={nextStep} disabled={step === 3 && (!pricingValid || directSaleFee === null)}
+                <button type="button" onClick={nextStep} disabled={manuscriptImporting || (step === 3 && (!pricingValid || directSaleFee === null))}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
                   style={{ background: '#e8442a', color: '#fff' }}>
                   Next <ArrowRight size={14} />

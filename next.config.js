@@ -3,6 +3,7 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
+  publicExcludes: ['!noprecache/**/*', '!ocr/**/*', '!ocr-models/**/*'],
 });
 
 /** @type {import('next').NextConfig} */

@@ -9,7 +9,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useCatalog } from '@/hooks/useCatalog';
 
 const GENRES = ['Fiction', 'Science', 'History', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
-const LANGUAGES = ['English', 'French', 'Swahili', 'Yoruba', 'Amharic', 'Arabic', 'Portuguese'];
+const LANGUAGES = ['English', 'Tigrinya', 'Amharic', 'Arabic', 'French', 'Swahili', 'Yoruba', 'Portuguese', 'Chinese'];
 const SORT_OPTIONS = [
   { value: 'relevance', label: 'Most relevant' },
   { value: 'newest', label: 'Newest first' },

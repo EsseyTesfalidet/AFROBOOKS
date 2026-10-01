@@ -4,6 +4,75 @@ import { decodeManuscriptBytes } from '../lib/publishing/manuscriptEncoding';
 import { importManuscriptFile } from '../lib/publishing/manuscriptImport';
 import { extractSectionsFromText } from '../lib/publishing/manuscriptImport';
 import { planManuscriptRepair } from '../lib/server/manuscriptRepair';
+import { pdfTextItemsToText } from '../lib/publishing/pdfManuscript';
+import { validateManuscriptFile } from '../lib/publishing/manuscriptImport';
+import type { TextItem } from 'pdfjs-dist/types/src/display/api';
+import { abortable, createOcrWorker, OCR_LANGUAGES, type OcrLanguage } from '../lib/publishing/ocr';
+
+function pdfItem(str: string, x: number, y: number, width: number, hasEOL = false): TextItem {
+  return { str, dir: 'ltr', width, height: 12, transform: [12, 0, 0, 12, x, y], fontName: 'fixture', hasEOL };
+}
+
+test('PDF text recovers word gaps, paragraphs and chapter headings without executing markup', () => {
+  const text = pdfTextItemsToText([
+    pdfItem('Chapter 1: Opening', 30, 700, 120, true),
+    pdfItem('Hello', 30, 670, 30), pdfItem('world.', 64, 670, 38, true),
+    pdfItem('<script>alert(1)</script>', 30, 640, 150, true),
+    pdfItem('Chapter 2: Home', 30, 600, 120, true),
+    pdfItem('Second chapter.', 30, 570, 100, true),
+  ]);
+  const chapters = extractSectionsFromText(text);
+  assert.equal(chapters.length, 2);
+  assert.match(chapters[0].content, /Hello world\./);
+  assert.match(chapters[0].content, /&lt;script&gt;/);
+  assert.ok(!chapters[0].content.includes('<script>'));
+  assert.equal(chapters[1].title, 'Chapter 2: Home');
+  assert.deepEqual(chapters.map(chapter => chapter.isPreview), [true, false]);
+});
+
+test('PDF runs preserve multilingual text and do not insert spaces inside adjacent fragments', () => {
+  const text = pdfTextItemsToText([pdfItem('Afro', 30, 700, 24), pdfItem('Books', 54, 700, 36), pdfItem('ታሪክ 中文', 94, 700, 90)]);
+  assert.equal(text, 'AfroBooks ታሪክ 中文');
+});
+
+test('PDF uploads enforce limits and reject renamed non-PDF files before parsing', async () => {
+  assert.throws(() => validateManuscriptFile({ name: 'large.pdf', size: 20 * 1024 * 1024 + 1 } as File), /20 MB/);
+  assert.throws(() => validateManuscriptFile({ name: 'large.txt', size: 5 * 1024 * 1024 + 1 } as File), /5 MB/);
+  assert.throws(() => validateManuscriptFile(new File(['text'], 'story.docx')), /\.pdf, \.txt or \.md/);
+  await assert.rejects(importManuscriptFile(new File(['not a PDF'], 'story.PDF')), /not a valid PDF/);
+});
+
+test('Tigrinya and Arabic headings split chapters while preserving Ethiopic numerals and original text', async () => {
+  const text = 'ምዕራፍ ፩: ትግርኛ\n\nሰላም ዓለም።\n\nምዕራፍ ፪: አማርኛ\n\nየአማርኛ ጽሑፍ።\n\nالفصل ٣: العربية\n\nمرحبا بالعالم';
+  const result = await importManuscriptFile(new File([text], 'languages.txt', { type: 'text/plain' }));
+  assert.equal(result.chapters.length, 3);
+  assert.equal(result.chapters[0].title, 'ምዕራፍ ፩: ትግርኛ');
+  assert.equal(result.chapters[0].content, '<p>ሰላም ዓለም።</p>');
+  assert.equal(result.chapters[2].title, 'الفصل ٣: العربية');
+  assert.equal(result.chapters[2].content, '<p>مرحبا بالعالم</p>');
+});
+
+test('right-to-left PDF fragments retain complete words and real word spaces', () => {
+  const rtl = (str: string, x: number, width: number) => ({ ...pdfItem(str, x, 700, width), dir: 'rtl' });
+  assert.equal(pdfTextItemsToText([rtl('مر', 150, 12), rtl('حبا', 132, 18), rtl('بالعالم', 90, 36)]), 'مرحبا بالعالم');
+});
+
+test('OCR supports Tigrinya explicitly and rejects unsupported models and non-PDF uploads', async () => {
+  assert.ok(OCR_LANGUAGES.some(item => item.code === 'tir' && item.label === 'Tigrinya'));
+  await assert.rejects(createOcrWorker('../unknown' as OcrLanguage, new AbortController().signal), /supported OCR language/);
+  await assert.rejects(importManuscriptFile(new File(['text'], 'story.txt'), undefined, { mode: 'ocr', language: 'tir' }), /OCR accepts PDF/);
+});
+
+test('cancelling OCR interrupts waiting without accepting a late result', async () => {
+  const controller = new AbortController();
+  let finish!: (value: string) => void;
+  const waiting = abortable(new Promise<string>(resolve => { finish = resolve; }), controller.signal);
+  controller.abort();
+  await assert.rejects(waiting, { name: 'AbortError' });
+  finish('late text');
+  await assert.rejects(abortable(Promise.resolve('text'), controller.signal), { name: 'AbortError' });
+  assert.equal(await abortable(Promise.resolve('complete'), new AbortController().signal), 'complete');
+});
 
 test('UTF-8 manuscripts retain multilingual text, accents, punctuation and emoji', async () => {
   const text = 'Chapter 1: ታሪክ\n\n“Café”—العربية, 中文, Meroë… 🌍';
