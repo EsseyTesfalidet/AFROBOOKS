@@ -11,6 +11,7 @@ import { sendBookRoyalties, reviewPaymentRoyalties } from '@/lib/server/authorPa
 import { expirePromotionCheckout, fulfillPromotionCheckout, reviewPromotionCharge, reconcilePromotionRefund } from '@/lib/server/promotionPayments';
 import { reviewGiftPayment } from '@/lib/server/bookGifts';
 import { deliverBookGift } from '@/lib/server/giftEmail';
+import { destinationSettlement } from '@/lib/server/destinationPayment';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === 'payment_intent.succeeded') {
-    const pi = event.data.object as SuccessfulPayment;
+    const pi = event.data.object as SuccessfulPayment & Stripe.PaymentIntent;
     if (!pi.metadata.bookIds && pi.metadata.purchaseType !== 'books') return NextResponse.json({ received: true });
     try {
       if (pi.metadata.giftId) {
@@ -59,7 +60,12 @@ export async function POST(req: NextRequest) {
         if (!charge || typeof charge === 'string') throw new Error('Gift charge missing');
         if (charge.amount_refunded > 0 || charge.disputed) await reviewGiftPayment(adminDb, pi.id);
       }
-      await fulfillPayment(adminDb, pi);
+      // Fetch the current intent for every book payment: routing must never be
+      // inferred from a stale event or a client-supplied author account.
+      const latest = await stripe.paymentIntents.retrieve(pi.id, { expand: ['latest_charge'] });
+      if (latest.status !== 'succeeded') throw new Error('Payment is not successful');
+      const destination = latest.transfer_data?.destination ? await destinationSettlement(stripe, latest) : undefined;
+      await fulfillPayment(adminDb, { ...latest, destinationSettlement: destination });
     } catch (error) {
       console.error('Payment fulfillment failed:', error);
       return NextResponse.json({ error: 'Fulfillment incomplete; retry required' }, { status: 500 });
@@ -119,6 +125,18 @@ export async function POST(req: NextRequest) {
       const paymentId = typeof refund.payment_intent === 'string' ? refund.payment_intent : refund.payment_intent?.id;
       if (paymentId) await reconcilePromotionRefund(adminDb, stripe, await stripe.paymentIntents.retrieve(paymentId));
     } catch { return NextResponse.json({ error: 'Promotion refund review incomplete; retry required' }, { status: 500 }); }
+  }
+
+  if (event.type === 'application_fee.refunded') {
+    try {
+      const fee = event.data.object as Stripe.ApplicationFee;
+      const chargeId = typeof fee.originating_transaction === 'string' ? fee.originating_transaction : fee.originating_transaction?.id;
+      if (chargeId) {
+        const charge = await stripe.charges.retrieve(chargeId);
+        const paymentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+        if (paymentId) await reviewPaymentRoyalties(adminDb, paymentId);
+      }
+    } catch { return NextResponse.json({ error: 'Application fee review incomplete; retry required' }, { status: 500 }); }
   }
 
   if (['customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'].includes(event.type)) {

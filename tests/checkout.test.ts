@@ -6,6 +6,39 @@ import { receiptStatus } from '../lib/utils/receiptStatus';
 import { paymentConfiguration } from '../lib/stripe/config';
 import { accountReadiness } from '../functions/src/stripe/accountReadiness';
 import { formatStripeAmount } from '../lib/utils/stripeMoney';
+import { bookRouting, routingParameters } from '../lib/stripe/bookRouting';
+import { destinationSettlement } from '../lib/server/destinationPayment';
+import type Stripe from 'stripe';
+
+test('single-author destination charges retain fees and preserve quoted author earnings', () => {
+  const pricing = calculateCartPricing([499, 699, 999]);
+  const routing = bookRouting(new Map([['author', 'acct_author']]), pricing.total, pricing.sellerEarnings, true);
+  assert.deepEqual(routingParameters(routing), { transfer_data: { destination: 'acct_author' }, application_fee_amount: pricing.stripeFee + pricing.platformFee });
+  assert.equal(pricing.total - routing.applicationFeeAmount, pricing.sellerEarnings);
+  for (const enabled of [true, false]) {
+    assert.deepEqual(routingParameters(bookRouting(new Map([['a', 'acct_a'], ['b', 'acct_b']]), pricing.total, pricing.sellerEarnings, enabled)), {});
+  }
+  assert.deepEqual(routingParameters(bookRouting(new Map([['a', 'acct_a']]), 1000, 800, false)), {});
+  assert.deepEqual(routingParameters(bookRouting(new Map([['a', 'acct_a']]), 1000, 0, true)), {});
+  assert.throws(() => bookRouting(new Map([['a', 'not-an-account']]), 1000, 800, true));
+  assert.throws(() => bookRouting(new Map([['a', 'acct_a']]), 1000, 1001, true));
+});
+
+test('destination settlement verifies the actual transfer and application fee before crediting a sale', async () => {
+  const payment = { status: 'succeeded', currency: 'usd', amount_received: 1000, application_fee_amount: 200, transfer_data: { destination: 'acct_author' }, latest_charge: { id: 'ch_platform', paid: true, amount_refunded: 0, disputed: false, transfer: 'tr_auto', application_fee: 'fee_auto' } } as unknown as Stripe.PaymentIntent;
+  const transfer = { id: 'tr_auto', amount: 1000, currency: 'usd', destination: 'acct_author', source_transaction: 'ch_platform', reversed: false, amount_reversed: 0 };
+  // The fee's charge is the connected-account charge, not the platform charge.
+  const fee = { amount: 200, currency: 'usd', account: 'acct_author', charge: 'py_connected', originating_transaction: 'ch_platform', refunded: false, amount_refunded: 0 };
+  const stripe = { transfers: { retrieve: async () => transfer }, applicationFees: { retrieve: async () => fee } } as unknown as Stripe;
+  assert.deepEqual(await destinationSettlement(stripe, payment), { accountId: 'acct_author', chargeId: 'ch_platform', transferId: 'tr_auto', grossAmount: 1000, applicationFeeAmount: 200 });
+  for (const change of [{ destination: 'acct_other' }, { amount: 800 }, { amount_reversed: 1 }, { source_transaction: 'ch_other' }]) {
+    const invalid = { ...stripe, transfers: { retrieve: async () => ({ ...transfer, ...change }) } } as unknown as Stripe;
+    await assert.rejects(destinationSettlement(invalid, payment), /mismatch/);
+  }
+  const refundedFee = { ...stripe, applicationFees: { retrieve: async () => ({ ...fee, amount_refunded: 1 }) } } as unknown as Stripe;
+  await assert.rejects(destinationSettlement(refundedFee, payment), /mismatch/);
+  await assert.rejects(destinationSettlement(stripe, { ...payment, latest_charge: { ...payment.latest_charge as Stripe.Charge, transfer: undefined } }), /not yet available/);
+});
 
 test('configured fees and author estimates agree for a discounted order', () => {
   const fees = calculateFees(799, 20);

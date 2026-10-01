@@ -1,10 +1,12 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
+import type { DestinationSettlement } from './destinationPayment';
 
 export interface SuccessfulPayment {
   id: string;
   amount_received: number;
   currency: string;
   metadata: Record<string, string>;
+  destinationSettlement?: DestinationSettlement;
 }
 
 export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) {
@@ -23,6 +25,16 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
       throw new Error('Invalid order ownership or status');
     }
     const pending = orders.docs.filter((doc) => doc.data().status === 'pending');
+    const destination = payment.destinationSettlement;
+    const destinationOrders = orders.docs.filter(doc => doc.data().chargeRouting === 'destination');
+    const destinationEarnings = orders.docs.reduce((sum, doc) => sum + doc.data().sellerEarnings, 0);
+    if (destination || destinationOrders.length) {
+      if (!destination || destinationOrders.length !== orders.size || pending.length !== orders.size ||
+          new Set(orders.docs.map(doc => doc.data().sellerId)).size !== 1 ||
+          destination.grossAmount !== total || !Number.isSafeInteger(destinationEarnings) || destinationEarnings < 0 ||
+          total - destination.applicationFeeAmount !== destinationEarnings ||
+          orders.docs.some(doc => doc.data().destinationAccountId !== destination.accountId || doc.data().applicationFeeAmount !== destination.applicationFeeAmount)) throw new Error('Destination order mismatch');
+    }
     const bookIds = [...new Set(pending.map(doc => doc.data().bookId as string))];
     const books = await Promise.all(bookIds.map(id => tx.get(db.collection('books').doc(id))));
     const deletions = await Promise.all(bookIds.map(id => tx.get(db.collection('bookDeletions').doc(id))));
@@ -75,9 +87,23 @@ export async function fulfillPayment(db: Firestore, payment: SuccessfulPayment) 
       const lines = pending.filter((doc) => doc.data().sellerId === seller.id);
       const earnings = lines.reduce((sum, doc) => sum + doc.data().sellerEarnings, 0);
       tx.set(seller.ref, {
-        pendingBalance: FieldValue.increment(earnings), totalEarnings: FieldValue.increment(earnings),
+        pendingBalance: FieldValue.increment(destination ? 0 : earnings), totalEarnings: FieldValue.increment(earnings),
         totalSales: FieldValue.increment(lines.length), updatedAt: new Date(),
       }, { merge: true });
+    }
+    if (destination) {
+      const payoutId = `destination_${payment.id}`;
+      tx.create(db.collection('payouts').doc(payoutId), {
+        kind: 'book_royalty', chargeRouting: 'destination', sellerId: sellerIds[0],
+        sellerName: pending[0].data().sellerName || sellerIds[0],
+        orderIds: pending.map(doc => doc.id), stripeAccountId: destination.accountId,
+        stripeChargeId: destination.chargeId, stripePaymentIntentId: payment.id,
+        stripeTransferId: destination.transferId, grossAmountCents: total,
+        applicationFeeAmount: destination.applicationFeeAmount, amountCents: destinationEarnings,
+        periodLabel: new Date().toISOString().slice(0, 7), status: 'paid',
+        createdAt: new Date(), paidAt: new Date(),
+      });
+      for (const order of pending) tx.update(order.ref, { royaltyPayoutId: payoutId });
     }
     if (promo?.exists && pending.length) {
       tx.update(promo.ref, { currentUses: FieldValue.increment(1), totalRevenue: FieldValue.increment(total) });

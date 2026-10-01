@@ -5,7 +5,9 @@ interface StripeClient {
   accounts: { retrieve(id: string): Promise<ConnectedAccount> };
   paymentIntents: { retrieve(id: string, params: { expand: string[] }): Promise<{
     id: string; status: string; currency: string; amount_received: number; livemode: boolean;
-    metadata: { [key: string]: string }; latest_charge: string | { id: string; paid: boolean; amount_refunded: number; disputed: boolean } | null;
+    metadata: { [key: string]: string };
+    transfer_data?: { destination: string | { id: string } } | null;
+    latest_charge: string | { id: string; paid: boolean; amount_refunded: number; disputed: boolean; transfer?: string | { id: string } | null } | null;
   }> };
   transfers: {
     list(params: { destination: string; limit: number }): AsyncIterable<RoyaltyTransfer>;
@@ -22,7 +24,9 @@ export function stripeRoyaltyGateway(stripe: StripeClient): RoyaltyGateway {
       const charge = typeof payment.latest_charge === 'object' ? payment.latest_charge : null;
       return { id: payment.id, status: payment.status, currency: payment.currency, amount_received: payment.amount_received,
         livemode: payment.livemode, metadata: payment.metadata,
-        charge: charge ? { id: charge.id, paid: charge.paid, amount_refunded: charge.amount_refunded, disputed: charge.disputed } : null };
+        destinationAccountId: typeof payment.transfer_data?.destination === 'string' ? payment.transfer_data.destination : payment.transfer_data?.destination.id,
+        charge: charge ? { id: charge.id, paid: charge.paid, amount_refunded: charge.amount_refunded, disputed: charge.disputed,
+          transferId: typeof charge.transfer === 'string' ? charge.transfer : charge.transfer?.id } : null };
     },
     transfers: async destination => {
       const transfers: RoyaltyTransfer[] = [];

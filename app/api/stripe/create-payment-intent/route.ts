@@ -11,6 +11,8 @@ import { syncAuthorAccount } from '@/lib/server/authorPayments';
 import { giftCheckoutSchema } from '@/lib/gifts';
 import { prepareBookGift, attachGiftPayment, GiftError } from '@/lib/server/bookGifts';
 import { giftEmailConfiguration } from '@/lib/server/giftEmail';
+import { bookRouting, routingParameters, type BookRouting } from '@/lib/stripe/bookRouting';
+import { createBookPurchase, BookPurchaseError } from '@/lib/server/bookPurchases';
 
 const checkoutSchema = z.object({
   items: z.array(z.object({ bookId: z.string().min(1).max(128).regex(/^[^/]+$/) })).min(1).max(20),
@@ -96,15 +98,25 @@ export async function POST(req: NextRequest) {
     const pricing = calculateCartPricing(bookDetails.map(book => book.originalPrice), directSaleFee);
     // An author must finish Connect setup before a buyer can pay. This lets us
     // link royalties to the purchase charge while its funds are still settling.
+    const authorAccounts = new Map<string, string>();
+    const destinationEnabled = process.env.STRIPE_DESTINATION_CHARGES_ENABLED === 'true' && settings?.automatedPayoutsEnabled === true;
+    const platformCountry = destinationEnabled ? (await stripe.accounts.retrieve()).country : undefined;
+    let destinationRegionEligible = !!platformCountry;
     for (const sellerId of new Set(bookDetails.map(book => book.sellerId))) {
       const seller = (await adminDb.doc(`sellers/${sellerId}`).get()).data();
       if (!seller?.stripeAccountId || seller.payoutHoldReason) return NextResponse.json({ error: 'An author in your cart is still setting up payments. Please try again later.' }, { status: 409 });
       const account = await stripe.accounts.retrieve(seller.stripeAccountId);
       if ((await syncAuthorAccount(adminDb, sellerId, account)).stripeAccountStatus !== 'active') return NextResponse.json({ error: 'An author in your cart must complete Stripe payout setup before this purchase can proceed.' }, { status: 409 });
+      authorAccounts.set(sellerId, account.id);
+      // Cross-region settlement can need on_behalf_of and extra capabilities.
+      // Keep the existing transfer path until that account setup is supported.
+      if (account.country !== platformCountry) destinationRegionEligible = false;
     }
     const { bundleDiscount, total: finalAmount } = pricing;
     if (finalAmount < 50) return NextResponse.json({ error: 'The checkout total must be at least $0.50.' }, { status: 400 });
     if (finalAmount > MAX_BOOK_PRICE_CENTS) return NextResponse.json({ error: 'The checkout total is too large. Please purchase fewer books at a time.' }, { status: 400 });
+    const routing = bookRouting(authorAccounts, finalAmount, pricing.sellerEarnings,
+      destinationEnabled && destinationRegionEligible);
     if (gift) {
       const book = bookDetails[0];
       const sender = (await adminDb.doc(`users/${requestUser.uid}`).get()).data();
@@ -116,31 +128,28 @@ export async function POST(req: NextRequest) {
           sellerId: book.sellerId, sellerName: book.sellerName, authorName: book.authorName,
           ...pricing.lines[0], promoCodeUsed: null,
           platformFeePercent: directSaleFee, processingFeeBasis: 'estimated_us_domestic_card', pricingVersion: 2,
-          status: 'pending', receiptEmailSent: false,
+          status: 'pending', receiptEmailSent: false, ...routing,
         },
       });
+      // Retries must use the original routing, including checkouts created
+      // before destination charges were enabled or an account was changed.
+      const savedOrder = (await adminDb.doc(`orders/${prepared.orderId}`).get()).data()!;
+      const savedRouting: BookRouting = { chargeRouting: savedOrder.chargeRouting ?? 'separate', destinationAccountId: savedOrder.destinationAccountId ?? null, applicationFeeAmount: savedOrder.applicationFeeAmount ?? 0 };
+      if (!prepared.paymentIntentId && savedRouting.chargeRouting === 'destination' && savedRouting.destinationAccountId !== authorAccounts.get(book.sellerId)) return NextResponse.json({ error: 'This gift checkout needs payment review. Please contact support before paying.' }, { status: 409 });
       const intent = prepared.paymentIntentId ? await stripe.paymentIntents.retrieve(prepared.paymentIntentId) : await stripe.paymentIntents.create({
         amount: finalAmount, currency: 'usd',
+        ...routingParameters(savedRouting),
         metadata: { userId: requestUser.uid, bookIds: book.bookId, purchaseType: 'books', giftId: prepared.id },
       }, { idempotencyKey: `afrobooks-gift-${prepared.id}` });
       await attachGiftPayment(adminDb, prepared.id, intent.id);
       return NextResponse.json({ clientSecret: intent.client_secret, orderIds: [prepared.orderId], amount: intent.amount, paymentStatus: intent.status });
     }
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: finalAmount, currency: 'usd',
-      metadata: { userId: requestUser.uid, bookIds: bookDetails.map(book => book.bookId).join(','), purchaseType: 'books', bundleDiscount: String(bundleDiscount) },
-    });
-
-    const orderIds: string[] = [];
-    const orderBatch = adminDb.batch();
-
-    for (const [index, book] of bookDetails.entries()) {
+    const drafts = bookDetails.map((book, index) => {
       const { discountAmount: lineDiscount, finalPrice, stripeFee, platformFee, sellerEarnings } = pricing.lines[index];
 
-      const orderRef = adminDb.collection('orders').doc();
-      orderBatch.create(orderRef, {
+      return {
         buyerId: requestUser.uid,
-        buyerEmail: requestUser.email,
+        buyerEmail: requestUser.email ?? '',
         bookId: book.bookId,
         bookTitle: book.title,
         sellerId: book.sellerId,
@@ -150,28 +159,30 @@ export async function POST(req: NextRequest) {
         discountAmount: lineDiscount,
         finalPrice,
         promoCodeUsed: null,
-        stripePaymentIntentId: paymentIntent.id,
         stripeFee,
         platformFee,
         sellerEarnings,
         platformFeePercent: directSaleFee,
         processingFeeBasis: 'estimated_us_domestic_card',
         pricingVersion: 2,
+        ...routing,
         status: 'pending',
         receiptEmailSent: false,
-        createdAt: new Date(),
-      });
-
-      orderIds.push(orderRef.id);
-    }
-    await orderBatch.commit();
+      };
+    });
+    const { payment: paymentIntent, orderIds } = await createBookPurchase(adminDb, stripe.paymentIntents, requestUser.uid, drafts, {
+      amount: finalAmount, currency: 'usd', ...routingParameters(routing),
+      metadata: { userId: requestUser.uid, bookIds: bookDetails.map(book => book.bookId).join(','), purchaseType: 'books', bundleDiscount: String(bundleDiscount) },
+    });
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       orderIds,
-      amount: finalAmount,
+      amount: paymentIntent.amount,
+      paymentStatus: paymentIntent.status,
     });
   } catch (err) {
+    if (err instanceof BookPurchaseError) return NextResponse.json({ error: err.message, code: err.code, ownedBookIds: err.bookIds, orderIds: err.orderIds }, { status: 409 });
     if (err instanceof GiftError) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error('create-payment-intent error:', err);
     const status = err instanceof Error && err.message === 'Unauthorized' ? 401 : 500;

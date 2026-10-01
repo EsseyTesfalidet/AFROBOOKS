@@ -20,7 +20,7 @@ export interface Order {
   platformFeePercent?: number;
   processingFeeBasis?: 'estimated_us_domestic_card';
   pricingVersion?: number;
-  status: 'pending' | 'completed' | 'refunded' | 'disputed' | 'needs_review';
+  status: 'pending' | 'completed' | 'refunded' | 'disputed' | 'needs_review' | 'failed';
   receiptEmailSent: boolean;
   createdAt: Timestamp;
 }

@@ -214,6 +214,12 @@ export async function isBookInLibrary(userId: string, bookId: string): Promise<b
   return snap.exists();
 }
 
+export function subscribeUserLibrary(userId: string, next: (items: LibraryItem[]) => void, error: () => void) {
+  return onSnapshot(query(collection(db, 'library'), where('userId', '==', userId)), snapshot => {
+    next(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as LibraryItem)));
+  }, error);
+}
+
 export async function isBookInWishlist(userId: string, bookId: string): Promise<boolean> {
   return (await getDoc(doc(db, 'wishlist', `${userId}_${bookId}`))).exists();
 }

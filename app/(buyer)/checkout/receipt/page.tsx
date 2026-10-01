@@ -24,6 +24,25 @@ function ReceiptContent() {
   const [books, setBooks] = useState<Record<string, Book>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const confirmationFinished = orders.length > 0 && orders.length === orderIds.length && orders.every(order => order.status !== 'pending');
+
+  useEffect(() => {
+    const ids = [...new Set(orderKey.split(',').filter(Boolean))];
+    if (confirmationFinished || !firebaseUser || !ids.length || ids.length > 20 || ids.some(id => id.includes('/'))) return;
+    let active = true;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    async function confirm() {
+      try {
+        const token = await firebaseUser!.getIdToken();
+        if (!active) return;
+        await fetch('/api/stripe/confirm-purchase', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ orderIds: ids }) });
+      } catch { /* The order listener remains authoritative and can recover. */ }
+      if (active && ++attempts < 6) timer = setTimeout(confirm, 10000);
+    }
+    void confirm();
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  }, [orderKey, firebaseUser?.uid, confirmationFinished]);
 
   useEffect(() => {
     if (authLoading) return;

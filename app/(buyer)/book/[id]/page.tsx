@@ -155,6 +155,7 @@ export default function BookDetailPage() {
           : centsToDisplay(isPreorder ? book.price : effectivePrice);
 
   function handleBuy() {
+    if (owned && book) { router.push(`/read/${book.id}`); return; }
     if (isPreorder) return;
     if (selectedOption === 'subscribe') { router.push('/subscription'); return; }
     if (!book) return;

@@ -7,7 +7,7 @@ import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCover from '@/components/shared/BookCover';
 import ProgressBar from '@/components/shared/ProgressBar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { getUserLibrary, getBook, getReadingProgress } from '@/lib/firebase/firestore';
+import { subscribeUserLibrary, getBook, getReadingProgress } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import type { Book } from '@/types/book';
 import { useCatalog } from '@/hooks/useCatalog';
@@ -31,8 +31,11 @@ export default function LibraryPage() {
   useEffect(() => {
     if (!userProfile) return;
     let active = true;
+    let revision = 0;
     setLoading(true); setError(''); setEntries([]);
-    getUserLibrary(userProfile.uid).then(async (items) => {
+    const unsubscribe = subscribeUserLibrary(userProfile.uid, async (items) => {
+      const current = ++revision;
+      try {
       const populated: LibraryEntry[] = await Promise.all(
         items.map(async (item) => {
           const [book, prog] = await Promise.all([
@@ -47,11 +50,13 @@ export default function LibraryPage() {
           };
         })
       );
-      if (!active) return;
+      if (!active || current !== revision) return;
       setEntries(populated.filter((entry) => entry.book));
+      setError('');
       setLoading(false);
-    }).catch(() => { if (active) { setError('Your library could not be loaded. Please try again.'); setLoading(false); } });
-    return () => { active = false; };
+      } catch { if (active && current === revision) { setError('Your library could not be loaded. Please try again.'); setLoading(false); } }
+    }, () => { if (active) { setError('Your library could not be loaded. Please try again.'); setLoading(false); } });
+    return () => { active = false; unsubscribe(); };
   }, [userProfile?.uid, attempt]);
 
   if (loading || catalog.loading) return (

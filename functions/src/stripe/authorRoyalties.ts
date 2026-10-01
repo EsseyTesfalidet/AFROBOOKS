@@ -9,7 +9,8 @@ export interface RoyaltyTransfer {
 export interface RoyaltyPayment {
   id: string; status: string; currency: string; amount_received: number; livemode: boolean;
   metadata: { [key: string]: string };
-  charge: { id: string; paid: boolean; amount_refunded: number; disputed: boolean } | null;
+  destinationAccountId?: string | null;
+  charge: { id: string; paid: boolean; amount_refunded: number; disputed: boolean; transferId?: string | null } | null;
 }
 export interface RoyaltyGateway {
   account(id: string): Promise<ConnectedAccount>;
@@ -47,7 +48,7 @@ export async function reconcileAuthor(db: Firestore, sellerId: string, gateway: 
   if (readiness.stripeAccountStatus !== 'active') return false;
   const received = await gateway.transfers(account.id);
   const byId = new Map(received.map(transfer => [transfer.id, transfer]));
-  const byPayout = new Map(payouts.docs.map(payout => [payout.id, payout.data()]));
+  const byTransfer = new Map(payouts.docs.filter(p => p.data().stripeTransferId).map(p => [p.data().stripeTransferId, p]));
   let earned = 0;
   let reserved = 0;
   let reason = '';
@@ -68,8 +69,16 @@ export async function reconcileAuthor(db: Firestore, sellerId: string, gateway: 
     }
   }
   for (const transfer of received) {
-    const payout = byPayout.get(transfer.metadata.payoutId);
-    if (!payout || !matchesTransfer(transfer, payout, transfer.metadata.payoutId)) { reason = 'unrecorded_transfer'; break; }
+    const payout = byTransfer.get(transfer.id) ?? payouts.docs.find(p => p.id === transfer.metadata.payoutId);
+    if (!payout) {
+      // Stripe's automatic transfer can arrive before fulfillment commits. Defer
+      // reconciliation without a permanent hold; never send a replacement.
+      for (const order of orders.docs.filter(o => o.data().chargeRouting === 'destination' && o.data().status === 'pending')) {
+        const payment = await gateway.payment(order.data().stripePaymentIntentId);
+        if (payment.destinationAccountId === account.id && payment.charge?.transferId === transfer.id && objectId(transfer.source_transaction) === payment.charge.id) return false;
+      }
+    }
+    if (!payout || !matchesTransfer(transfer, payout.data(), payout.id)) { reason = 'unrecorded_transfer'; break; }
   }
   if (!validAmount(seller.pendingBalance) || !validAmount(seller.totalEarnings) || earned !== seller.totalEarnings || earned - reserved !== seller.pendingBalance) reason = 'balance_mismatch';
   if (reason) {
@@ -92,6 +101,12 @@ export async function reconcileAuthor(db: Firestore, sellerId: string, gateway: 
 }
 
 function matchesTransfer(transfer: RoyaltyTransfer, payout: Record<string, unknown>, payoutId: string) {
+  if (payout.chargeRouting === 'destination') {
+    return transfer.id === payout.stripeTransferId && transfer.amount === payout.grossAmountCents &&
+      validAmount(payout.applicationFeeAmount) && validAmount(payout.amountCents) && transfer.amount - payout.applicationFeeAmount === payout.amountCents &&
+      transfer.currency === 'usd' && objectId(transfer.destination) === payout.stripeAccountId &&
+      objectId(transfer.source_transaction) === payout.stripeChargeId && !transfer.reversed && transfer.amount_reversed === 0;
+  }
   return transfer.amount === payout.amountCents && transfer.currency === 'usd' &&
     objectId(transfer.destination) === payout.stripeAccountId && objectId(transfer.source_transaction) === payout.stripeChargeId &&
     transfer.metadata.payoutId === payoutId && transfer.metadata.sellerId === payout.sellerId &&
@@ -102,12 +117,17 @@ export async function payAuthorOrder(db: Firestore, orderId: string, gateway: Ro
   const orderRef = db.doc(`orders/${orderId}`);
   const order = (await orderRef.get()).data();
   if (!order || order.status !== 'completed' || !validAmount(order.sellerEarnings) || order.sellerEarnings === 0) return 'skipped';
+  if (order.chargeRouting === 'destination') return 'skipped';
   const sellerRef = db.doc(`sellers/${order.sellerId}`);
   const seller = (await sellerRef.get()).data();
   if (!seller?.stripeAccountId || !seller.payoutsReconciledAt || seller.payoutLedgerVersion !== 2 || seller.payoutHoldReason) return 'skipped';
   const account = await gateway.account(seller.stripeAccountId);
   if (accountReadiness(account).stripeAccountStatus !== 'active' || account.metadata?.userId !== order.sellerId) return 'setup_required';
   const payment = await gateway.payment(order.stripePaymentIntentId);
+  // Defense in depth when a legacy/malformed order lacks the routing marker.
+  if (payment.destinationAccountId) {
+    await holdAuthorPayouts(db, order.sellerId, 'destination_payment_review'); return 'needs_review';
+  }
   const cart = await db.collection('orders').where('stripePaymentIntentId', '==', payment.id).get();
   const cartAmount = cart.docs.reduce((sum, doc) => sum + doc.data().finalPrice, 0);
   if (!payment.livemode || payment.status !== 'succeeded' || payment.currency !== 'usd' ||

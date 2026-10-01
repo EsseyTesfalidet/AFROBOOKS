@@ -9,17 +9,20 @@ import BookCover from '@/components/shared/BookCover';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import { useCartStore } from '@/store/cartStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import { useOwnedCart } from '@/hooks/useOwnedCart';
 
 export default function CartPage() {
   const router = useRouter();
   const { items, removeItem, getSubtotal, getBundleDiscount, getTotal } = useCartStore();
   const catalog = useCatalog();
+  const ownership = useOwnedCart();
 
   const sub = getSubtotal();
   const bundle = getBundleDiscount();
   const tot = getTotal();
 
-  if (catalog.loading || (!catalog.error && items.some(item => !catalog.books.some(book => book.id === item.bookId)))) return <div role="status" className="flex justify-center py-20"><LoadingSpinner size={28} /><span className="sr-only">Checking book availability…</span></div>;
+  if (ownership.error) return <div role="alert" className="p-8 text-red-300">{ownership.error} <Link href="/library" className="underline">Open your library</Link></div>;
+  if (ownership.loading || catalog.loading || (!catalog.error && items.some(item => !catalog.books.some(book => book.id === item.bookId)))) return <div role="status" className="flex justify-center py-20"><LoadingSpinner size={28} /><span className="sr-only">Checking book availability…</span></div>;
   if (catalog.error) return <div role="alert" className="p-8 text-[14px] text-red-300">{catalog.error}<button type="button" onClick={catalog.retry} className="ml-4 min-h-11 underline">Try again</button></div>;
 
   if (items.length === 0) {
@@ -30,6 +33,7 @@ export default function CartPage() {
           <ShoppingCart size={48} style={{ color: '#2a2a2a' }} className="mb-4" />
           <p className="text-lg font-display text-white mb-2">Your cart is empty</p>
           <p className="text-sm text-[#555] mb-6">Browse books to get started.</p>
+          <Link href="/library" className="mb-4 text-sm text-[#f5b800] underline">Already purchased? Open your library</Link>
           <Link href="/browse" className="px-6 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
             Browse Books
           </Link>

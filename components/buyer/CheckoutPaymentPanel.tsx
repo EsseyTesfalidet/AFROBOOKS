@@ -30,7 +30,7 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
-  const { items, getTotal, clearCart } = useCartStore();
+  const { items, getTotal, clearCart, removeItem } = useCartStore();
   const userProfile = useAuthStore((s) => s.userProfile);
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const [cardName, setCardName] = useState('');
@@ -80,14 +80,24 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
           ...(gift ? { gift: { recipientEmail, message, attemptId: attemptId.current } } : {}),
         }),
       });
-      const { clientSecret, orderIds, amount, paymentStatus, error: apiError } = await res.json();
+      const { clientSecret, orderIds, amount, paymentStatus, error: apiError, code, ownedBookIds } = await res.json();
       if (!res.ok || apiError) {
+        if (!gift && code === 'BOOK_ALREADY_OWNED') {
+          for (const id of ownedBookIds ?? []) removeItem(id);
+          router.push('/library');
+          return;
+        }
+        if (code === 'PAYMENT_PENDING' && orderIds?.length) {
+          router.push(`/checkout/receipt?orders=${orderIds.join(',')}`);
+          return;
+        }
         setError(apiError || 'Unable to start checkout.');
         setLoading(false);
         return;
       }
-      if (gift && ['succeeded', 'processing'].includes(paymentStatus)) {
-        sessionStorage.removeItem(giftStorageKey!);
+      if (['succeeded', 'processing'].includes(paymentStatus)) {
+        if (gift) sessionStorage.removeItem(giftStorageKey!);
+        else clearCart();
         router.push(`/checkout/receipt?orders=${orderIds.join(',')}`);
         return;
       }
