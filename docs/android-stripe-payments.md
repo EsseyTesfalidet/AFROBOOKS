@@ -4,6 +4,10 @@ The owner confirmed on October 1, 2026 that readers should buy inside the Androi
 app and that market availability should follow a Stripe-compatible setup. A
 reader-only Android release is not the selected product direction.
 
+The owner also confirmed that the app is **not enrolled** in Google Play
+alternative billing yet. Enrollment is an outstanding owner action, not an
+unknown configuration state.
+
 The current version-2 bundle opens the live website in a Trusted Web Activity.
 Its Stripe checkout is not, by itself, a Google Play alternative-billing
 integration. No new billing-enabled AAB or Play publication is claimed.

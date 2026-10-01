@@ -38,6 +38,18 @@ repair release; this audit does not re-enable unfinished financial features.
 
 ## New verification and corrections
 
+- Release commit `796ca59` was built and promoted to `https://afrobs.com` as
+  Vercel deployment `dpl_8YZgm5DSFgCKu75E93KdaQH7RcV3`. Destination charges
+  are enabled in this deployment and in the production project configuration.
+- Live checks passed for payment/library authorization, publication filters,
+  bundle-price disclosure, PDF worker delivery, and portrait/landscape layouts.
+  Browser checks loaded all three deployed WOFF2 fonts, including Tigrinya,
+  without injected CSS or substituted assets; no browser exceptions occurred.
+- A fresh Stripe webhook probe returned HTTP 200 on the promoted deployment
+  at 04:23 UTC. Unsigned probe requests correctly returned HTTP 400.
+- The owner confirmed Google Play alternative billing is not enrolled yet.
+  Android purchases remain an unfinished release requirement.
+
 - 61 unit tests and 102 Firestore/Storage/Community integration tests passed.
   TypeScript checking passed. The integration rerun verified the test-project
   isolation correction described below.
