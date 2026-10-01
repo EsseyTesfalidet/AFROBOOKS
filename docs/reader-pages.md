@@ -65,3 +65,12 @@ largest text sizes. All 168 combinations passed viewport and text-fragment
 boundary checks; the original layout failed all 126 portrait combinations.
 Tigrinya and Arabic page-reader checks also passed, with all 30 paragraphs in
 each fixture reachable. No published chapter or purchase data was changed.
+
+Code `b892164` shipped as `dpl_Bk4BCBTL2Mfio5bPhP6znxY6nnvK` and was promoted
+to `afrobs.com`; the production build and domain alias check passed. On the actual
+deployed Firebase preview, the viewport now measured 327.59px inside a 390px phone.
+All toolbar/page controls stayed on-screen. Page turns, saved-page restoration,
+largest text, 320px width, landscape rotation and switching back to Scroll passed
+with unchanged text and no browser exceptions. Existing page-reader checks also
+passed for keyboard/swipes, chapter transitions and preview restrictions.
+Browser coverage used Edge/Chromium; native Safari was not exercised.
