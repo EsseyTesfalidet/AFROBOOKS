@@ -161,7 +161,7 @@ service cloud.firestore {
       allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']));
       allow create: if isAdmin();
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     // Community reads and writes go through validated server routes. Hidden

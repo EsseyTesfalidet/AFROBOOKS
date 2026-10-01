@@ -339,6 +339,10 @@ export async function markNotificationRead(notificationId: string): Promise<void
   await updateDoc(doc(db, 'notifications', notificationId), { isRead: true });
 }
 
+export async function deleteNotification(notificationId: string): Promise<void> {
+  await deleteDoc(doc(db, 'notifications', notificationId));
+}
+
 export async function markAllNotificationsRead(userId: string): Promise<void> {
   const q = query(
     collection(db, 'notifications'),

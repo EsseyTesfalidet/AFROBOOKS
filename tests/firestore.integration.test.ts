@@ -46,6 +46,22 @@ const adminApp = initializeApp({ projectId }, 'integration');
 const db = getFirestore(adminApp);
 const profile = { uid: 'reader', role: 'buyer', status: 'active', subscriptionStatus: 'none', subscriptionPlan: 'none', subscriptionId: null, stripeCustomerId: null, referralCredits: 0 };
 
+test('notification deletion is limited to its owner and admins and never deletes an order', async () => {
+  await db.doc('notifications/notice').set({ userId: 'reader', title: 'Purchase', isRead: false });
+  await db.doc('orders/purchase').set({ buyerId: 'reader', status: 'completed' });
+  await assertFails(deleteDoc(doc(env.unauthenticatedContext().firestore(), 'notifications/notice')));
+  await assertFails(deleteDoc(doc(env.authenticatedContext('author').firestore(), 'notifications/notice')));
+  const reader = env.authenticatedContext('reader').firestore();
+  await assertFails(updateDoc(doc(reader, 'notifications/notice'), { userId: 'author' }));
+  await assertSucceeds(deleteDoc(doc(reader, 'notifications/notice')));
+  assert.equal((await db.doc('notifications/notice').get()).exists, false);
+  assert.equal((await db.doc('orders/purchase').get()).data()?.status, 'completed');
+  await db.doc('notifications/notice').set({ userId: 'reader', title: 'Purchase', isRead: false });
+  await db.doc('users/reader').update({ status: 'suspended' });
+  await assertFails(deleteDoc(doc(reader, 'notifications/notice')));
+  await assertSucceeds(deleteDoc(doc(env.authenticatedContext('admin').firestore(), 'notifications/notice')));
+});
+
 test('suspended accounts lose paid content, profile writes and uploads even with an existing token', async () => {
   await db.doc('library/reader_book').set({ userId: 'reader', bookId: 'book' });
   const reader = env.authenticatedContext('reader').firestore();

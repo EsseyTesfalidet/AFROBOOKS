@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useAuthStore } from '@/store/authStore';
 import { markAllNotificationsRead, markNotificationRead, subscribeToNotifications } from '@/lib/firebase/firestore';
 import type { Notification } from '@/types/review';
+import DeleteNotificationButton from '@/components/notifications/DeleteNotificationButton';
 
 type NotificationsTab = 'overview' | 'unread' | 'all';
 
@@ -34,9 +35,13 @@ export default function NotificationsPage() {
   const userProfile = useAuthStore((state) => state.userProfile);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteError, setDeleteError] = useState('');
   const [tab, setTab] = useState<NotificationsTab>('overview');
 
   useEffect(() => {
+    setNotifications([]);
+    setDeleteError('');
+    setLoading(true);
     if (!userProfile?.uid) {
       setLoading(false);
       return;
@@ -238,6 +243,7 @@ export default function NotificationsPage() {
             </div>
           </div>
 
+          {deleteError && <p role="alert" className="text-sm text-red-300">{deleteError}</p>}
           {loading ? (
             <div className="flex justify-center py-20">
               <LoadingSpinner size={36} />
@@ -251,6 +257,7 @@ export default function NotificationsPage() {
           ) : (
             <div className="space-y-3">
               {feed.map((notification) => (
+                <div key={notification.id} className="relative">
                 <button
                   key={notification.id}
                   type="button"
@@ -262,7 +269,7 @@ export default function NotificationsPage() {
                       router.push(notification.actionUrl);
                     }
                   }}
-                  className="w-full rounded-2xl border p-4 text-left transition-colors"
+                  className="w-full rounded-2xl border p-4 pr-16 text-left transition-colors"
                   style={{
                     background: notification.isRead
                       ? 'linear-gradient(180deg, rgba(18,18,20,0.94) 0%, rgba(13,13,15,0.98) 100%)'
@@ -300,6 +307,10 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                 </button>
+                <div className="absolute right-2 top-2">
+                  <DeleteNotificationButton id={notification.id} title={notification.title} onError={setDeleteError} />
+                </div>
+                </div>
               ))}
             </div>
           )}

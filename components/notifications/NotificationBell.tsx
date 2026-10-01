@@ -15,6 +15,8 @@ export default function NotificationBell() {
   const count = unreadCount();
 
   useEffect(() => {
+    setNotifications([]);
+    setPanelOpen(false);
     if (!userProfile?.uid) return;
     const unsub = subscribeToNotifications(userProfile.uid, setNotifications);
     return unsub;

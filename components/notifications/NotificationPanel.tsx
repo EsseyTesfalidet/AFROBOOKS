@@ -16,6 +16,7 @@ interface Props {
 
 export default function NotificationPanel({ onClose, isMobile }: Props) {
   const [tab, setTab] = useState<'all' | 'unread'>('all');
+  const [deleteError, setDeleteError] = useState('');
   const { notifications, markRead, markAllRead } = useNotificationStore();
   const userProfile = useAuthStore((s) => s.userProfile);
 
@@ -140,6 +141,7 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
             ))}
           </div>
 
+          {deleteError && <p role="alert" className="px-5 py-2 text-sm text-red-300">{deleteError}</p>}
           {/* List — horizontal swipe switches tabs */}
           <div
             className="min-h-0 overflow-y-auto flex-1"
@@ -153,7 +155,7 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           >
             {recent.length === 0
               ? <p className="py-10 text-center text-sm text-[#666]">No notifications</p>
-              : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} />)}
+              : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} onError={setDeleteError} />)}
           </div>
 
           {/* Footer */}
@@ -199,10 +201,11 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
         ))}
       </div>
 
+      {deleteError && <p role="alert" className="px-4 py-2 text-sm text-red-300">{deleteError}</p>}
       <div className="min-h-0 max-h-72 flex-1 overflow-y-auto">
         {recent.length === 0
           ? <p className="py-8 text-center text-sm text-[#666]">No notifications</p>
-          : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} />)}
+          : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} onError={setDeleteError} />)}
       </div>
 
       <div className="shrink-0 border-t px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
