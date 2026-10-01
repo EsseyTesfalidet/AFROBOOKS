@@ -47,3 +47,21 @@ page controls.
   DNSFilter interception (its certificate was issued by `DNSFilter Root CA`).
   The public site remained accessible through the separate web fetch service.
   No certificate validation or network filtering was disabled.
+
+## Mobile width correction — October 1, 2026
+
+Long book titles could give the paged reader's implicit grid column a minimum
+width wider than the phone. This affected **Epistemic Apartheid: How Eurocentric
+Scholarship Rewrote Africa's Past**: on a 390px phone, the reading viewport grew
+to about 604px, taking text and toolbar/page controls beyond the screen edge.
+
+The page grid now has an explicit `minmax(0, 1fr)` column, and its toolbar,
+viewport and progress bar can shrink inside that column. Long title text uses
+the existing toolbar ellipsis. Scrolling mode and stored manuscripts are unchanged.
+
+Browser checks used a read-only snapshot of all 21 chapters with the actual
+reader and app styles at 320×568, 375×667, 390×844 and 844×390, with medium and
+largest text sizes. All 168 combinations passed viewport and text-fragment
+boundary checks; the original layout failed all 126 portrait combinations.
+Tigrinya and Arabic page-reader checks also passed, with all 30 paragraphs in
+each fixture reachable. No published chapter or purchase data was changed.

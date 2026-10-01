@@ -122,7 +122,9 @@
 }
 
 /* One reflowed column per page. Text remains selectable and accessible. */
-.reader-shell[data-reading-mode='pages'] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.reader-shell[data-reading-mode='pages'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+/* Long book titles must truncate inside the toolbar, not widen the page grid. */
+.reader-shell[data-reading-mode='pages'] > :is(.reader-toolbar, .reader-viewport, .reader-progress) { min-width: 0; }
 .reader-shell[data-reading-mode='pages'] .reader-toolbar { position: relative; grid-row: 1; }
 .reader-viewport[data-reading-mode='pages'] {
   --reader-page-gap: 32px;
