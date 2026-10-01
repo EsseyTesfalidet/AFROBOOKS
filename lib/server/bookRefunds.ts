@@ -1,9 +1,11 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import type Stripe from 'stripe';
+import { isSettledRefund } from '@/functions/src/stripe/refundSettlement';
+import { settleUnpaidRefunds } from './settleUnpaidRefunds';
 
 /** Synchronize existing refunds only. Never refund a payment or reverse a transfer. */
 export async function reconcileBookRefunds(db: Firestore, stripe: Stripe, paymentId: string) {
-  return db.runTransaction(async tx => {
+  const result = await db.runTransaction(async tx => {
     const markerRef = db.doc(`paymentFulfillments/${paymentId}`);
     const marker = await tx.get(markerRef);
     const orders = await tx.get(db.collection('orders').where('stripePaymentIntentId', '==', paymentId));
@@ -65,6 +67,8 @@ export async function reconcileBookRefunds(db: Firestore, stripe: Stripe, paymen
     // Hold royalties for financial reconciliation; already transferred money is
     // not silently reversed or treated as recovered by a database status change.
     for (const seller of sellers) {
+      if (full && orders.docs.filter(o => o.data().sellerId === seller.id).every(o => isSettledRefund(o.data()))) continue;
+      if (seller.data()?.payoutHoldReason && seller.data()?.payoutHoldReason !== 'payment_review') continue;
       if (seller.exists) tx.update(seller.ref, { payoutHoldReason: 'payment_review', payoutHoldAt: now });
       tx.set(db.doc(`payoutReviews/${seller.id}`), { sellerId: seller.id, reason: 'payment_review', status: 'open', updatedAt: now }, { merge: true });
     }
@@ -75,4 +79,9 @@ export async function reconcileBookRefunds(db: Firestore, stripe: Stripe, paymen
     }, { merge: true });
     return { status: refundStatus, orders: orders.size };
   });
+  if (result.status === 'full') {
+    const orders = await db.collection('orders').where('stripePaymentIntentId', '==', paymentId).get();
+    for (const sellerId of new Set(orders.docs.map(o => o.data().sellerId as string))) await settleUnpaidRefunds(db, stripe, sellerId);
+  }
+  return result;
 }

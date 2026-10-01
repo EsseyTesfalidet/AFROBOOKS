@@ -1,5 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { accountReadiness, type ConnectedAccount } from './accountReadiness';
+import { isSettledRefund } from './refundSettlement';
 
 export interface RoyaltyTransfer {
   id: string; amount: number; currency: string; destination: string | { id: string } | null;
@@ -54,6 +55,7 @@ export async function reconcileAuthor(db: Firestore, sellerId: string, gateway: 
   let reason = '';
   for (const order of orders.docs) {
     const data = order.data();
+    if (isSettledRefund(data)) continue;
     if (['refunded', 'disputed', 'needs_review'].includes(data.status)) { reason = 'payment_review'; break; }
     if (data.status !== 'completed') continue;
     if (!validAmount(data.sellerEarnings)) { reason = 'balance_mismatch'; break; }

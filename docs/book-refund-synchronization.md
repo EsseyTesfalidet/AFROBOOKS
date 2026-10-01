@@ -28,10 +28,21 @@ refund leaves an otherwise completed sale intact. If a previously confirmed full
 refund later fails, the order returns to review without automatically granting
 access or charging again.
 
-Refunds hold author payouts for financial review. This synchronization does not
-issue refunds, reverse transfers, or claim already transferred royalties have
-been recovered. Seller balance/counter reconciliation remains a separate financial
-review; admin order-based revenue reflects the changed order statuses.
+Refunds initially hold author payouts for financial review. A narrow automatic
+reconciliation clears a `payment_review` hold when Stripe confirms full refunds,
+the author's account is ready and belongs to that author, and neither payout
+reservations nor any Stripe transfers exist for that author. Other completed
+payments are also checked for refunds/disputes; balances must exactly match the
+ledger before or after removing known unpaid refund credits. Resolved orders get
+a server-owned settlement marker so retries and the royalty worker do not reapply
+the hold. Checkout also attempts this reconciliation for an existing review hold.
+
+Partial refunds, disputes, reserved/transferred royalties, account mismatches,
+unexplained balances and other hold reasons stay under review. This synchronization
+does not issue refunds, reverse transfers, or claim transferred royalties have
+been recovered. Historical sales counters are retained; admin order-based revenue
+reflects changed order statuses. Checkout identifies an internal payment review
+separately from incomplete Stripe onboarding.
 
 Regression coverage includes duplicate events, delayed fulfillment, full and
 partial bundles, pending/failed refunds, gift copies, independent ownership,

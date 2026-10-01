@@ -14,6 +14,8 @@ import { reconcileLibrary } from '../lib/server/reconcileLibrary';
 import { currentBookPayment } from '../lib/server/currentBookPayment';
 import { reconcileBookRefunds } from '../lib/server/bookRefunds';
 import { salesSummary } from '../lib/admin/metrics';
+import { settleUnpaidRefunds } from '../lib/server/settleUnpaidRefunds';
+import { reviewPaymentRoyalties } from '../lib/server/authorPayments';
 import type Stripe from 'stripe';
 import { assertFails } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -45,6 +47,107 @@ function refundFixture() {
   } as unknown as Stripe;
   return { state, stripe };
 }
+
+function settledRefundFixture() {
+  const state = { active: true, owner: 'author', transfer: false, refund: 1000, disputed: false, fail: false };
+  const stripe = {
+    accounts: { retrieve: async () => ({ id: 'acct_author', details_submitted: true, payouts_enabled: state.active, capabilities: { transfers: 'active' }, metadata: { userId: state.owner } }) },
+    paymentIntents: { retrieve: async (id: string) => ({ ...payment, id, amount_received: id === 'pi_new' ? 200 : 1000, status: 'succeeded', latest_charge: { id: 'ch_test', paid: true, amount_refunded: 0, disputed: state.disputed } }) },
+    refunds: { list: async function* (params: { payment_intent: string }) { if (state.fail) throw new Error('Stripe unavailable'); if (params.payment_intent !== 'pi_new') yield { status: 'succeeded', amount: state.refund }; } },
+    transfers: { list: async function* () { if (state.transfer) yield { id: 'tr_unknown' }; } },
+  } as unknown as Stripe;
+  return { state, stripe };
+}
+
+test('settled refunds with no author transfer clear the hold, preserve refunded access and allow new purchases', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author' });
+  const f = settledRefundFixture();
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  const seller = (await db.doc('sellers/author').get()).data()!;
+  assert.equal(seller.payoutHoldReason, undefined);
+  assert.equal(seller.totalEarnings, 0);
+  assert.equal(seller.pendingBalance, 0);
+  assert.equal((await db.doc('orders/order').get()).data()?.refundRoyaltyStatus, 'settled_no_transfer');
+  assert.equal((await db.doc('library/reader_book').get()).exists, false);
+  assert.equal((await db.doc('payoutReviews/author').get()).data()?.status, 'resolved');
+  const royalties = royaltyFixture();
+  assert.equal(await reconcileAuthor(db, 'author', royalties.gateway), true);
+  await reviewPaymentRoyalties(db, payment.id);
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, undefined);
+  const purchase = purchaseFixture();
+  await createBookPurchase(db, purchase.gateway, 'reader', purchase.drafts, purchase.params);
+  assert.equal(purchase.payments.size, 1);
+});
+
+test('uncredited historical refunds can be settled without reducing a zero author balance', async () => {
+  await seedOrder();
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author' });
+  await reconcileBookRefunds(db, settledRefundFixture().stripe, payment.id);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, undefined);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 0);
+});
+
+test('refund hold settlement refuses transferred funds, partial refunds, disputes and account mismatches', async () => {
+  await seedOrder();
+  await db.doc('orders/order').update({ status: 'refunded', refundStatus: 'full' });
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author', payoutHoldReason: 'payment_review' });
+  const f = settledRefundFixture();
+  for (const [key, value] of Object.entries({ active: false, owner: 'someone_else', transfer: true, refund: 100, disputed: true })) {
+    const saved = { ...f.state };
+    Object.assign(f.state, { [key]: value });
+    assert.equal(await settleUnpaidRefunds(db, f.stripe, 'author'), false, key);
+    assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, 'payment_review');
+    Object.assign(f.state, saved);
+  }
+  f.state.fail = true;
+  await assert.rejects(settleUnpaidRefunds(db, f.stripe, 'author'), /Stripe unavailable/);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, 'payment_review');
+});
+
+test('refund settlement preserves other holds, payout reservations and unexplained balances', async () => {
+  await seedOrder();
+  await db.doc('orders/order').update({ status: 'refunded', refundStatus: 'full' });
+  const seller = db.doc('sellers/author');
+  await seller.update({ stripeAccountId: 'acct_author', payoutHoldReason: 'account_mismatch' });
+  const f = settledRefundFixture();
+  await reconcileBookRefunds(db, f.stripe, payment.id);
+  assert.equal((await seller.get()).data()?.payoutHoldReason, 'account_mismatch');
+  await seller.update({ payoutHoldReason: 'payment_review' });
+  await db.doc('payouts/reserved').set({ sellerId: 'author', status: 'pending' });
+  assert.equal(await settleUnpaidRefunds(db, f.stripe, 'author'), false);
+  await db.doc('payouts/reserved').delete();
+  await seller.update({ totalEarnings: 99, pendingBalance: 99 });
+  assert.equal(await settleUnpaidRefunds(db, f.stripe, 'author'), false);
+  assert.equal((await seller.get()).data()?.totalEarnings, 99);
+});
+
+test('a new earned sale is preserved when unpaid refunded earnings are reconciled', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  await db.doc('orders/new').set({ buyerId: 'reader', sellerId: 'author', stripePaymentIntentId: 'pi_new', finalPrice: 200, status: 'completed', sellerEarnings: 200 });
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author', totalEarnings: 1000, pendingBalance: 1000 });
+  await reconcileBookRefunds(db, settledRefundFixture().stripe, payment.id);
+  assert.equal((await db.doc('sellers/author').get()).data()?.totalEarnings, 200);
+  assert.equal((await db.doc('sellers/author').get()).data()?.pendingBalance, 200);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, undefined);
+});
+
+test('an unrelated disputed completed sale keeps the author held even when old refunds are settled', async () => {
+  await seedOrder();
+  await db.doc('orders/order').update({ status: 'refunded', refundStatus: 'full' });
+  await db.doc('orders/new').set({ buyerId: 'reader', sellerId: 'author', stripePaymentIntentId: 'pi_new', finalPrice: 200, status: 'completed', sellerEarnings: 200 });
+  await db.doc('sellers/author').update({ stripeAccountId: 'acct_author', totalEarnings: 200, pendingBalance: 200, payoutHoldReason: 'payment_review' });
+  const f = settledRefundFixture();
+  const retrieve = f.stripe.paymentIntents.retrieve;
+  f.stripe.paymentIntents.retrieve = (async (id: string) => {
+    const result = await retrieve(id);
+    if (id === 'pi_new') (result.latest_charge as Stripe.Charge).disputed = true;
+    return result;
+  }) as Stripe['paymentIntents']['retrieve'];
+  assert.equal(await settleUnpaidRefunds(db, f.stripe, 'author'), false);
+  assert.equal((await db.doc('sellers/author').get()).data()?.payoutHoldReason, 'payment_review');
+});
 
 test('full refund removes paid access, corrects admin revenue and survives duplicate and late success events', async () => {
   await seedOrder();

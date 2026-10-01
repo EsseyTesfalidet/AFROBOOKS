@@ -3,6 +3,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { accountReadiness } from '@/functions/src/stripe/accountReadiness';
 import { stripeRoyaltyGateway } from '@/functions/src/stripe/royaltyGateway';
 import { holdAuthorPayouts, processAuthorRoyalties } from '@/functions/src/stripe/authorRoyalties';
+import { isSettledRefund } from '@/functions/src/stripe/refundSettlement';
 
 export { accountReadiness };
 
@@ -21,7 +22,7 @@ export async function sendBookRoyalties(db: Firestore, stripe: Stripe, paymentId
 
 export async function reviewPaymentRoyalties(db: Firestore, paymentId: string) {
   const orders = await db.collection('orders').where('stripePaymentIntentId', '==', paymentId).get();
-  for (const seller of new Set(orders.docs.map(order => order.data().sellerId as string))) {
+  for (const seller of new Set(orders.docs.filter(order => !isSettledRefund(order.data())).map(order => order.data().sellerId as string))) {
     await holdAuthorPayouts(db, seller, 'payment_review');
   }
 }
