@@ -108,3 +108,24 @@ unpaid-refund reconciliation above fixes this case and records a resolved review
 - Replaying an existing live refund webhook returned HTTP 200 at 05:16 UTC.
   A subsequent read-only check confirmed the author remained ready, with no hold,
   and both refund settlement markers intact.
+
+## Follow-up: admin settlement and reversed destination payments
+
+- Commit `002ac7d` is deployed at `https://afrobs.com` as
+  `dpl_9EJuZQPs5s4zapUXEtoX4gJnLHBU`. The scheduled royalty worker is ACTIVE at
+  version 7. Destination-charge routing remains enabled.
+- All 62 unit tests passed. The full integration run passed 123 of 124 tests;
+  one existing concurrent-fulfillment test encountered an emulator closed-transaction
+  error. All seven concurrency tests passed on the focused rerun, including that
+  test. All five new settlement regressions passed in the full run.
+- TypeScript, the Functions build, the production web build and browser checks
+  for settlement success, blocked results, retry, keyboard access and mobile layout
+  passed. The live admin endpoint rejects unsigned requests with HTTP 401.
+- Stripe confirmed a third full refund with a fully reversed destination transfer.
+  The live ledger was reconciled, the payout marked reversed, and the author's
+  hold cleared. Worker reconciliation passed with zero earned/outstanding balance.
+  Stripe retains a $1.47 application fee, which is recorded and shown separately.
+  No new payment, refund or transfer was issued.
+- Replaying the existing refund webhook returned HTTP 200 at 06:32 UTC on the new
+  deployment. A subsequent read-only check found no author hold, all three refund
+  settlement markers intact, and no purchased library entries tied to those refunds.
