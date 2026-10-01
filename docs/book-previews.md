@@ -37,3 +37,20 @@ result being presented as the current preview setting.
 The live audit found **Nature Of Christ** with no preview chapter selected.
 **ከንፈር ሄርሜላ** had been updated to 54 reading sections with one free preview.
 These are author content settings, not a language or Stripe limitation.
+
+## Release — October 1, 2026
+
+- Code `4c85711` deployed as `dpl_9xEigthFXSmxvLA6pReJyk3ojNjY`, promoted
+  to `afrobs.com`; the production build and domain alias checks passed.
+- During verification, the author updated **Nature Of Christ** to 12 sections
+  with one preview. Its deployed sample and the Tigrinya title's deployed sample
+  both passed, along with an older English title. The older title without any
+  preview correctly showed no sample link on mobile or desktop; a direct sample
+  URL explained that no free preview was available.
+- Actual Firebase aggregation queries, sample chapter loading, paid-chapter
+  exclusion, page turns and saved sample positions passed in the deployed browser.
+  The reading-section browser regression also passed. No publication or preview
+  flags were changed by the audit or automated tests.
+- Browser coverage used Edge/Chromium and the authorized deployment URL because
+  of the workspace's documented public-domain DNSFilter restriction. Native Safari
+  was not exercised.
