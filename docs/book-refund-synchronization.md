@@ -62,3 +62,23 @@ updates the ownership control without a reload.
   `dpl_DML1GeSPtjwMqoViK6goMMs2rJWC`. Live payment/library authorization checks
   passed. An existing Stripe `charge.refunded` event was replayed and returned
   HTTP 200 at 04:36 UTC on this deployment.
+
+## Follow-up: enabled author blocked by old refund hold
+
+The initial refund synchronization correctly removed purchased access but placed
+an author-wide hold even when no author transfer had occurred. Checkout then
+misreported that internal hold as unfinished Stripe onboarding. The verified
+unpaid-refund reconciliation above fixes this case and records a resolved review.
+
+- Commit `b20dba5` is deployed as `dpl_34pjfSktbWWkmmcJUV9mfghGYrho`.
+- The scheduled royalty worker was updated to version 6 and is ACTIVE.
+- 61 unit tests and 118 full integration tests passed. Nine focused tests then
+  verified the final reconciliation, including an unrelated disputed purchase.
+  TypeScript, the Functions build and live authorization checks passed.
+- The affected live author was verified active in Stripe. Two fully refunded
+  orders had no payout reservations or transfers. The internal hold was resolved,
+  and worker reconciliation passed with zero outstanding/earned balance.
+  No charge, refund, bank payout or transfer was created.
+- Replaying an existing live refund webhook returned HTTP 200 at 05:16 UTC.
+  A subsequent read-only check confirmed the author remained ready, with no hold,
+  and both refund settlement markers intact.
