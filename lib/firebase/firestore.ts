@@ -41,14 +41,15 @@ export async function getLiveBooks(constraints: QueryConstraint[] = []): Promise
 
 export function subscribeLiveBooks(onBooks: (books: Book[]) => void, onError: () => void) {
   let active = true;
-  let serverConfirmed = false;
+  // A listener already fetches the server snapshot. Do not issue a second full
+  // catalog query just to detect a failed initial connection.
+  const deadline = setTimeout(() => { if (active) onError(); }, 15000);
   const stop = onSnapshot(query(collection(db, 'books'), where('status', '==', 'live')), { includeMetadataChanges: true }, snapshot => {
     if (!active || snapshot.metadata.fromCache) return;
-    serverConfirmed = true;
+    clearTimeout(deadline);
     onBooks(snapshot.docs.map(item => ({ ...item.data(), id: item.id } as Book)));
-  }, () => { if (active) onError(); });
-  getLiveBooks().catch(() => { if (active && !serverConfirmed) onError(); });
-  return () => { active = false; stop(); };
+  }, () => { clearTimeout(deadline); if (active) onError(); });
+  return () => { active = false; clearTimeout(deadline); stop(); };
 }
 
 export async function getBook(bookId: string): Promise<Book | null> {

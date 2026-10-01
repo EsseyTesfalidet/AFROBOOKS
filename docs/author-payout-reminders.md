@@ -8,6 +8,12 @@ Both notifications and emails point to `/dashboard?profile=payout`. This destina
 
 ## Configuration and release
 
+October 1 verification: the function and hourly scheduler are deployed and active.
+Both secret bindings exist; the configured sender is `AfroBooks <noreply@afrobs.com>`
+and `afrobs.com` is verified by Resend. Ten reminder emails have provider acceptance
+records. This is not inbox-delivery confirmation. The instructions below are for
+configuring another deployment, not an outstanding production setup task.
+
 The function is added to the source exports; implementing this feature does not deploy it or send messages.
 
 Before deploying, configure these in the **Firebase Functions** environment (Vercel variables alone do not configure scheduled functions):

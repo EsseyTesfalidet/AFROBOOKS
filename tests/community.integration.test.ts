@@ -9,7 +9,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { communityFeed, communityThread, mutateCommunity } from '../lib/server/community';
 
 assert.match(process.env.FIRESTORE_EMULATOR_HOST ?? '', /^(127\.0\.0\.1|localhost):\d+$/, 'Use the local Firestore emulator.');
-const projectId = 'demo-afrobooks-security';
+// Keep this suite isolated when it runs alongside the core rules tests.
+const projectId = 'demo-afrobooks-community';
 const app = initializeApp({ projectId }, 'community-tests');
 const db = getFirestore(app);
 let env: RulesTestEnvironment;

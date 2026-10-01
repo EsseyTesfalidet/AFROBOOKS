@@ -14,7 +14,23 @@ AfroBooks uses Stripe Elements and PaymentIntents, not Checkout Sessions, for bo
 
 ## Activation
 
-October 1, 2026 update: the updated Firebase royalty worker is deployed and active, and real Stripe webhook delivery now returns HTTP 200 after the endpoint/signing-secret repair. `platformSettings/global.automatedPayoutsEnabled` is true. `STRIPE_DESTINATION_CHARGES_ENABLED` remains false pending the eligible-account Stripe test; the existing separate-charge/automatic-transfer flow is enabled. See `stripe-webhook-incident.md` for verified evidence and the inspected payments' status.
+October 1 completion update: the real Stripe test-mode destination payment passed
+using a synthetic Accounts v2 recipient with active transfers. A $10 payment
+produced the expected $8 author net, verified against the transfer and application
+fee. Test reversal and cleanup passed. Bank payout delivery was not tested.
+The production flag has now been set to true for the completion release, with
+the existing readiness, country and single-author checks unchanged. A fresh real
+webhook probe returned 200 and the royalty worker remains active. No historical
+payments or refunds were changed. The first real, non-refunded sale still needs
+operational confirmation; no live charge was created to test this release.
+
+Repeat the guarded test with `node --import tsx scripts/test-destination-payment.ts`.
+It requires a test key in `.env.local`, creates only synthetic Stripe resources,
+and closes its temporary account. Do not use real customer details.
+
+Earlier October 1 status: the updated Firebase royalty worker was active and the
+webhook repaired, while the destination flag remained off pending the Stripe test.
+That test and configuration step are now complete as described above.
 
 New destination charges default to **off**. Both `STRIPE_DESTINATION_CHARGES_ENABLED=true` in the server environment and `platformSettings/global.automatedPayoutsEnabled=true` are required. Disabling the flag affects new checkouts; already-created PaymentIntents retain their routing.
 

@@ -29,6 +29,13 @@ Store artwork: `public/pwa-512x512.png` and `public/brand/afrobooks-feature-grap
 
 ## Payment release prerequisite
 
+October 1 audit: the owner wants purchases inside Android using Stripe. The
+Play-specific integration is still unfinished; see [Android Stripe payments](android-stripe-payments.md)
+for verified prerequisites and the required work. The Google Play Android Developer
+API currently returns `403 accessNotConfigured`; Google's app-signing certificate
+fingerprint has been requested. Version 2 remains the existing wrapper, not a
+new billing-enabled release.
+
 The current site uses Stripe for ebook purchases. This wrapper does **not** add Google Play Billing or enroll the app in an alternative-billing program. Google Play's digital-content payment rules apply to the app and its website experience. Determine and implement the applicable billing approach for the intended distribution regions before public release; producing a valid bundle does not establish payment-policy approval.
 
 ## Preserve the signing material

@@ -2,6 +2,15 @@
 
 Security release: `e339db2`, deployed to https://afrobs.com. This review identifies the next performance changes; it does not implement pagination or claim a measured speed improvement.
 
+October 1 follow-up: removed the duplicate full-catalog fetch; the shared live
+listener now handles results/errors, with a 15-second initial timeout and retry.
+Converted DM Sans, Manrope and Noto Sans Ethiopic to WOFF2 without subsetting:
+1,548,032 bytes of original files become 539,600 bytes, with identical Unicode
+coverage and glyph widths. Regenerate with `scripts/compress-fonts.py` and
+FontTools/Brotli. Reader typography and the existing Google-font families remain
+unchanged. Pagination, cover variants and layout-shift tuning below are still
+future work; no new measured LCP/CLS improvement is claimed.
+
 One fresh Chromium visit to `/browse`, 390 × 844 viewport, on an unthrottled development machine recorded approximately 1.26 s LCP, 0.234 cumulative layout shift, 39 resource requests and 1.08 MB of same-origin transferred resources. These are a single lab sample, not representative mobile or real-user percentiles. Cross-origin transfer sizes may be unavailable. The page had no horizontal overflow or JavaScript exceptions.
 
 Priorities:
