@@ -33,3 +33,17 @@ page controls.
   screens retained an accessible retry button.
 - Browser checks used Chromium/Edge with mobile, portrait and landscape viewports;
   account and chapter responses were fixtures. Native Safari was not exercised.
+
+## Release — October 1, 2026
+
+- Code commit `a3f1ff4` deployed as `dpl_GnvR3s1JbDZ2P7VjpNdbRQEw32CV`
+  and promoted to `afrobs.com`. Production build, TypeScript and changed-file lint
+  passed. The additional page-width regression passed with all five reader tests.
+- The deployed build passed browser checks against an actual Firebase book
+  preview: page controls, saved-page reopening, rotation and switching to scroll,
+  with no browser exceptions. Deployment protection was accessed using the
+  authenticated Vercel CLI; no reader access checks were bypassed.
+- The final browser check on the public domain was blocked by this workspace's
+  DNSFilter interception (its certificate was issued by `DNSFilter Root CA`).
+  The public site remained accessible through the separate web fetch service.
+  No certificate validation or network filtering was disabled.
