@@ -22,7 +22,15 @@ Previews, chapter editing and reading select text direction automatically. A sel
 
 ## Limitations
 
-Images, tables, styling and fixed page designs are not recreated in the chapter editor. Headers, page numbers and column order need author review. Text mode directs image-only PDFs to the OCR option. Mixed PDFs report pages without extractable text. Password-protected, invalid and oversized PDFs show actionable errors. Damaged replacement characters are rejected.
+Images, tables, styling and fixed page designs are not recreated in the chapter editor. Ambiguous headers, page numbers and column order still need author review. Text mode directs image-only PDFs to the OCR option. Mixed PDFs report pages without extractable text. Password-protected, invalid and oversized PDFs show actionable errors. Damaged replacement characters are rejected.
+
+## PDF cleanup
+
+**Clean PDF text** defaults on for new PDF imports and OCR. It removes corroborated running headers/footers and sequential page numbers, including Ethiopic, Arabic-Indic, Persian and Roman numbering. Text PDFs use the physical top/bottom 9% of each page, even when PDF objects are stored out of reading order. OCR requires isolated edge lines and stronger repetition evidence. Sparse pages, body numbers, footnotes, chapter headings and ambiguous repeated body lines are retained. Short PDFs and unusual layouts can retain ambiguous page furniture intentionally.
+
+Cleanup removes nonprinting control artifacts and soft hyphens and expands Latin typography ligatures such as `ﬁ`. It retains Ethiopic punctuation, Arabic joining/direction controls, accents, mathematical symbols, emoji and meaningful punctuation. It does not guess missing glyphs or invent corrected OCR words. It cannot guarantee accurate extraction from every scanned or malformed PDF.
+
+The import preview reports the number of removed lines. Turn cleanup off and reimport to compare with the original extraction. Nothing is saved until the author accepts and saves the chapters. Existing published books are not rewritten automatically: their authors can reimport the source PDF, review the cleaned chapters and save. The magazine PDF viewer continues displaying the original page design.
 
 ## Verification
 

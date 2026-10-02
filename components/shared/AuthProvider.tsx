@@ -6,6 +6,7 @@ import { auth } from '@/lib/firebase/config';
 import { getUserProfile } from '@/lib/firebase/auth';
 import { clearAuthSession, setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import { useAuthStore } from '@/store/authStore';
+import { waitForAuthFlow } from '@/lib/auth/flow';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setFirebaseUser, setUserProfile, setLoading, reset } = useAuthStore();
@@ -29,6 +30,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     async function init() {
       unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+        await waitForAuthFlow();
+        if (auth.currentUser !== firebaseUser) return;
         if (firebaseUser) {
           try {
             const profile = await getUserProfile(firebaseUser.uid);

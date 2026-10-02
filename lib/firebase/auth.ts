@@ -95,7 +95,7 @@ export async function logIn(email: string, password: string): Promise<User> {
   return credential.user;
 }
 
-export async function signInWithGoogle(): Promise<User | null> {
+export async function signInWithGoogle(): Promise<{ user: User; isNewUser: boolean } | null> {
   let user: User | null = null;
 
   try {
@@ -174,7 +174,7 @@ export async function signInWithGoogle(): Promise<User | null> {
     });
   }
 
-  return user;
+  return { user, isNewUser: !snapshot.exists() };
 }
 
 export async function logOut(): Promise<void> {

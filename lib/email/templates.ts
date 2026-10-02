@@ -24,8 +24,14 @@ export function purchaseReceiptEmail(params: {
   totalCents: number;
   orderId: string;
   isGift?: boolean;
-}): { subject: string; html: string } {
+}): { subject: string; html: string; text: string } {
   const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
+  let origin = 'https://afrobs.com';
+  try {
+    const configured = new URL(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || origin);
+    if (configured.protocol === 'https:' && !configured.username && !configured.password) origin = configured.origin;
+  } catch { /* Keep the canonical public URL. */ }
+  const libraryUrl = `${origin}/${params.isGift ? 'gifts' : 'library'}`;
   const itemRows = params.items.map((i) => `
     <tr>
       <td style="padding:8px 0;color:#f5f2eb;">${escapeHtml(i.title)}</td>
@@ -36,6 +42,7 @@ export function purchaseReceiptEmail(params: {
 
   return {
     subject: `Your AfroBooks receipt — Order #${params.orderId.slice(-6).toUpperCase()}`,
+    text: `Thanks, ${params.buyerName}!\n\nPayment received (USD).\nReference: ${params.orderId}\n\n${params.items.map(i => `${i.title} — ${i.authorName}: ${formatCents(i.priceCents)}`).join('\n')}\n\nTotal: ${formatCents(params.totalCents)} USD\n\n${params.isGift ? 'View your gifts' : 'Read in your library'}: ${libraryUrl}`,
     html: `
       <div style="font-family:'DM Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0e0e0e;color:#f5f2eb;padding:40px 32px;border-radius:16px;">
         <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroBooks</h1>
@@ -58,7 +65,8 @@ export function purchaseReceiptEmail(params: {
             </tr>
           </tfoot>
         </table>
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL}/${params.isGift ? 'gifts' : 'library'}" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">${params.isGift ? 'View My Gifts' : 'Read in Library'}</a>
+        <p style="color:#aaa;font-size:12px;">Paid in USD · Payment reference: ${escapeHtml(params.orderId)}</p>
+        <a href="${escapeHtml(libraryUrl)}" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">${params.isGift ? 'View My Gifts' : 'Read in Library'}</a>
         <p style="margin-top:32px;color:#444;font-size:12px;">AfroBooks · This is an automated receipt.</p>
       </div>
     `,

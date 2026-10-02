@@ -20,6 +20,7 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
   const [pending, setPending] = useState<ImportedManuscript | null>(null);
   const [mode, setMode] = useState<'text' | 'ocr'>('text');
   const [lineBreaks, setLineBreaks] = useState<'paragraphs' | 'preserve'>('paragraphs');
+  const [cleanPdf, setCleanPdf] = useState(true);
   const [readingSections, setReadingSections] = useState<'auto' | 'off'>('auto');
   const [sectionWords, setSectionWords] = useState(1500);
   const [ocrLanguage, setOcrLanguage] = useState<OcrLanguage>(() => OCR_LANGUAGES.find(item => item.label === language || (language === 'Chinese' && item.code === 'chi_sim'))?.code ?? 'eng');
@@ -32,7 +33,7 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
     setBusy(true); onBusy(true); setError(''); setPending(null); setProgress('Reading manuscript…');
     controller.current = new AbortController();
     try {
-      const result = await importManuscriptFile(file, message => { if (active.current) setProgress(message); }, { mode, lineBreaks, readingSections, sectionWords, language: ocrLanguage, signal: controller.current.signal });
+      const result = await importManuscriptFile(file, message => { if (active.current) setProgress(message); }, { mode, cleanPdf, lineBreaks, readingSections, sectionWords, language: ocrLanguage, signal: controller.current.signal });
       if (active.current) setPending(result);
     } catch (cause) {
       if (active.current) setError(cause instanceof Error && cause.name === 'AbortError' ? 'Import cancelled. Your existing chapters are unchanged.' : cause instanceof Error ? cause.message : 'This manuscript could not be read.');
@@ -49,6 +50,7 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
     <label className="block text-sm text-[#ddd]">Import method<select aria-label="Import method" value={mode} disabled={busy} onChange={event => { setMode(event.target.value as 'text' | 'ocr'); setPending(null); setError(''); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white"><option value="text">Text PDF / .txt / .md</option><option value="ocr">Scanned PDF / OCR</option></select></label>
     <label className="block text-sm text-[#ddd]">Text layout<select aria-label="Manuscript text layout" value={lineBreaks} disabled={busy} onChange={event => { setLineBreaks(event.target.value as 'paragraphs' | 'preserve'); setPending(null); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white"><option value="paragraphs">Flow as paragraphs</option><option value="preserve">Keep original lines (poetry / verse)</option></select></label>
     <p className="text-xs leading-relaxed text-[#aaa]">Paragraphs join wrapped lines and keep blank lines as paragraph breaks. Choose original lines when each line ending is intentional.</p>
+    <label className="flex items-start gap-3 text-sm text-[#ddd]"><input type="checkbox" checked={cleanPdf} disabled={busy} onChange={event => { setCleanPdf(event.target.checked); setPending(null); }} className="mt-1 h-5 w-5 shrink-0 accent-[#e8442a]" /><span>Clean PDF text<span className="mt-1 block text-xs leading-relaxed text-[#aaa]">Remove likely page numbers, repeated page headers and hidden control characters. Keep language-specific letters and punctuation. Applies to text PDFs and OCR; review before accepting.</span></span></label>
     <label className="block text-sm text-[#ddd]">When no chapter headings are found<select aria-label="Manuscript chapter organization" value={readingSections} disabled={busy} onChange={event => { setReadingSections(event.target.value as 'auto' | 'off'); setPending(null); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white"><option value="auto">Suggest reading sections</option><option value="off">Keep one section</option></select></label>
     {readingSections === 'auto' && <label className="block text-sm text-[#ddd]">Approximate section length<select aria-label="Import section length" value={sectionWords} disabled={busy} onChange={event => { setSectionWords(Number(event.target.value)); setPending(null); }} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white">{SECTION_LENGTHS.map(size => <option key={size} value={size}>{size.toLocaleString()} words</option>)}</select></label>}
     {mode === 'ocr' && <div className="space-y-3">

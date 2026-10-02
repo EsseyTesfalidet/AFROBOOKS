@@ -9,6 +9,48 @@ import { validateManuscriptFile } from '../lib/publishing/manuscriptImport';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 import { abortable, createOcrWorker, OCR_LANGUAGES, type OcrLanguage } from '../lib/publishing/ocr';
 import { sectionWordCount, splitReadingSections } from '../lib/publishing/readingSections';
+import { cleanPdfPages, cleanPdfCharacters } from '../lib/publishing/pdfCleanup';
+
+test('PDF cleanup removes corroborated margin page numbers and running titles in multiple scripts', () => {
+  for (const numbers of [['1', '2', '3'], ['١', '٢', '٣'], ['۱', '۲', '۳'], ['፩', '፪', '፫'], ['i', 'ii', 'iii']]) {
+    const pages = numbers.map(number => ({
+      text: `ታሪክ ናይ ህይወት\n\nሰላም ዓለም።\nጽሑፍ ፣ ፤ ፦\nትግርኛ።\n\n${number}`,
+      margins: { top: ['ታሪክ ናይ ህይወት'], bottom: [number] },
+    }));
+    const result = cleanPdfPages(pages);
+    assert.equal(result.removedLines, 6);
+    assert.equal(result.text, Array(3).fill('ሰላም ዓለም።\nጽሑፍ ፣ ፤ ፦\nትግርኛ።').join('\n\n'));
+    assert.equal(cleanPdfPages(pages, false).text, pages.map(page => page.text).join('\n\n'));
+  }
+});
+
+test('PDF cleanup protects body numbers, chapter headings, sparse pages, symbols, footnotes and poetry', () => {
+  const pages = Array.from({ length: 3 }, () => ({
+    text: 'ምዕራፍ ፩\n\n2026\n1. A numbered list\n¹ A footnote\n***\nH₂O + x² = 5\nمرحبا، بالعالم؟\n中文。\n። ፡ ፤ ፥ ፦ ፧ ፨',
+    margins: { top: ['ምዕራፍ ፩'], bottom: [] },
+  }));
+  assert.equal(cleanPdfPages(pages).text, pages.map(p => p.text).join('\n\n'));
+  assert.equal(cleanPdfPages([{ text: 'Chapter 1\n\n1', margins: { top: ['Chapter 1'], bottom: ['1'] } }]).removedLines, 0);
+  // Repeated body prose near an OCR page edge without blank separation is kept.
+  assert.equal(cleanPdfPages(Array(3).fill({ text: 'Refrain\nVerse one\nVerse two\nRefrain' })).removedLines, 0);
+  assert.equal(cleanPdfCharacters('ሰላም። می\u200Cروم \u200Fعربي Café 🌍 ﬁne\u0000 co\u00AD\noperate'), 'ሰላም። می\u200Cروم \u200Fعربي Café 🌍 fine cooperate');
+});
+
+test('OCR cleanup requires isolated repeated page-edge artifacts and retains paragraph boundaries', () => {
+  const pages = ['፩', '፪', '፫'].map(n => ({ text: `ታሪክ\n\nሰላም ዓለም።\nትግርኛ።\n\nካልኣይ ሕጡብ።\n\n${n}` }));
+  const result = cleanPdfPages(pages);
+  assert.equal(result.removedLines, 6);
+  assert.match(result.text, /ትግርኛ።\n\nካልኣይ ሕጡብ።/);
+  assert.equal(cleanPdfPages([{ text: 'Title\nBody\nBody again\nLast sentence\nPage 2', margins: { top: [], bottom: ['Page 2'] } }]).removedLines, 1);
+});
+
+test('physical PDF margins override object order without deleting matching body lines', () => {
+  const pages = [1, 2, 3].map(n => ({ text: `First body line\nSecond body line\nThird body line\nRunning title\n${n}`, margins: { top: ['Running title'], bottom: [String(n)] } }));
+  assert.equal(cleanPdfPages(pages).removedLines, 6);
+  const ambiguous = pages.map(p => ({ ...p, text: `Running title\n${p.text}` }));
+  assert.equal(cleanPdfPages(ambiguous).removedLines, 3);
+  assert.equal(cleanPdfPages(ambiguous).text.match(/Running title/g)?.length, 6);
+});
 
 const sectionFixture = (content: string, isPreview = true) => ({ chapterNumber: 1, title: 'An author title', content, wordCount: sectionWordCount(content), isPreview });
 const sectionParagraph = (index: number, size = 260) => `<p><strong>Paragraph ${index}</strong> ${'story '.repeat(size)}</p>`;

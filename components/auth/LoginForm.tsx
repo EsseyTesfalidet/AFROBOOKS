@@ -15,6 +15,8 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
 import type { User as UserProfile } from '@/types/user';
 import { loginDestination, publicReturnPath } from '@/lib/utils/loginDestination';
+import { queueWelcome } from '@/lib/auth/welcome';
+import { beginAuthFlow } from '@/lib/auth/flow';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -27,6 +29,7 @@ export default function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [authenticating, setAuthenticating] = useState(false);
   const [signupHref, setSignupHref] = useState('/signup');
   useEffect(() => {
     const destination = publicReturnPath(new URLSearchParams(window.location.search).get('redirect'));
@@ -62,10 +65,10 @@ export default function LoginForm() {
   }
 
   useEffect(() => {
-    if (!loading && userProfile) {
+    if (!authenticating && !loading && userProfile) {
       router.replace(loginDestination(userProfile, new URLSearchParams(window.location.search).get('redirect')));
     }
-  }, [loading, userProfile, router]);
+  }, [authenticating, loading, userProfile, router]);
 
   const {
     register,
@@ -74,18 +77,22 @@ export default function LoginForm() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   async function onSubmit({ email, password }: FormData) {
+    const finish = beginAuthFlow();
+    setAuthenticating(true);
     setError('');
     try {
       const fbUser = await logIn(email, password);
       const profile = await getAuthorizedProfile(fbUser.uid);
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
+      queueWelcome(fbUser.uid, 'signin');
       setFirebaseUser(fbUser);
       setUserProfile(profile);
       setLoading(false);
       setClientAuthHints(fbUser.uid, profile.role ?? 'buyer');
       finishAuthNavigation(profile);
     } catch (e: unknown) {
+      setAuthenticating(false);
       const msg = e instanceof Error ? e.message : '';
       if (msg === 'ACCOUNT_SUSPENDED') {
         await clearBlockedSession('This account is suspended. Contact support for help.');
@@ -100,24 +107,31 @@ export default function LoginForm() {
       } else {
         setError('Something went wrong. Try again.');
       }
+    } finally {
+      finish();
     }
   }
 
   async function handleGoogle() {
+    const finish = beginAuthFlow();
+    setAuthenticating(true);
     setGoogleLoading(true);
     setError('');
     try {
-      const user = await signInWithGoogle();
-      if (!user) return;
+      const result = await signInWithGoogle();
+      if (!result) return;
+      const { user, isNewUser } = result;
       const profile = await getAuthorizedProfile(user.uid);
       const token = await user.getIdToken();
       await syncAuthSession(token, user.uid);
+      queueWelcome(user.uid, isNewUser ? 'signup' : 'signin');
       setFirebaseUser(user);
       setUserProfile(profile);
       setLoading(false);
       setClientAuthHints(user.uid, profile.role ?? 'buyer');
       finishAuthNavigation(profile);
     } catch (e: unknown) {
+      setAuthenticating(false);
       setGoogleLoading(false);
       const message = e instanceof Error ? e.message : '';
       const code =
@@ -138,6 +152,8 @@ export default function LoginForm() {
       } else {
         setError('Google sign-in failed. Check Firebase Auth provider and authorized domains.');
       }
+    } finally {
+      finish();
     }
   }
 
@@ -221,7 +237,7 @@ export default function LoginForm() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || authenticating}
               className="button-primary flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? <LoadingSpinner size={16} color="#000" /> : null}
@@ -238,7 +254,7 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={handleGoogle}
-            disabled={googleLoading}
+            disabled={googleLoading || authenticating}
             className="button-secondary flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
           >
             {googleLoading ? (

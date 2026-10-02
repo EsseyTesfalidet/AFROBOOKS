@@ -1,5 +1,6 @@
 import type { TextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
 import { abortable, createOcrWorker, type PdfImportOptions } from './ocr';
+import { cleanPdfPages, type PdfTextPage } from './pdfCleanup';
 
 // Keep the PDF's text order; use baseline changes and larger gaps to recover
 // lines and paragraphs. Complex columns still need an author's review.
@@ -63,7 +64,7 @@ export async function extractPdfManuscript(file: File, onProgress?: (message: st
     const maxPages = ocrMode ? 50 : 500;
     if (document.numPages > maxPages) throw new Error(`Import up to ${maxPages} PDF pages at a time${ocrMode ? ' with OCR' : ''}. Split this PDF into smaller files.`);
     if (ocrMode) ocr = await createOcrWorker(options.language ?? 'eng', controller.signal, onProgress);
-    const pages: string[] = [];
+    const pages: PdfTextPage[] = [];
     const emptyPages: number[] = [];
     const uncertainPages: number[] = [];
     let characters = 0;
@@ -72,6 +73,7 @@ export async function extractPdfManuscript(file: File, onProgress?: (message: st
       onProgress?.(`${ocrMode ? 'Recognizing scanned' : 'Reading PDF'} page ${number} of ${document.numPages}…`);
       const page = await abortable(document.getPage(number), controller.signal);
       let text: string;
+      let margins: PdfTextPage['margins'];
       if (ocr) {
         const base = page.getViewport({ scale: 1 });
         const scale = Math.min(3, 4096 / Math.max(base.width, base.height), Math.sqrt(4_000_000 / (base.width * base.height)));
@@ -88,19 +90,29 @@ export async function extractPdfManuscript(file: File, onProgress?: (message: st
       } else {
         const content = await abortable(page.getTextContent(), controller.signal);
         text = pdfTextItemsToText(content.items);
+        if (page.rotate === 0) {
+          const [, bottom, , top] = page.view;
+          const edge = (top - bottom) * 0.09;
+          const inMargin = (side: 'top' | 'bottom') => pdfTextItemsToText(content.items.filter(item =>
+            'str' in item && (side === 'top' ? item.transform[5] >= top - edge : item.transform[5] <= bottom + edge)
+          )).split('\n');
+          margins = { top: inMargin('top'), bottom: inMargin('bottom') };
+        } else margins = { top: [], bottom: [] };
       }
       characters += text.length;
       if (characters > 2_000_000) throw new Error('This PDF contains too much text for one import. Split it into smaller files.');
       if (!/[\p{L}\p{N}]/u.test(text)) emptyPages.push(number);
-      pages.push(text);
+      pages.push({ text, margins });
       page.cleanup();
     }
     if (emptyPages.length === document.numPages) {
       throw new Error(ocrMode ? 'OCR did not recognize readable text. Choose the correct language and a clearer scan, or paste the text into the editor.' : 'No selectable text was found. This may be a scanned PDF. Run OCR by choosing Scanned PDF / OCR above, select its language, and upload it again.');
     }
-    const text = pages.join('\n\n');
+    const cleaned = cleanPdfPages(pages, options.cleanPdf !== false);
+    const text = cleaned.text;
     if (text.includes('\uFFFD')) throw new Error('Some PDF characters could not be read correctly. Export a searchable PDF with embedded fonts, or upload a UTF-8 text file.');
     const warnings = ['Text only: pictures, tables, fonts and page layouts are not preserved. Check chapter breaks, reading order, headers and page numbers before publishing.'];
+    if (options.cleanPdf !== false) warnings.unshift(`PDF cleanup removed ${cleaned.removedLines} likely page-number or repeated header/footer line(s). Review the preview; turn off Clean PDF text and reimport to keep the original extraction.`);
     if (ocrMode) warnings.unshift('OCR can misread letters, punctuation and chapter headings. Compare every chapter with the scan and correct mistakes before publishing.');
     if (uncertainPages.length) warnings.push(`OCR needs extra review on ${uncertainPages.length} page(s): ${uncertainPages.slice(0, 20).join(', ')}${uncertainPages.length > 20 ? ', …' : ''}.`);
     if (/[\uFB50-\uFDFF\uFE70-\uFEFF]/u.test(text)) warnings.push('This PDF uses Arabic presentation glyphs. Letters or reading order may be incorrect. Compare the preview with the original; if it is incorrect, export a UTF-8 .txt or .md file from the original document instead.');

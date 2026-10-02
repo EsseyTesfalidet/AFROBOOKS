@@ -1,8 +1,5 @@
 import { Resend } from 'resend';
-import {
-  purchaseReceiptEmail,
-  subscriptionConfirmationEmail,
-} from '@/lib/email/templates';
+import { subscriptionConfirmationEmail } from '@/lib/email/templates';
 
 const FROM = 'AfroBooks <noreply@afrobooks.com>';
 
@@ -10,35 +7,6 @@ function getResend() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
   return new Resend(apiKey);
-}
-
-export async function sendPurchaseReceiptEmail(params: {
-  to: string;
-  buyerName: string;
-  items: { title: string; authorName: string; priceCents: number }[];
-  totalCents: number;
-  orderId: string;
-  isGift?: boolean;
-}) {
-  const resend = getResend();
-  if (!resend) return false;
-
-  const email = purchaseReceiptEmail({
-    buyerName: params.buyerName,
-    items: params.items,
-    totalCents: params.totalCents,
-    orderId: params.orderId,
-    isGift: params.isGift,
-  });
-
-  const result = await resend.emails.send({
-    from: FROM,
-    to: params.to,
-    subject: email.subject,
-    html: email.html,
-  });
-
-  return !result.error && !!result.data?.id;
 }
 
 export async function sendSubscriptionConfirmation(params: {

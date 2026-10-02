@@ -17,6 +17,8 @@ import RoleSelector from './RoleSelector';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
 import { publicReturnPath, loginDestination } from '@/lib/utils/loginDestination';
+import { queueWelcome } from '@/lib/auth/welcome';
+import { beginAuthFlow } from '@/lib/auth/flow';
 
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
@@ -81,6 +83,7 @@ export default function SignupForm() {
       setError('New author signups are currently closed.');
       return;
     }
+    const finish = beginAuthFlow();
     try {
       const fbUser = await signUp(email, password, firstName, lastName, role);
       // If saving fails, the mandatory account gate asks again after navigation.
@@ -88,6 +91,7 @@ export default function SignupForm() {
       await authenticatedPost('/api/account/agreement', { termsAccepted: true, privacyAcknowledged: true, version: LEGAL_VERSION }).catch(() => undefined);
       const token = await fbUser.getIdToken();
       await syncAuthSession(token, fbUser.uid);
+      queueWelcome(fbUser.uid, 'signup');
       setFirebaseUser(fbUser);
       setLoading(false);
       setClientAuthHints(fbUser.uid, role);
@@ -99,6 +103,8 @@ export default function SignupForm() {
       } else {
         setError('Failed to create account. Please try again.');
       }
+    } finally {
+      finish();
     }
   }
 

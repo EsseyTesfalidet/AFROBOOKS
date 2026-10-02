@@ -6,7 +6,7 @@ export const OCR_LANGUAGES = [
   { code: 'chi_sim', label: 'Chinese (simplified)' },
 ] as const;
 export type OcrLanguage = typeof OCR_LANGUAGES[number]['code'];
-export interface PdfImportOptions { mode?: 'text' | 'ocr'; language?: OcrLanguage; signal?: AbortSignal }
+export interface PdfImportOptions { mode?: 'text' | 'ocr'; language?: OcrLanguage; signal?: AbortSignal; cleanPdf?: boolean }
 
 export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {

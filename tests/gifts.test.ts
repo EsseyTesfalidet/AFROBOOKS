@@ -4,6 +4,18 @@ import { giftCheckoutSchema, giftTokenSchema } from '../lib/gifts';
 import { checkGiftRecipient, giftAttemptId, giftPreview, giftTokenHash } from '../lib/server/bookGifts';
 import { bookGiftEmail, giftClaimUrl, giftEmailConfiguration } from '../lib/server/giftEmail';
 import { giftReturnPath, loginDestination } from '../lib/utils/loginDestination';
+import { purchaseReceiptEmail } from '../lib/email/templates';
+
+test('purchase receipt includes item prices, USD total, safe links and multilingual text', () => {
+  const email = purchaseReceiptEmail({ buyerName: 'ሄርሜላ <img src=x>', items: [{ title: 'ታሪክ & Story', authorName: '<script>Author</script>', priceCents: 125 }, { title: 'مرحبا', authorName: 'Author', priceCents: 75 }], totalCents: 200, orderId: 'pi_receipt' });
+  assert.ok(email.html.includes('ታሪክ &amp; Story'));
+  assert.ok(!email.html.includes('<script>'));
+  assert.ok(!email.html.includes('<img'));
+  assert.match(email.text, /Total: \$2.00 USD/);
+  assert.match(email.text, /\$1.25/);
+  assert.match(email.text, /Reference: pi_receipt/);
+  assert.match(email.html, /href="https:\/\/[^"<>]+\/library"/);
+});
 
 test('gift checkout normalizes recipient addresses and rejects oversized or invalid inputs', () => {
   const input = { recipientEmail: ' Friend@Example.com ', message: ' Enjoy! ', attemptId: 'e85c20fc-031a-43ba-a289-383c25ae1823' };

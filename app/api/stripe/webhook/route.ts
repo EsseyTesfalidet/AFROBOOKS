@@ -1,10 +1,9 @@
 import type Stripe from 'stripe';
 import { syncSubscription } from '@/lib/server/syncSubscription';
 import { NextRequest, NextResponse } from 'next/server';
-import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { getStripeServer } from '@/lib/stripe/server';
 import { getAdminDb } from '@/lib/firebase/admin';
-import { sendPurchaseReceiptEmail } from '@/lib/server/email';
+import { deliverPurchaseReceipt } from '@/lib/server/purchaseReceipts';
 import { fulfillPayment, type SuccessfulPayment } from '@/lib/server/fulfillPayment';
 import { paymentConfiguration } from '@/lib/stripe/config';
 import { sendBookRoyalties, reviewPaymentRoyalties } from '@/lib/server/authorPayments';
@@ -73,24 +72,16 @@ export async function POST(req: NextRequest) {
     // deferred royalties without crediting the sale a second time.
     await sendBookRoyalties(adminDb, stripe, pi.id).catch(() => console.error('Book royalty transfer deferred to scheduled retry'));
     const orders = ordersSnap.docs.map((doc) => doc.data());
-    const buyer = (await adminDb.collection('users').doc(pi.metadata.userId).get()).data();
-    if (buyer?.email && orders.every(order => order.status === 'completed') && orders.some((order) => !order.receiptEmailSent)) {
-      const sent = await sendPurchaseReceiptEmail({
-        to: buyer.email,
-        buyerName: [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || 'Reader',
-        items: orders.map((order) => ({ title: order.bookTitle, authorName: order.authorName ?? 'Unknown Author', priceCents: order.finalPrice })),
-        totalCents: pi.amount_received,
-        orderId: pi.id,
-        isGift: orders.some(order => !!order.giftId),
-      }).catch(() => false);
-      if (sent) await Promise.all(ordersSnap.docs.map((doc: QueryDocumentSnapshot) => doc.ref.update({ receiptEmailSent: true })));
-    }
+    let receiptPending = false;
+    try { await deliverPurchaseReceipt(adminDb, pi.id); }
+    catch { receiptPending = true; console.error('Purchase receipt delivery pending', pi.id); }
     // Returning a retryable error preserves email delivery after a transient
     // provider failure; fulfillment and royalties are independently deduplicated.
     if (pi.metadata.giftId && orders.every(order => order.status === 'completed')) {
       try { await deliverBookGift(adminDb, pi.metadata.giftId); }
       catch { return NextResponse.json({ error: 'Gift email pending; retry required' }, { status: 500 }); }
     }
+    if (receiptPending) return NextResponse.json({ error: 'Receipt email pending; retry required' }, { status: 500 });
   }
 
   if (['charge.refunded', 'charge.dispute.created', 'charge.dispute.updated', 'transfer.reversed'].includes(event.type)) {

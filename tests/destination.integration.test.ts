@@ -10,6 +10,8 @@ import { processAuthorRoyalties, reconcileAuthor, payAuthorOrder } from '../func
 import { seedRoyalty, royaltyFixture } from './royalty-fixture';
 import { createBookPurchase, BookPurchaseError, type PurchaseGateway } from '../lib/server/bookPurchases';
 import { confirmBookPurchase } from '../lib/server/confirmBookPurchase';
+import { deliverPurchaseReceipt } from '../lib/server/purchaseReceipts';
+import type { ReminderEmail } from '../functions/src/notifications/payoutReminderEmail';
 import { reconcileLibrary } from '../lib/server/reconcileLibrary';
 import { currentBookPayment } from '../lib/server/currentBookPayment';
 import { reconcileBookRefunds } from '../lib/server/bookRefunds';
@@ -38,6 +40,72 @@ async function seedOrder() {
   await db.doc('orders/order').set({ buyerId: 'reader', sellerId: 'author', bookId: 'book', bookTitle: 'Book', finalPrice: 1000, sellerEarnings: 800, stripePaymentIntentId: 'pi_test', status: 'pending' });
 }
 const payment = { id: 'pi_test', amount_received: 1000, currency: 'usd', metadata: { userId: 'reader' } };
+
+test('purchase receipts retry a failed send and deduplicate webhook/confirmation deliveries', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  await db.doc('users/reader').set({ email: 'reader@example.test', firstName: 'ሄርሜላ' });
+  const keys: string[] = [];
+  const payloads: string[] = [];
+  const config = { apiKey: 'test-no-network', from: 'AfroBooks <receipt@example.test>' };
+  await assert.rejects(deliverPurchaseReceipt(db, payment.id, { config, send: async (_, email, key) => {
+    keys.push(key); payloads.push(JSON.stringify(email)); throw new Error('Temporary provider outage');
+  } }), /pending/);
+  assert.equal((await db.doc('purchaseReceiptEmails/pi_test').get()).data()?.status, 'failed');
+  assert.notEqual((await db.doc('orders/order').get()).data()?.receiptEmailSent, true);
+  // A profile change between attempts must not change the idempotent payload.
+  await db.doc('users/reader').update({ firstName: 'Updated' });
+  const send = async (_: string, email: ReminderEmail, key: string) => {
+    keys.push(key); payloads.push(JSON.stringify(email)); return 'email_accepted';
+  };
+  await deliverPurchaseReceipt(db, payment.id, { config, send });
+  await deliverPurchaseReceipt(db, payment.id, { config, send });
+  assert.deepEqual(keys, ['book-receipt-pi_test', 'book-receipt-pi_test']);
+  assert.equal(payloads[0], payloads[1]);
+  assert.equal((await db.doc('orders/order').get()).data()?.receiptEmailSent, true);
+  assert.equal((await db.doc('purchaseReceiptEmails/pi_test').get()).data()?.status, 'sent');
+  assert.equal((await db.doc('books/book').get()).data()?.totalSales, 1);
+});
+
+test('purchase receipts require completed verified orders and private delivery records', async () => {
+  await seedOrder();
+  let sends = 0;
+  const config = { apiKey: 'test-no-network', from: 'receipt@example.test' };
+  const send = async () => { sends++; return 'accepted'; };
+  await deliverPurchaseReceipt(db, payment.id, { config, send });
+  assert.equal(sends, 0);
+  await fulfillPayment(db, payment);
+  await db.doc('users/reader').set({ email: 'reader@example.test' });
+  await assert.rejects(deliverPurchaseReceipt(db, payment.id, { config: { apiKey: undefined, from: config.from }, send }), /not configured/);
+  for (const status of ['refunded', 'needs_review', 'pending']) {
+    await db.doc('orders/order').update({ status });
+    await deliverPurchaseReceipt(db, payment.id, { config, send });
+  }
+  assert.equal(sends, 0);
+  await db.doc('orders/order').update({ status: 'completed' });
+  await db.doc('purchaseReceiptEmails/pi_test').set({ status: 'failed', startedAt: Date.now() - 24 * 60 * 60 * 1000 });
+  await assert.rejects(deliverPurchaseReceipt(db, payment.id, { config, send }), /needs review/);
+  assert.equal((await db.doc('purchaseReceiptEmails/pi_test').get()).data()?.status, 'needs_review');
+  assert.equal(sends, 0);
+  await assertFails(getDoc(doc(env.authenticatedContext('reader').firestore(), 'purchaseReceiptEmails/pi_test')));
+  await assertFails(setDoc(doc(env.authenticatedContext('reader').firestore(), 'purchaseReceiptEmails/pi_test'), { status: 'sent' }));
+});
+
+test('concurrent receipt attempts use a lease and produce one provider call', async () => {
+  await seedOrder(); await fulfillPayment(db, payment);
+  await db.doc('users/reader').set({ email: 'reader@example.test' });
+  let release!: () => void;
+  let entered!: () => void;
+  const sending = new Promise<void>(resolve => { entered = resolve; });
+  const pause = new Promise<void>(resolve => { release = resolve; });
+  let calls = 0;
+  const options = { config: { apiKey: 'test', from: 'receipt@example.test' }, send: async () => { calls++; entered(); await pause; return 'accepted'; } };
+  const first = deliverPurchaseReceipt(db, payment.id, options);
+  await sending;
+  try { await assert.rejects(deliverPurchaseReceipt(db, payment.id, options), /in progress/); }
+  finally { release(); }
+  await first;
+  assert.equal(calls, 1);
+});
 function refundFixture() {
   const state = { amount: 1000, status: 'succeeded', fail: false };
   const stripe = {
