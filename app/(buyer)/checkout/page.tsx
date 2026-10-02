@@ -37,7 +37,7 @@ export default function CheckoutPage() {
   }, [items.length, router]);
 
   if (items.length === 0) return null;
-  if (ownership.error) return <div role="alert" className="p-8 text-red-300">{ownership.error}</div>;
+  if (ownership.error) return <div role="alert" className="p-8 text-red-300">{ownership.error}<button type="button" onClick={ownership.retry} className="ml-4 min-h-11 underline">Retry</button></div>;
   if (ownership.loading) return <div role="status" className="p-8 text-[#aaa]">Checking your library…</div>;
   if (catalog.loading || (!catalog.error && items.some(item => !catalog.books.some(book => book.id === item.bookId)))) return <div role="status" className="flex justify-center py-20"><LoadingSpinner size={28} /><span className="sr-only">Checking book availability…</span></div>;
   if (catalog.error) return <div role="alert" className="p-8 text-[14px] text-red-300">{catalog.error}<button type="button" onClick={catalog.retry} className="ml-4 min-h-11 underline">Try again</button></div>;

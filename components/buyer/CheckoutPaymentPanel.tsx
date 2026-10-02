@@ -11,13 +11,15 @@ import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { getStripe } from '@/lib/stripe/client';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { giftCheckoutSchema, type GiftResume } from '@/lib/gifts';
+import { appFetch } from '@/lib/network';
+import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
 
 const CARD_ELEMENT_OPTIONS = {
   style: {
     base: {
       color: '#f5f2eb',
       fontFamily: '"DM Sans", sans-serif',
-      fontSize: '14px',
+      fontSize: '16px',
       '::placeholder': { color: '#444' },
     },
     invalid: { color: '#e8442a' },
@@ -40,6 +42,43 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
   const [message, setMessage] = useState('');
   const [detailsLocked, setDetailsLocked] = useState(false);
   const attemptId = useRef<string | null>(null);
+  const busy = useRef(false);
+  const [pendingOrders, setPendingOrders] = useState<string[]>([]);
+  const [recovering, setRecovering] = useState(false);
+  const recoveryBusy = useRef(false);
+  const [restored, setRestored] = useState(false);
+  const pendingKey = firebaseUser ? `afrobooks-pending-payment-${firebaseUser.uid}-${gift?.bookId ?? 'cart'}` : null;
+  useEffect(() => {
+    if (!pendingKey) return;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(pendingKey) || 'null');
+      if (Array.isArray(saved) && saved.length > 0 && saved.length <= 20 && saved.every(id => typeof id === 'string' && /^[^/]{1,128}$/.test(id))) setPendingOrders(saved);
+    } catch { /* Confirmation requires a saved recovery reference. */ }
+    setRestored(true);
+  }, [pendingKey]);
+
+  async function checkPayment() {
+    if (!firebaseUser || !pendingOrders.length || recoveryBusy.current || busy.current) return;
+    recoveryBusy.current = true; setRecovering(true); setError('');
+    try {
+      const response = await appFetch('/api/stripe/recover-purchase', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+        body: JSON.stringify({ orderIds: pendingOrders }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      if (result.state === 'retryable') {
+        sessionStorage.removeItem(pendingKey!); setPendingOrders([]);
+        setError('Your payment is not completed. You can retry using the same checkout.');
+      } else if (result.state === 'pending' || result.state === 'review') {
+        sessionStorage.removeItem(pendingKey!);
+        router.push(`/checkout/receipt?orders=${pendingOrders.map(encodeURIComponent).join(',')}`);
+      } else throw new Error('Payment status unavailable.');
+    } catch {
+      setError('We could not check your payment yet. Reconnect and check its status before paying again.');
+    } finally { recoveryBusy.current = false; setRecovering(false); }
+  }
+  useConnectionRecovery(() => { if (pendingOrders.length) void checkPayment(); });
   const giftStorageKey = gift && firebaseUser ? `afrobooks-gift-checkout-${firebaseUser.uid}-${gift.bookId}` : null;
   useEffect(() => {
     if (!giftStorageKey) return;
@@ -55,7 +94,9 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!stripe || !elements || !userProfile || !firebaseUser) return;
+    if (!stripe || !elements || !userProfile || !firebaseUser || busy.current || !restored) return;
+    if (pendingOrders.length) { void checkPayment(); return; }
+    busy.current = true;
     setError('');
     setLoading(true);
 
@@ -69,7 +110,7 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
         setDetailsLocked(true);
       }
       const token = await firebaseUser.getIdToken();
-      const res = await fetch('/api/stripe/create-payment-intent', {
+      const res = await appFetch('/api/stripe/create-payment-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,20 +150,27 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) return;
 
+      // Keep order references only, never card data or a client secret.
+      try { sessionStorage.setItem(pendingKey!, JSON.stringify(orderIds)); }
+      catch { setError('Enable browser storage before paying so an interrupted payment can be recovered.'); return; }
+      setPendingOrders(orderIds);
+
       const result = await stripe.confirmCardPayment(clientSecret, {
         payment_method: { card: cardElement, billing_details: { name: cardName } },
       });
 
       if (result.error) {
-        setError(result.error.message ?? 'Payment failed.');
+        setError(`${result.error.message ?? 'Payment confirmation was interrupted.'} Check payment status before trying again.`);
       } else {
+        sessionStorage.removeItem(pendingKey!);
         if (gift) sessionStorage.removeItem(giftStorageKey!);
         else clearCart();
         router.push(`/checkout/receipt?orders=${orderIds.join(',')}`);
       }
     } catch {
-      setError('An unexpected error occurred.');
+      setError('Checkout was interrupted. Your details are still here. Reconnect and retry; the existing checkout will be checked first.');
     } finally {
+      busy.current = false;
       setLoading(false);
     }
   }
@@ -146,6 +194,8 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
         <input
           id="cardName"
           type="text"
+          autoComplete="cc-name"
+          enterKeyHint="next"
           value={cardName}
           onChange={(e) => setCardName(e.target.value)}
           required
@@ -163,10 +213,15 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
       </div>
 
       {error && <p role="alert" className="text-sm text-[#e8442a]">{error}</p>}
+      {!!pendingOrders.length && <div className="rounded-xl border border-[#555] p-3 text-sm text-[#ddd]">
+        <p role="status">An existing payment needs to be checked. Checking its status does not charge your card.</p>
+        <button type="button" onClick={() => void checkPayment()} disabled={loading || recovering} className="mt-2 min-h-11 text-[#f5b800] disabled:opacity-50">{recovering ? 'Checking payment…' : 'Check payment status'}</button>
+        <Link href={`/checkout/receipt?orders=${pendingOrders.map(encodeURIComponent).join(',')}`} className="ml-4 inline-flex min-h-11 items-center underline">View order</Link>
+      </div>}
 
       <button
         type="submit"
-        disabled={loading || !stripe}
+        disabled={loading || !stripe || !restored || pendingOrders.length > 0}
         className="w-full py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
         style={{ background: '#e8442a', color: '#fff' }}
       >
@@ -184,19 +239,22 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
 
 export default function CheckoutPaymentPanel({ gift }: { gift?: GiftCheckout }) {
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [retry, setRetry] = useState(0);
+  const uid = useAuthStore(state => state.firebaseUser?.uid);
+  useConnectionRecovery(() => { if (available !== true) { setAvailable(null); setRetry(value => value + 1); } });
   useEffect(() => {
     let active = true;
     if (!/^pk_(live|test)_/.test(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '')) { setAvailable(false); return; }
-    fetch('/api/stripe/status', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
+    appFetch('/api/stripe/status', { cache: 'no-store' }).then(response => response.ok ? response.json() : null)
       .then(data => { if (active) setAvailable(data?.available === true); })
       .catch(() => { if (active) setAvailable(false); });
     return () => { active = false; };
-  }, []);
+  }, [retry]);
   if (available === null) return <div role="status" className="flex justify-center gap-3 py-6 text-sm text-[#aaa]"><LoadingSpinner size={20} />Checking payment availability…</div>;
-  if (!available) return <p role="status" className="text-sm leading-relaxed text-[#aaa]">Payments are temporarily unavailable. Please try again later.</p>;
+  if (!available) return <div className="text-sm leading-relaxed text-[#aaa]"><p role="status">Unable to load payments. Check your connection and retry.</p><button type="button" className="mt-2 min-h-11 text-[#f5b800]" onClick={() => { setAvailable(null); setRetry(value => value + 1); }}>Retry</button></div>;
   return (
     <Elements stripe={getStripe()}>
-      <CheckoutForm gift={gift} />
+      <CheckoutForm key={`${uid}:${gift?.bookId ?? 'cart'}`} gift={gift} />
     </Elements>
   );
 }

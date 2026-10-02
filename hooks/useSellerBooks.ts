@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { getSellerBooks } from '@/lib/firebase/firestore';
 import { useAuthStore } from '@/store/authStore';
 import type { Book } from '@/types/book';
+import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
 
 export function useSellerBooks() {
   const uid = useAuthStore((state) => state.userProfile?.uid);
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{ uid?: string; books: Book[]; loading: boolean; error: string }>({ books: [], loading: true, error: '' });
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  useConnectionRecovery(() => { if (result.error) retry(); });
 
   useEffect(() => {
     if (!uid) return;

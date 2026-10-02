@@ -1,9 +1,10 @@
 import { auth } from './config';
+import { appFetch } from '@/lib/network';
 
 export async function authenticatedGet<T>(path: string): Promise<T> {
   const user = auth.currentUser;
   if (!user) throw new Error('Please sign in to continue.');
-  const response = await fetch(path, {
+  const response = await appFetch(path, {
     cache: 'no-store',
     headers: { Authorization: `Bearer ${await user.getIdToken()}` },
   });
@@ -15,7 +16,7 @@ export async function authenticatedGet<T>(path: string): Promise<T> {
 export async function authenticatedPost<T = unknown>(path: string, body: unknown): Promise<T> {
   const user = auth.currentUser;
   if (!user) throw new Error('Please sign in to continue.');
-  const response = await fetch(path, {
+  const response = await appFetch(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

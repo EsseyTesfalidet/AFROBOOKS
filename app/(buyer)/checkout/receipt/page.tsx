@@ -13,6 +13,8 @@ import { getBook } from '@/lib/firebase/firestore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
 import type { Order } from '@/types/order';
+import { appFetch } from '@/lib/network';
+import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
 
 function ReceiptContent() {
   const searchParams = useSearchParams();
@@ -24,6 +26,9 @@ function ReceiptContent() {
   const [books, setBooks] = useState<Record<string, Book>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [confirmationError, setConfirmationError] = useState('');
+  useConnectionRecovery(() => setAttempt(value => value + 1));
   const confirmationFinished = orders.length > 0 && orders.length === orderIds.length && orders.every(order => order.status !== 'pending');
 
   useEffect(() => {
@@ -36,13 +41,15 @@ function ReceiptContent() {
       try {
         const token = await firebaseUser!.getIdToken();
         if (!active) return;
-        await fetch('/api/stripe/confirm-purchase', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ orderIds: ids }) });
-      } catch { /* The order listener remains authoritative and can recover. */ }
+        const response = await appFetch('/api/stripe/confirm-purchase', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ orderIds: ids }) });
+        if (!response.ok) throw new Error('Not confirmed');
+        if (active) setConfirmationError('');
+      } catch { if (active) setConfirmationError('We could not check your payment yet. Reconnect and retry this status check; please do not pay again.'); }
       if (active && ++attempts < 6) timer = setTimeout(confirm, 10000);
     }
     void confirm();
     return () => { active = false; if (timer) clearTimeout(timer); };
-  }, [orderKey, firebaseUser?.uid, confirmationFinished]);
+  }, [orderKey, firebaseUser?.uid, confirmationFinished, attempt]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -53,8 +60,9 @@ function ReceiptContent() {
     let active = true;
     const current = new Map<string, Order>();
     setOrders([]); setLoading(true); setError('');
-    const unsubscribe = ids.map(id => onSnapshot(doc(db, 'orders', id), snapshot => {
+    const unsubscribe = ids.map(id => onSnapshot(doc(db, 'orders', id), { includeMetadataChanges: true }, snapshot => {
       if (!active) return;
+      if (!snapshot.exists() && snapshot.metadata.fromCache) return;
       if (!snapshot.exists() || snapshot.data().buyerId !== firebaseUser.uid) {
         setError('This receipt is unavailable for your account.'); setLoading(false); return;
       }
@@ -65,11 +73,13 @@ function ReceiptContent() {
       getBook(order.bookId).then(book => { if (active && book) setBooks(prev => ({ ...prev, [book.id]: book })); }).catch(() => {});
     }, () => { if (active) { setError('Unable to confirm your order. Reload this page or check your library.'); setLoading(false); } }));
     return () => { active = false; unsubscribe.forEach(stop => stop()); };
-  }, [orderKey, firebaseUser?.uid, authLoading, router]);
+  }, [orderKey, firebaseUser?.uid, authLoading, router, attempt]);
 
   if (loading) return (
-    <div className="flex justify-center pt-16">
+    <div className="flex flex-col items-center gap-4 px-4 pt-16 text-center text-sm text-[#bbb]">
       <div className="animate-spin w-8 h-8 border-2 rounded-full" style={{ borderColor: '#222', borderTopColor: '#e8442a' }} />
+      <p role="status">{confirmationError || 'Checking your order. Please do not pay again.'}</p>
+      <button type="button" onClick={() => setAttempt(value => value + 1)} className="min-h-11 text-[#f5b800]">Retry status check</button>
     </div>
   );
 
@@ -91,6 +101,10 @@ function ReceiptContent() {
         </div>
 
         <div className="p-6 space-y-5">
+          {!confirmationFinished && <div className="text-sm text-[#bbb]">
+            {confirmationError && <p role="status">{confirmationError}</p>}
+            <button type="button" onClick={() => setAttempt(value => value + 1)} className="min-h-11 text-[#f5b800]">Retry status check</button>
+          </div>}
           <div className="space-y-3">
             {orders.map((order) => {
               const book = books[order.bookId];

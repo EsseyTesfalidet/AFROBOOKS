@@ -148,13 +148,15 @@ export default function SignupForm() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="firstName" className="field-label mb-1.5 block text-sm">
                   First name
                 </label>
                 <input
                   id="firstName"
+                  autoComplete="given-name"
+                  enterKeyHint="next"
                   type="text"
                   {...register('firstName')}
                   placeholder="Alex"
@@ -173,6 +175,8 @@ export default function SignupForm() {
                 </label>
                 <input
                   id="lastName"
+                  autoComplete="family-name"
+                  enterKeyHint="next"
                   type="text"
                   {...register('lastName')}
                   placeholder="Mensah"
@@ -191,6 +195,10 @@ export default function SignupForm() {
               <input
                 id="email"
                 type="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                enterKeyHint="next"
                 {...register('email')}
                 placeholder="you@example.com"
                 className="field-input w-full rounded-xl px-3.5 py-3 text-sm"
@@ -209,6 +217,8 @@ export default function SignupForm() {
               </label>
               <PasswordInput
                 id="password"
+                autoComplete="new-password"
+                enterKeyHint="done"
                 {...register('password')}
                 placeholder="Min 8 characters"
                 hasError={!!errors.password}

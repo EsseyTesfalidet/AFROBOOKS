@@ -5,6 +5,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
+import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
 
 // Keep paid books out of checkout, including purchases in another tab/device.
 // The server independently enforces ownership and concurrent payment locking.
@@ -14,15 +15,18 @@ export function useOwnedCart() {
   const items = useCartStore(s => s.items);
   const removeItem = useCartStore(s => s.removeItem);
   const [state, setState] = useState<{ uid: string; owned: string[]; error: boolean } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const retry = () => setAttempt(value => value + 1);
+  useConnectionRecovery(() => { if (state?.error) retry(); });
   useEffect(() => {
     setState(null);
     if (!user) return;
     return onSnapshot(query(collection(db, 'library'), where('userId', '==', user.uid)), snapshot => {
       setState({ uid: user.uid, owned: snapshot.docs.filter(d => ['bought', 'free_copy'].includes(d.data().purchaseType)).map(d => d.data().bookId), error: false });
     }, () => setState({ uid: user.uid, owned: [], error: true }));
-  }, [user?.uid]);
+  }, [user?.uid, attempt]);
   const owned = state?.uid === user?.uid ? state?.owned ?? [] : [];
   const stale = items.filter(item => owned.includes(item.bookId));
   useEffect(() => { stale.forEach(item => removeItem(item.bookId)); }, [items, state, removeItem]);
-  return { loading: authLoading || (!!user && state?.uid !== user.uid) || stale.length > 0, error: state?.uid === user?.uid && state?.error ? 'Your library could not be checked. Please refresh before paying.' : '' };
+  return { loading: authLoading || (!!user && state?.uid !== user.uid) || stale.length > 0, error: state?.uid === user?.uid && state?.error ? 'Your library could not be checked. Reconnect and retry before paying.' : '', retry };
 }

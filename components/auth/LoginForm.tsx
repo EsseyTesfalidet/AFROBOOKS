@@ -204,6 +204,10 @@ export default function LoginForm() {
               <input
                 id="email"
                 type="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                enterKeyHint="next"
                 {...register('email')}
                 placeholder="you@example.com"
                 className="field-input w-full rounded-xl px-3.5 py-3 text-sm"
@@ -222,6 +226,8 @@ export default function LoginForm() {
               </label>
               <PasswordInput
                 id="password"
+                autoComplete="current-password"
+                enterKeyHint="go"
                 {...register('password')}
                 placeholder="••••••••"
                 hasError={!!errors.password}

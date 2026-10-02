@@ -5,11 +5,14 @@ import { doc, getDocFromServer, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { syncPurchasedLibrary } from '@/lib/firebase/syncLibrary';
 import { useAuthStore } from '@/store/authStore';
+import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
 
 export function useBookOwnership(bookId: string) {
   const user = useAuthStore(s => s.firebaseUser);
   const authLoading = useAuthStore(s => s.loading);
   const [state, setState] = useState<{ key: string; owned: boolean; checking: boolean; error: string } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  useConnectionRecovery(() => { if (state?.error || state?.checking) setAttempt(value => value + 1); });
   const key = JSON.stringify([user?.uid ?? null, bookId]);
   useEffect(() => {
     if (authLoading || !user) return;
@@ -44,7 +47,7 @@ export function useBookOwnership(bookId: string) {
       });
     }, () => update(false, false, 'Your library could not be checked. Please try again before paying.'));
     return () => { active = false; unsubscribe(); };
-  }, [key, user?.uid, authLoading, bookId]);
+  }, [key, user?.uid, authLoading, bookId, attempt]);
   if (authLoading) return { owned: false, checking: true, error: '' };
   if (!user) return { owned: false, checking: false, error: '' };
   if (state?.key !== key) return { owned: false, checking: true, error: '' };

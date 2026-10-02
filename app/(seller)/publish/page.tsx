@@ -2,8 +2,12 @@
 
 import { authenticatedPost } from '@/lib/firebase/request';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { usePublicationDraft } from '@/hooks/usePublicationDraft';
+import { publicationDraftKey, type PublicationDraft } from '@/lib/publishing/localDrafts';
+import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
+import { appFetch } from '@/lib/network';
 import Link from 'next/link';
 import { Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import SellerHeader from '@/components/seller/SellerHeader';
@@ -46,7 +50,7 @@ interface DraftChapter {
   isPreview: boolean;
 }
 
-export default function PublishPage() {
+function PublishWorkspace({ editId, resetDraft }: { editId: string | null; resetDraft: () => void }) {
   const router = useRouter();
   const userProfile = useAuthStore((s) => s.userProfile);
   const [seller, setSeller] = useState<Seller | null>(null);
@@ -90,26 +94,59 @@ export default function PublishPage() {
   const [publishMode, setPublishMode] = useState<'now' | 'draft' | 'preorder'>('now');
   const [releaseDate, setReleaseDate] = useState('');
   const savedBookId = useRef<string | null>(null);
+  const [draftBookId, setDraftBookId] = useState<string | null>(null);
   const [editingBook, setEditingBook] = useState(false);
   const [editLoading, setEditLoading] = useState(true);
+  const [editorDraft, setEditorDraft] = useState<PublicationDraft['editorDraft']>(null);
+  const [retry, setRetry] = useState(0);
+  const publishBusy = useRef(false);
+  const [discardingDraft, setDiscardingDraft] = useState(false);
+  useConnectionRecovery(() => setRetry(value => value + 1));
+
+  const draftValue = useMemo<PublicationDraft>(() => ({
+    title, authorName, description, genre, language, publicationType, issueLabel, contentFormat,
+    ageGroup, isbn, copyrightBasis, copyrightDetails, copyrightAttested, accentColor, bgColor, chapters,
+    manuscriptFileName, manuscriptFile, pdfFile, pdfPageCount, coverFile, price, publishMode, releaseDate,
+    step, editorDraft, editingChapter, savedBookId: draftBookId,
+  }), [title, authorName, description, genre, language, publicationType, issueLabel, contentFormat,
+    ageGroup, isbn, copyrightBasis, copyrightDetails, copyrightAttested, accentColor, bgColor, chapters,
+    manuscriptFileName, manuscriptFile, pdfFile, pdfPageCount, coverFile, price, publishMode, releaseDate, step, editorDraft, editingChapter, draftBookId]);
+  const localDraft = usePublicationDraft(userProfile?.uid ? publicationDraftKey(userProfile.uid, editId) : null,
+    !editLoading, draftValue, draft => {
+      setTitle(draft.title); setAuthorName(draft.authorName); setDescription(draft.description);
+      setGenre(draft.genre); setLanguage(draft.language); setPublicationType(draft.publicationType);
+      setIssueLabel(draft.issueLabel); setContentFormat(draft.contentFormat); setAgeGroup(draft.ageGroup);
+      setIsbn(draft.isbn); setCopyrightBasis(draft.copyrightBasis); setCopyrightDetails(draft.copyrightDetails);
+      setCopyrightAttested(draft.copyrightAttested); setAccentColor(draft.accentColor); setBgColor(draft.bgColor);
+      setChapters(draft.chapters); setManuscriptFileName(draft.manuscriptFileName); setManuscriptFile(draft.manuscriptFile);
+      setPdfFile(draft.pdfFile); setPdfPageCount(draft.pdfPageCount); setCoverFile(draft.coverFile);
+      setPrice(draft.price); setPublishMode(draft.publishMode); setReleaseDate(draft.releaseDate); setStep(draft.step);
+      setEditorDraft(draft.editorDraft); setEditingChapter(draft.editingChapter);
+      savedBookId.current = editId ?? draft.savedBookId;
+      setDraftBookId(savedBookId.current);
+      setEditingBook(!!editId);
+    });
 
   useEffect(() => {
-    fetch('/api/platform/public', { cache: 'no-store' }).then(response => response.json()).then(settings => {
+    let active = true;
+    appFetch('/api/platform/public', { cache: 'no-store' }).then(response => response.json()).then(settings => {
       if (settings.pricingAvailable === false || !Number.isFinite(settings.directSaleFee) || settings.directSaleFee < 0 || settings.directSaleFee > 100) throw new Error('Invalid pricing settings');
-      setDirectSaleFee(settings.directSaleFee);
-    }).catch(() => setPricingError('Unable to load the current commission. Reload this page before setting your price.'));
-  }, []);
+      if (active) { setDirectSaleFee(settings.directSaleFee); setPricingError(''); }
+    }).catch(() => { if (active) setPricingError('Unable to load the current commission. Reconnect and retry before setting your price.'); });
+    return () => { active = false; };
+  }, [retry]);
 
   useEffect(() => {
     if (!userProfile?.uid) return;
-    const editId = new URL(window.location.href).searchParams.get('edit');
     if (!editId) { setEditLoading(false); return; }
+    if (savedBookId.current) return;
     let active = true;
     Promise.all([getDoc(doc(db, 'books', editId)), getDocs(collection(db, 'books', editId, 'chapters'))]).then(([snapshot, items]) => {
       if (!active) return;
       const book = snapshot.data();
       if (!book || book.sellerId !== userProfile.uid) throw new Error('This book is not in your listings.');
       savedBookId.current = editId;
+      setDraftBookId(editId);
       setEditingBook(true);
       setTitle(book.title ?? ''); setAuthorName(book.authorName ?? ''); setDescription(book.description ?? '');
       setPublicationType(book.publicationType === 'magazine' ? 'magazine' : book.publicationType === 'short_story' ? 'short_story' : 'book'); setIssueLabel(book.issueLabel ?? '');
@@ -122,7 +159,7 @@ export default function PublishPage() {
     }).catch(error => { if (active) setPublishError(error.message ?? 'Unable to load this book.'); })
       .finally(() => { if (active) setEditLoading(false); });
     return () => { active = false; };
-  }, [userProfile?.uid]);
+  }, [userProfile?.uid, editId, retry]);
 
   useEffect(() => {
     if (!userProfile?.uid) {
@@ -142,7 +179,7 @@ export default function PublishPage() {
     return () => {
       active = false;
     };
-  }, [userProfile?.uid]);
+  }, [userProfile?.uid, retry]);
 
   const earnings = directSaleFee === null ? null : calculateEarnings(Number.isSafeInteger(price) && price >= 0 ? price : 0, directSaleFee);
 
@@ -164,6 +201,7 @@ export default function PublishPage() {
       return [...prev, { ...ch, isPreview: ch.chapterNumber === 1 }].sort((a, b) => a.chapterNumber - b.chapterNumber);
     });
     setEditingChapter(null);
+    setEditorDraft(null);
   }
 
   function toggleChapterPreview(chapterNumber: number) {
@@ -173,7 +211,8 @@ export default function PublishPage() {
   }
 
   async function handlePublish() {
-    if (!userProfile || editLoading || manuscriptImporting) return;
+    if (!userProfile || editLoading || manuscriptImporting || publishBusy.current) return;
+    if (editorDraft) { setPublishError('Save or cancel the chapter you are editing before publishing.'); setStep(2); return; }
     if (new URL(window.location.href).searchParams.has('edit') && !savedBookId.current) return;
     setPublishError('');
     if (!pricingValid || directSaleFee === null || !Number.isSafeInteger(price) || price < minimumPublicationPrice(publicationType) || price > 99999999) {
@@ -210,6 +249,7 @@ export default function PublishPage() {
       );
       return;
     }
+    publishBusy.current = true;
     setPublishing(true);
     try {
       const shouldCreatePublicListing = publishMode !== 'draft';
@@ -219,9 +259,12 @@ export default function PublishPage() {
       // Create book document
       const bookRef = savedBookId.current ? doc(db, 'books', savedBookId.current) : doc(collection(db, 'books'));
       const existingBook = savedBookId.current ? await getDoc(bookRef) : null;
-      if (savedBookId.current && !existingBook?.exists()) throw new Error('This book was deleted. Return to your books to create a new draft.');
+      if (editId && !existingBook?.exists()) throw new Error('This book was deleted. Return to your books to create a new draft.');
       if (existingBook?.exists()) await authenticatedPost(`/api/books/${bookRef.id}/draft`, {});
       savedBookId.current = bookRef.id;
+      setDraftBookId(bookRef.id);
+      // Retain the same book ID if the upload is interrupted after creation.
+      await localDraft.flush({ ...draftValue, savedBookId: bookRef.id }).catch(() => {});
       await setDoc(bookRef, {
         sellerId: userProfile.uid,
         sellerName: `${userProfile.firstName} ${userProfile.lastName}`,
@@ -328,6 +371,7 @@ export default function PublishPage() {
       if (shouldCreatePublicListing && requiresRightsReview) {
         resultParams.set('review', 'copyright');
       }
+      await localDraft.clear().catch(() => {});
       router.push(`/listings?${resultParams.toString()}`);
     } catch (err) {
       console.error('Publish error:', err);
@@ -337,6 +381,7 @@ export default function PublishPage() {
           : 'We could not publish this book. Please try again.'
       );
     } finally {
+      publishBusy.current = false;
       setPublishing(false);
     }
   }
@@ -360,7 +405,7 @@ export default function PublishPage() {
   );
   const publishActionBlocked = publishMode !== 'draft' && requiresIdVerificationForPublishingNow;
 
-  if (sellerLoading || editLoading) return (
+  if (sellerLoading || editLoading || !localDraft.ready) return (
     <div className="min-h-screen bg-[#0e0e0e]"><SellerHeader />
       <div className="flex justify-center pt-16"><LoadingSpinner size={32} /></div>
     </div>
@@ -372,8 +417,21 @@ export default function PublishPage() {
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-6 xl:flex-row xl:gap-8">
 
         {/* Main form */}
-        <div className="flex-1 min-w-0 space-y-6">
+        <fieldset disabled={publishing} className="flex-1 min-w-0 space-y-6">
           <h1 className="font-display text-2xl text-white">{editingBook ? 'Edit book' : 'Publish a book'}</h1>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-[#bbb]">
+            <p role="status">{localDraft.status === 'unavailable' ? 'Draft saving is unavailable on this device. Keep this page open and save your work before leaving.' : localDraft.status === 'saving' ? 'Saving draft on this device…' : localDraft.restored ? 'Your unfinished draft was restored on this device.' : 'Draft saved on this device.'}</p>
+            <p className="mt-1 text-xs">Details, selected files and chapter edits are saved automatically. This local copy is not published or synced to other devices. Clearing browser data removes it.</p>
+            {localDraft.restored && <p className="mt-1 text-xs">Review your selected files before publishing. If a file was still saving when the page closed, select it again.</p>}
+            {discardingDraft ? <div className="mt-2 flex flex-wrap items-center gap-3">
+              <p>Discard these local changes? Saved listings stay unchanged.</p>
+              <button type="button" className="min-h-11 text-red-300" onClick={async () => {
+                try { await localDraft.clear(); resetDraft(); }
+                catch { setPublishError('Unable to discard the local draft. Please try again.'); }
+              }}>Discard changes</button>
+              <button type="button" className="min-h-11" onClick={() => setDiscardingDraft(false)}>Keep editing</button>
+            </div> : <button type="button" className="mt-1 min-h-11 text-[#f5b800]" onClick={() => setDiscardingDraft(true)}>Discard local draft</button>}
+          </div>
           {editingBook && <p className="text-sm text-[#aaa]">Saving updates this existing book. It becomes a private draft while the changes are saved, then returns through publication review. Existing purchase records are preserved.</p>}
           {publishError && <p role="alert" className="text-sm text-[#e8442a]">{publishError}</p>}
           {/* Steps bar */}
@@ -617,7 +675,7 @@ export default function PublishPage() {
                   <p className="text-xs text-[#aaa]">Your cover and description introduce the issue before purchase. Full PDF pages are available to purchasers.</p>
                 </div> : <>
                 <ManuscriptUpload chapterCount={chapters.length} fileName={manuscriptFileName} language={language} onBusy={setManuscriptImporting} onImport={imported => {
-                  setChapters(imported.chapters); setManuscriptFileName(imported.fileName); setManuscriptFile(imported.sourceFile); setEditingChapter(null);
+                  setChapters(imported.chapters); setManuscriptFileName(imported.fileName); setManuscriptFile(imported.sourceFile); setEditingChapter(null); setEditorDraft(null);
                 }} />
 
                 {editingChapter === null && !manuscriptImporting && <ReadingSectionSplitter chapters={chapters} onApply={setChapters} />}
@@ -643,17 +701,19 @@ export default function PublishPage() {
                         style={{ background: ch.isPreview ? '#0f2e1a' : '#1a1a2e', color: ch.isPreview ? '#4ade80' : '#555' }}>
                         {ch.isPreview ? 'FREE PREVIEW' : 'LOCKED'}
                       </button>
-                      <button type="button" onClick={() => setEditingChapter(ch.chapterNumber)} className="text-xs text-[#e8442a]">Edit</button>
+                      <button type="button" disabled={editingChapter !== null && editingChapter !== ch.chapterNumber} onClick={() => setEditingChapter(ch.chapterNumber)} className="min-h-11 text-xs text-[#e8442a] disabled:opacity-40">Edit</button>
                     </div>
                   </div>
                 ))}
 
                 {editingChapter !== null ? (
                   <ChapterEditor
+                    key={editingChapter}
                     chapterNumber={editingChapter}
                     onSave={saveChapter}
-                    onCancel={() => setEditingChapter(null)}
-                    initial={chapters.find((c) => c.chapterNumber === editingChapter)}
+                    onCancel={() => { setEditingChapter(null); setEditorDraft(null); }}
+                    onDraftChange={setEditorDraft}
+                    initial={editorDraft?.chapterNumber === editingChapter ? editorDraft : chapters.find((c) => c.chapterNumber === editingChapter)}
                   />
                 ) : (
                   <button type="button" onClick={() => setEditingChapter(chapters.length + 1)}
@@ -764,7 +824,7 @@ export default function PublishPage() {
               )}
             </div>
           </div>
-        </div>
+        </fieldset>
 
         {/* Live Preview */}
         <div className="w-full xl:w-72 xl:flex-shrink-0">
@@ -809,4 +869,15 @@ export default function PublishPage() {
       </div>
     </div>
   );
+}
+
+function PublishSession() {
+  const uid = useAuthStore(state => state.userProfile?.uid);
+  const editId = useSearchParams().get('edit');
+  const [revision, setRevision] = useState(0);
+  return <PublishWorkspace key={`${uid ?? 'guest'}:${editId ?? 'new'}:${revision}`} editId={editId} resetDraft={() => setRevision(value => value + 1)} />;
+}
+
+export default function PublishPage() {
+  return <Suspense fallback={<LoadingSpinner size={32} />}><PublishSession /></Suspense>;
 }

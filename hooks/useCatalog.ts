@@ -5,11 +5,13 @@ import { create } from 'zustand';
 import { subscribeLiveBooks } from '@/lib/firebase/firestore';
 import { newestBooks } from '@/lib/utils/catalog';
 import type { Book } from '@/types/book';
+import { CONNECTION_RESTORED } from '@/lib/network';
 
 const useCatalogState = create<{ books: Book[]; loading: boolean; error: string }>(() => ({ books: [], loading: true, error: '' }));
 let consumers = 0;
 let generation = 0;
 let unsubscribe: (() => void) | undefined;
+const reconnect = () => { if (useCatalogState.getState().error) connect(); };
 
 function connect() {
   unsubscribe?.();
@@ -25,9 +27,10 @@ function connect() {
 export function useCatalog() {
   const state = useCatalogState();
   useEffect(() => {
-    if (consumers++ === 0) connect();
+    if (consumers++ === 0) { connect(); window.addEventListener(CONNECTION_RESTORED, reconnect); }
     return () => {
       if (--consumers === 0) {
+        window.removeEventListener(CONNECTION_RESTORED, reconnect);
         generation++;
         unsubscribe?.(); unsubscribe = undefined;
         useCatalogState.setState({ books: [], loading: true, error: '' });

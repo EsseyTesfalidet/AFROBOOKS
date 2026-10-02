@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, Underline as UnderlineIcon, Heading2, List, X } from 'lucide-react';
@@ -10,6 +10,7 @@ interface Props {
   chapterNumber: number;
   onSave: (chapter: Pick<Chapter, 'title' | 'content' | 'wordCount' | 'chapterNumber'>) => void;
   onCancel: () => void;
+  onDraftChange?: (chapter: Pick<Chapter, 'title' | 'content' | 'wordCount' | 'chapterNumber'>) => void;
   initial?: { title: string; content: string };
 }
 
@@ -38,8 +39,11 @@ function ToolBtn({ onClick, active, icon: Icon }: { onClick: () => void; active?
     style={{ background: active ? '#e8442a' : 'transparent', color: active ? '#fff' : '#aaa' }}><Icon size={14} /></button>;
 }
 
-export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial }: Props) {
+export default function ChapterEditor({ chapterNumber, onSave, onCancel, onDraftChange, initial }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '');
+  const draftCallback = useRef(onDraftChange);
+  const currentTitle = useRef(title);
+  useLayoutEffect(() => { draftCallback.current = onDraftChange; currentTitle.current = title; });
 
   const editor = useEditor({
     extensions: [StarterKit.configure({ link: false }), PreserveParagraphBreaks],
@@ -54,6 +58,13 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial
     },
   });
 
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => draftCallback.current?.({ chapterNumber, title: currentTitle.current, content: editor.getHTML(), wordCount: countWords(editor.getText()) });
+    editor.on('update', update);
+    return () => { editor.off('update', update); };
+  }, [editor, chapterNumber]);
+
   function handleSave() {
     if (!editor) return;
     const content = editor.getHTML();
@@ -64,7 +75,7 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#333', background: '#161616' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: '#222' }}>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b" style={{ borderColor: '#222' }}>
         <p className="text-sm font-medium text-white">Editing Chapter {chapterNumber}</p>
         <div className="flex gap-2">
           <button type="button" onClick={onCancel} className="px-3 py-1.5 rounded-lg border text-xs" style={{ borderColor: '#333', color: '#888' }}>
@@ -81,7 +92,10 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, initial
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (editor) draftCallback.current?.({ chapterNumber, title: e.target.value, content: editor.getHTML(), wordCount: countWords(editor.getText()) });
+          }}
           placeholder="Chapter title..."
           dir="auto"
           className="chapter-title-input w-full px-3 py-2 rounded-lg border text-sm"

@@ -4,11 +4,14 @@ import AuthProvider from '@/components/shared/AuthProvider';
 import AgreementGate from '@/components/legal/AgreementGate';
 import AuthWelcome from '@/components/shared/AuthWelcome';
 import AppExperience from '@/components/shared/AppExperience';
+import ConnectionStatus from '@/components/shared/ConnectionStatus';
+import MobileKeyboard from '@/components/shared/MobileKeyboard';
 import ServiceWorkerRegistration from '@/components/shared/ServiceWorkerRegistration';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
   viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
 };
 
 export const metadata: Metadata = {
@@ -62,6 +65,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-[#0e0e0e] text-[#f5f2eb] font-body antialiased">
         <ServiceWorkerRegistration />
         <AppExperience />
+        <ConnectionStatus />
+        <MobileKeyboard />
         <AuthProvider>
           <AgreementGate>{children}<AuthWelcome /></AgreementGate>
         </AuthProvider>
