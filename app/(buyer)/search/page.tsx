@@ -182,11 +182,11 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e]">
+    <div className="app-canvas min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
       {error && <div role="alert" className="p-4 text-[14px] text-red-300">{error}<button type="button" onClick={retry} className="ml-4 min-h-11 underline">Try again</button></div>}
 
-      <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
+      <main className="app-page mx-auto max-w-5xl px-4 py-6 space-y-6">
         <section
           className="rounded-[28px] border p-5 sm:p-6"
           style={{

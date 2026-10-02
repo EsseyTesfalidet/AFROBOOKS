@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './app-appearance.css';
 import AuthProvider from '@/components/shared/AuthProvider';
 import AgreementGate from '@/components/legal/AgreementGate';
 import AuthWelcome from '@/components/shared/AuthWelcome';

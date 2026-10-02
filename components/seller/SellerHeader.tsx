@@ -26,7 +26,7 @@ export default function SellerHeader() {
 
   return (
     <>
-      <header className="app-header sticky top-0 z-50 border-b border-white/10 bg-[#10100f]/95 backdrop-blur-xl">
+      <header className="app-header seller-header sticky top-0 z-50 border-b border-white/10 bg-[#10100f]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-5 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Logo href="/dashboard" size="sm" />

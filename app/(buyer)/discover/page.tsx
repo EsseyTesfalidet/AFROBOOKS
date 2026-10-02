@@ -16,10 +16,10 @@ export default function DiscoverPage() {
   const { books, loading, error, retry } = useCatalog();
   const shelves = useMemo(() => catalogShelves(books, favoriteGenre), [books, favoriteGenre]);
   const hasDifferentLatest = shelves.latest.some(book => !shelves.recommended.some(pick => pick.id === book.id));
-  return <div className="min-h-screen bg-[#10100f]">
+  return <div className="app-canvas min-h-screen bg-[#10100f]">
     <BuyerHeader />
-    <main className="mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <main className="app-page mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
+      <header className="app-page-intro flex flex-wrap items-end justify-between gap-4">
         <div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">Discover</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Find your next great read.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">New voices, familiar favorites, and stories worth opening.</p></div>
         <Link href="/browse" className="inline-flex min-h-11 items-center gap-2 text-[14px] text-[#d8c2a2]">Browse all books <ArrowUpRight size={16} /></Link>
       </header>

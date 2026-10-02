@@ -59,7 +59,7 @@ function ListingsPageContent() {
   const count = (status: string) => books.filter((book) => status === 'attention' ? book.status === 'flagged' || book.status === 'removed' : book.status === status).length;
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-8 sm:px-8 sm:py-12">
+    <main className="app-page mx-auto max-w-5xl px-5 py-8 sm:px-8 sm:py-12">
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">Your catalog</p>
       <div className="mt-3 flex flex-wrap items-start justify-between gap-5">
         <div><h1 className="text-[28px] font-semibold tracking-tight sm:text-[36px]">Books</h1><p className="mt-2 text-[14px] text-[#a8a49c]">From your first draft to your next release.</p></div>
@@ -85,5 +85,5 @@ function ListingsPageContent() {
 }
 
 export default function ListingsPage() {
-  return <div className="min-h-screen bg-[#10100f]"><SellerHeader /><Suspense fallback={<div role="status" className="flex justify-center py-16"><LoadingSpinner size={28} /><span className="sr-only">Loading your books…</span></div>}><ListingsPageContent /></Suspense></div>;
+  return <div className="app-canvas min-h-screen bg-[#10100f]"><SellerHeader /><Suspense fallback={<div role="status" className="flex justify-center py-16"><LoadingSpinner size={28} /><span className="sr-only">Loading your books…</span></div>}><ListingsPageContent /></Suspense></div>;
 }

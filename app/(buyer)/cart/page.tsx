@@ -29,7 +29,7 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0e0e0e]">
+      <div className="app-canvas min-h-screen bg-[#0e0e0e]">
         <BuyerHeader />
         <div className="flex flex-col items-center justify-center py-24 text-center px-4">
           <ShoppingCart size={48} style={{ color: '#2a2a2a' }} className="mb-4" />
@@ -45,16 +45,16 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e]">
+    <div className="app-canvas min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="app-page max-w-3xl mx-auto px-4 py-8">
         <h1 className="font-display text-display-lg text-white mb-6">Your Cart</h1>
 
         <div className="flex gap-6 flex-col lg:flex-row">
           {/* Items */}
           <div className="flex-1 space-y-3">
             {items.map((item) => (
-              <div key={item.bookId} className="flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <div key={item.bookId} className="app-panel flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 {/* Mini cover */}
                 <div className="w-10 shrink-0"><BookCover book={item} compact /></div>
 
@@ -76,7 +76,7 @@ export default function CartPage() {
 
           {/* Summary */}
           <div className="lg:w-64 flex-shrink-0">
-            <div className="p-5 rounded-xl border space-y-3" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <div className="app-panel p-5 rounded-xl border space-y-3" style={{ background: '#111', borderColor: '#1a1a1a' }}>
               <h2 className="font-display text-display-sm text-white">Order Summary</h2>
 
               <div className="space-y-2 text-sm">
@@ -108,7 +108,7 @@ export default function CartPage() {
                 type="button"
                 disabled={minimum.remaining > 0 || items.length > 20}
                 onClick={() => router.push('/checkout')}
-                className="w-full py-3 rounded-xl text-sm font-medium disabled:opacity-50"
+                className="app-primary-action w-full py-3 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ background: '#e8442a', color: '#fff' }}
               >
                 Checkout — {centsToDisplay(tot)}

@@ -75,7 +75,7 @@ export default function LibraryPage() {
 
   if (!authLoading && !user) return <main className="p-8"><Link href="/login" className="underline">Sign in to open your library</Link></main>;
   if (authLoading || loading || syncing || loadedUid !== user?.uid) return (
-    <div className="min-h-screen bg-[#0e0e0e]">
+    <div className="app-canvas min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
       <div className="flex justify-center pt-16"><LoadingSpinner size={36} /></div>
     </div>
@@ -84,9 +84,9 @@ export default function LibraryPage() {
   if (error) return <div role="alert" className="p-8 text-[14px] text-red-300">{error}<button type="button" className="ml-4 min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>;
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e]">
+    <div className="app-canvas min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="app-page app-library max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between gap-4 mb-6">
           <h1 className="font-display text-display-lg text-white">My Library</h1>
           <Link href="/gifts" className="text-sm text-[#f5b800] underline">My gifts</Link>
@@ -112,7 +112,7 @@ export default function LibraryPage() {
                   <Link
                     key={bookId}
                     href={`/read/${bookId}`}
-                    className="flex-shrink-0 rounded-xl overflow-hidden snap-start border"
+                    className="app-library-reading-card flex-shrink-0 rounded-xl overflow-hidden snap-start border"
                     style={{ width: 150, background: '#111', borderColor: '#1a1a1a' }}
                   >
                     {book && <BookCover book={book} />}
@@ -139,13 +139,13 @@ export default function LibraryPage() {
         ) : (
           <div className="space-y-3">
             {entries.map(({ bookId, book, progress, currentChapter }) => (
-              <div key={bookId} className="flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <div key={bookId} className="app-library-item app-panel flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
                 {/* Cover */}
-                <div className="w-12 shrink-0">{book && <BookCover book={book} compact />}</div>
+                <div className="app-library-cover w-12 shrink-0">{book && <BookCover book={book} compact />}</div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{book ? publicationTitle(book) : bookId}</p>
+                  <p className="app-library-title text-sm font-medium text-white truncate">{book ? publicationTitle(book) : bookId}</p>
                   {book?.publicationType === 'magazine' && <p className="text-xs text-[#dec18e]">{publicationLabel(book)}</p>}
                   <p className="text-xs text-[#666] mb-2">{book?.authorName}</p>
                   <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function LibraryPage() {
                 {/* Action */}
                 {book ? <Link
                   href={`/read/${bookId}`}
-                  className="px-4 py-2 rounded-lg text-xs font-medium flex-shrink-0"
+                  className="app-library-action px-4 py-2 rounded-lg text-xs font-medium flex-shrink-0"
                   style={{ background: progress > 0 ? '#1a1a1a' : '#e8442a', color: progress > 0 ? '#aaa' : '#fff', border: progress > 0 ? '1px solid #333' : 'none' }}
                 >
                   {progress >= 95 ? 'Re-read' : progress > 0 ? 'Continue' : 'Read'}

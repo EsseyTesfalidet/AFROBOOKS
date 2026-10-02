@@ -1,0 +1,184 @@
+/* Installed-app presentation only. Existing controls, data and reader themes
+   retain their behavior; these classes have no effect on the browser website. */
+html[data-app-mode='installed'] {
+  --app-canvas: #101114;
+  --app-surface: #191b20;
+  --app-line: #ffffff12;
+  --app-text: #f5f3ef;
+  --app-muted: #a8abb5;
+  --app-accent: #ffa18b;
+  --app-action: #c9442c;
+}
+
+html[data-app-mode='installed'] .app-canvas { background: var(--app-canvas); }
+html[data-app-mode='installed'] .app-page { padding-top: 28px; padding-bottom: 32px; }
+html[data-app-mode='installed'] .app-page :is(h1, h2) { text-wrap: balance; }
+html[data-app-mode='installed'] .app-page > h1,
+html[data-app-mode='installed'] .app-page > div > h1,
+html[data-app-mode='installed'] .app-page > fieldset > h1,
+html[data-app-mode='installed'] .app-page-intro h1 {
+  color: var(--app-text); font-size: clamp(28px, 7.7vw, 36px);
+  font-weight: 750; line-height: 1.16; letter-spacing: -.04em;
+}
+html[data-app-mode='installed'] .app-page-intro > p:first-child,
+html[data-app-mode='installed'] .app-page-intro > div > p:first-child {
+  color: #d8b68b; font-size: 10px; letter-spacing: .16em;
+}
+html[data-app-mode='installed'] .app-page-intro h1 + p { color: var(--app-muted); line-height: 1.7; }
+html[data-app-mode='installed'] .app-page :is(.text-\[\#555\], .text-\[\#666\], .text-\[\#888\]) { color: var(--app-muted); }
+
+/* A single, calm header treatment across the reader and author workspaces. */
+html[data-app-mode='installed'] :is(.buyer-header, .seller-header) {
+  background: #121317f2; border-bottom: 1px solid var(--app-line);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+html[data-app-mode='installed'] .buyer-header-inner { padding: 10px 20px; }
+html[data-app-mode='installed'] .buyer-header-actions { gap: 3px; }
+html[data-app-mode='installed'] :is(.buyer-header-action, .buyer-header-actions .icon-button) {
+  color: #d0d1d7; border-radius: 15px;
+}
+html[data-app-mode='installed'] :is(.buyer-header-action, .buyer-header-actions .icon-button):hover { background: #ffffff08; }
+html[data-app-mode='installed'] .buyer-account-button {
+  background: #ff977e12; color: var(--app-accent); border-color: #ff977e38;
+  box-shadow: inset 0 0 0 3px #141519;
+}
+html[data-app-mode='installed'] .buyer-cart-count { background: var(--app-action); color: white; }
+html[data-app-mode='installed'] .buyer-header-actions svg { stroke-width: 1.8; }
+
+html[data-app-mode='installed'] .buyer-bottom-nav-shell {
+  padding: 7px 10px; border-radius: 27px; border-color: #ffffff1a;
+  background: #1a1c21f5; box-shadow: 0 10px 32px #0006, inset 0 1px 0 #ffffff06;
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+}
+html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item { min-height: 57px; gap: 2px; color: #a7aab5; }
+html[data-app-mode='installed'] .buyer-nav-icon { height: 34px; width: 48px; border-radius: 13px; }
+html[data-app-mode='installed'] .buyer-nav-icon svg { width: 21px; height: 21px; stroke-width: 1.9; }
+html[data-app-mode='installed'] .buyer-nav-item > span { font-size: 11px; font-weight: 600; letter-spacing: .01em; }
+html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] { color: var(--app-accent); }
+html[data-app-mode='installed'] .buyer-nav-item[data-active='true'] .buyer-nav-icon { background: #ff977e18; }
+html[data-app-mode='installed'] .seller-bottom-nav { background: #191b20f5; border-color: var(--app-line); }
+html[data-app-mode='installed'] .seller-bottom-nav a { font-weight: 600; color: #a7aab5; }
+html[data-app-mode='installed'] .seller-bottom-nav a[aria-current='page'] { color: var(--app-accent); }
+
+/* Covers keep their original aspect ratio and contain the author's artwork. */
+html[data-app-mode='installed'] .app-book-card {
+  padding: 7px; border: 1px solid #ffffff09; border-radius: 18px;
+  background: #191b2080; box-shadow: 0 6px 16px #00000012;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+html[data-app-mode='installed'] .app-book-card .app-book-cover {
+  border-radius: 12px; border-color: #ffffff0d; box-shadow: 0 4px 10px #0003;
+}
+html[data-app-mode='installed'] .app-book-card .app-book-artwork { transform: none; }
+html[data-app-mode='installed'] .app-book-details { padding: 12px 4px 4px; }
+html[data-app-mode='installed'] .app-book-title { min-height: 2.7em; font-size: 14px; font-weight: 650; line-height: 1.35; letter-spacing: -.01em; }
+html[data-app-mode='installed'] .app-book-details > p:not(:first-child) { color: var(--app-muted); }
+html[data-app-mode='installed'] .app-book-price {
+  padding: 3px 7px; border-radius: 7px; color: #f1c4a6; background: #f1c4a60b;
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+html[data-app-mode='installed'] .app-book-rail-items { gap: 12px; padding-bottom: 10px; scrollbar-width: thin; }
+html[data-app-mode='installed'] .app-book-rail-items > div { width: clamp(150px, 42vw, 180px); }
+html[data-app-mode='installed'] .app-section-heading h2 { font-size: 21px; line-height: 1.3; letter-spacing: -.035em; }
+html[data-app-mode='installed'] .app-section-heading > a { color: #c7c9d1 !important; font-size: 11px; }
+html[data-app-mode='installed'] .app-section-heading p { margin-top: 6px; color: var(--app-muted) !important; }
+
+html[data-app-mode='installed'] .app-catalog-filters { gap: 12px; }
+html[data-app-mode='installed'] :is(.app-catalog-filters input, .app-catalog-filters select, .field-input) {
+  min-height: 48px; border-radius: 15px; border-color: #ffffff16;
+  background: #1a1c21; box-shadow: inset 0 1px 0 #ffffff03;
+}
+html[data-app-mode='installed'] .app-catalog-filters input::placeholder { color: #969ba8; }
+html[data-app-mode='installed'] .app-catalog-filters svg { color: var(--app-muted); }
+html[data-app-mode='installed'] .app-page :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), textarea, select) { border-radius: 14px; }
+html[data-app-mode='installed'] .app-catalog-filters input:focus-visible,
+html[data-app-mode='installed'] .field-input:focus-visible { outline-color: var(--app-accent); }
+html[data-app-mode='installed'] :is(.app-primary-action, .button-primary) {
+  min-height: 48px; border-radius: 15px; background: var(--app-action) !important;
+  color: white; font-weight: 650; box-shadow: 0 5px 14px #c9442c1a;
+}
+html[data-app-mode='installed'] .button-secondary { border-radius: 15px; box-shadow: none; background: #ffffff05; }
+
+html[data-app-mode='installed'] :is(.app-panel, .app-account-section) {
+  border-radius: 20px; border-color: var(--app-line) !important;
+  background: var(--app-surface) !important; box-shadow: 0 6px 20px #00000012;
+}
+html[data-app-mode='installed'] .app-library-item { gap: 14px; padding: 14px; }
+html[data-app-mode='installed'] .app-library-cover { width: 52px; }
+html[data-app-mode='installed'] .app-library-cover .app-book-cover { border-radius: 9px; }
+html[data-app-mode='installed'] .app-library-title {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-size: 14px; font-weight: 650; line-height: 1.4; margin-bottom: 4px;
+}
+html[data-app-mode='installed'] .app-library-item :is(.text-\[\#555\], .text-\[\#666\]) { color: var(--app-muted); }
+html[data-app-mode='installed'] .app-library-action { min-height: 44px; display: inline-flex; align-items: center; border-radius: 12px; font-weight: 650; }
+html[data-app-mode='installed'] .app-library-reading-card {
+  padding: 7px; border-radius: 18px; background: var(--app-surface) !important;
+  border-color: var(--app-line) !important; width: 158px !important;
+}
+html[data-app-mode='installed'] .app-library-reading-card .app-book-cover { border-radius: 12px; }
+html[data-app-mode='installed'] .app-library-reading-card p:last-child { color: var(--app-muted) !important; }
+html[data-app-mode='installed'] .app-continue-card {
+  width: min(290px, 80vw) !important; border-radius: 18px;
+  background: var(--app-surface) !important; border-color: var(--app-line) !important;
+}
+html[data-app-mode='installed'] .app-continue-card p { font-size: 13px; }
+html[data-app-mode='installed'] .app-continue-card p + p,
+html[data-app-mode='installed'] .app-continue-card span:first-child { color: var(--app-muted) !important; }
+html[data-app-mode='installed'] .app-continue-shelf > div:first-child > a { color: #c7c9d1 !important; }
+html[data-app-mode='installed'] .reader-resume-bar > div { background: #1a1c21f5 !important; border-color: #ffffff18 !important; border-radius: 20px; }
+html[data-app-mode='installed'] .reader-resume-bar p + p { color: var(--app-muted) !important; }
+
+html[data-app-mode='installed'] .app-community-invitation {
+  border-radius: 22px; border-color: #ffa18b20;
+  background: linear-gradient(125deg, #30211f, #1c1c22 75%); padding: 24px;
+}
+html[data-app-mode='installed'] .app-community-invitation > p:first-child { color: #e9b59c; }
+html[data-app-mode='installed'] .app-community-invitation > a { color: #ffc0ab; }
+
+/* Account sheets use the same surfaces as the feed, with visible dividers. */
+html[data-app-mode='installed'] .profile-panel {
+  background: #17191e; border-color: #ffffff16; box-shadow: 0 -12px 50px #0005;
+}
+html[data-app-mode='installed'] .profile-panel > header { border-bottom: 1px solid #ffffff0a; }
+html[data-app-mode='installed'] .profile-panel > header h1 { font-size: 28px; letter-spacing: -.04em; }
+html[data-app-mode='installed'] .profile-panel > header p { color: #d8b68b; letter-spacing: .15em; }
+html[data-app-mode='installed'] .profile-panel > footer { border-color: #ffffff0a; color: var(--app-muted); }
+html[data-app-mode='installed'] .app-account-control { border-radius: 14px; font-weight: 600; }
+html[data-app-mode='installed'] .profile-panel input,
+html[data-app-mode='installed'] .profile-panel textarea,
+html[data-app-mode='installed'] .profile-panel select { border-color: #ffffff1c; background: #202229; border-radius: 14px; }
+html[data-app-mode='installed'] .profile-panel nav > :is(a, button):hover { background: #ffffff04; }
+
+@media (max-width: 639px) {
+  html[data-app-mode='installed'] .app-page { padding-inline: 20px; }
+  html[data-app-mode='installed'] .app-page.space-y-9 > :not([hidden]) ~ :not([hidden]) { margin-top: 28px; }
+  html[data-app-mode='installed'] .app-catalog-filters { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+  html[data-app-mode='installed'] .app-catalog-filters > div:first-child { grid-column: 1 / -1; }
+  html[data-app-mode='installed'] .profile-panel { border-radius: 28px 28px 0 0; }
+}
+@media (max-width: 359px) {
+  html[data-app-mode='installed'] .app-page { padding-inline: 16px; }
+  html[data-app-mode='installed'] .buyer-header-inner { padding-inline: 16px; }
+  html[data-app-mode='installed'] .app-library-item { gap: 10px; padding: 12px; }
+  html[data-app-mode='installed'] .app-library-cover { width: 44px; }
+  html[data-app-mode='installed'] .app-library-action { padding-inline: 11px; }
+  html[data-app-mode='installed'] .app-catalog-filters select { padding-inline: 10px; }
+}
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+  html[data-app-mode='installed'] .buyer-header-inner { padding-block: 6px; }
+  html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item { min-height: 44px; gap: 6px; }
+  html[data-app-mode='installed'] .buyer-bottom-nav-shell { padding-block: 4px; border-radius: 20px; }
+  html[data-app-mode='installed'] .buyer-nav-icon { height: 30px; width: 34px; }
+  html[data-app-mode='installed'] .profile-panel { border-radius: 0; }
+  html[data-app-mode='installed'] .profile-panel > header h1 { font-size: 22px; }
+}
+@media (min-width: 768px) {
+  html[data-app-mode='installed'] .app-catalog-filters { grid-template-columns: minmax(0, 1fr) 180px 180px; }
+}
+@media (hover: hover) {
+  html[data-app-mode='installed'] .app-book-card:hover { background: #202229; border-color: #ffffff1c; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-app-mode='installed'] :is(.app-book-card, .app-book-artwork, .buyer-nav-icon) { transition: none; transform: none; }
+}

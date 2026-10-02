@@ -222,7 +222,7 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
       <button
         type="submit"
         disabled={loading || !stripe || !restored || pendingOrders.length > 0}
-        className="w-full py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+        className="app-primary-action w-full py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
         style={{ background: '#e8442a', color: '#fff' }}
       >
         {loading && <LoadingSpinner size={16} color="#fff" />}

@@ -406,15 +406,15 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
   const publishActionBlocked = publishMode !== 'draft' && requiresIdVerificationForPublishingNow;
 
   if (sellerLoading || editLoading || !localDraft.ready) return (
-    <div className="min-h-screen bg-[#0e0e0e]"><SellerHeader />
+    <div className="app-canvas min-h-screen bg-[#0e0e0e]"><SellerHeader />
       <div className="flex justify-center pt-16"><LoadingSpinner size={32} /></div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e]">
+    <div className="app-canvas min-h-screen bg-[#0e0e0e]">
       <SellerHeader />
-      <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-6 xl:flex-row xl:gap-8">
+      <div className="app-page max-w-6xl mx-auto px-4 py-6 flex flex-col gap-6 xl:flex-row xl:gap-8">
 
         {/* Main form */}
         <fieldset disabled={publishing} className="flex-1 min-w-0 space-y-6">

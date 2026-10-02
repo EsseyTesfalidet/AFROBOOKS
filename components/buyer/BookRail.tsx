@@ -25,8 +25,8 @@ export default function BookRail({
   emptyMessage = 'Nothing here yet.',
 }: Props) {
   return (
-    <section className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
+    <section className="app-book-rail space-y-3">
+      <div className="app-section-heading flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-[22px] font-semibold tracking-tight text-[#f5f2eb]">{title}</h2>
@@ -65,7 +65,7 @@ export default function BookRail({
         </div>
       ) : (
         <div
-          className="flex gap-4 overflow-x-auto py-2 snap-x snap-mandatory"
+          className="app-book-rail-items flex gap-4 overflow-x-auto py-2 snap-x snap-mandatory"
           tabIndex={0}
           role="region"
           aria-label={title}

@@ -42,11 +42,11 @@ export default function BrowsePage() {
   const followedBooks = followed?.uid === userProfile?.uid ? allBooks.filter(book => followed?.ids.includes(book.sellerId)).slice(0, 8) : [];
   const filtering = !!search.trim() || genre !== 'All' || publicationType !== 'all';
 
-  return <div className="min-h-screen bg-[#10100f]">
+  return <div className="app-canvas min-h-screen bg-[#10100f]">
     <BuyerHeader />
-    <main className="mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
-      <header><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">The AfroBooks collection</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Stories to get lost in.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">Explore books and magazines, discover creators, and open your next read.</p></header>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
+    <main className="app-page mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
+      <header className="app-page-intro"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">The AfroBooks collection</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Stories to get lost in.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">Explore books and magazines, discover creators, and open your next read.</p></header>
+      <div className="app-catalog-filters grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
         <div><label htmlFor="catalog-search" className="sr-only">Search the catalog</label><div className="relative"><Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 text-[#96938b]" /><input id="catalog-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search title, author, or genre" className="min-h-11 w-full rounded-lg border border-white/15 bg-white/[0.03] pl-10 pr-3 text-[16px] placeholder:text-[#96938b]" /></div></div>
         <div><label htmlFor="catalog-genre" className="sr-only">Filter by genre</label><select id="catalog-genre" value={genre} onChange={event=>setGenre(event.target.value)} className="min-h-11 w-full rounded-lg border border-white/15 bg-[#181816] px-3 text-[16px]"><option value="All">All genres</option>{genres.map(item=><option key={item}>{item}</option>)}</select></div>
         <div><label htmlFor="catalog-type" className="sr-only">Publication type</label><select id="catalog-type" value={publicationType} onChange={event=>setPublicationType(event.target.value as typeof publicationType)} className="min-h-11 w-full rounded-lg border border-white/15 bg-[#181816] px-3 text-[16px]"><option value="all">All publications</option><option value="book">Books</option><option value="magazine">Magazines</option><option value="short_story">Short stories</option></select></div>

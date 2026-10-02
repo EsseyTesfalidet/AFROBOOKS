@@ -44,9 +44,9 @@ export default function CheckoutPage() {
   if (minimum.remaining || items.length > 20) return <main className="mx-auto max-w-lg space-y-4 p-8"><h1 className="text-xl">Finish your story bundle</h1><p>{items.length > 20 ? 'Choose up to 20 titles per payment.' : `Add ${centsToDisplay(minimum.remaining)} more after discounts to reach the ${centsToDisplay(minimum.minimum)} cart minimum.`}</p><Link href="/cart" className="block underline">Review your cart</Link><Link href="/browse" className="block underline">Choose more stories</Link></main>;
 
   return (
-    <div className="min-h-screen bg-[#0e0e0e]">
+    <div className="app-canvas min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
-      <main className="max-w-xl mx-auto px-4 py-8">
+      <main className="app-page max-w-xl mx-auto px-4 py-8">
         {/* Steps */}
         <div className="flex items-center justify-center gap-2 mb-8 text-xs text-[#555]">
           {['Browse', 'Cart', 'Payment', 'Read'].map((step, i) => (
@@ -59,7 +59,7 @@ export default function CheckoutPage() {
 
         <div className="space-y-5">
           {/* Order summary */}
-          <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <div className="app-panel p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <h2 className="font-display text-display-sm text-white mb-4">Order Summary</h2>
             {items.map((item) => (
               <div key={item.bookId} className="flex justify-between text-sm py-1.5">
@@ -83,7 +83,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Payment */}
-          <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <div className="app-panel p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
             <h2 className="font-display text-display-sm text-white mb-4">Payment</h2>
             <CheckoutPaymentPanel />
           </div>

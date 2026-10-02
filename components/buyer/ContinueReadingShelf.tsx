@@ -36,7 +36,7 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
   if (!loaded || availableItems.length === 0) return null;
 
   return (
-    <div className="mb-6">
+    <div className="app-continue-shelf mb-6">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-medium text-white">Continue Reading</p>
         <Link href="/library" className="text-xs transition-colors hover:text-white" style={{ color: '#555' }}>
@@ -51,7 +51,7 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
           <Link
             key={book.id}
             href={`/read/${book.id}`}
-            className="flex-shrink-0 snap-start rounded-xl overflow-hidden border"
+            className="app-continue-card flex-shrink-0 snap-start rounded-xl overflow-hidden border"
             style={{ width: 200, background: '#111', borderColor: '#1a1a1a' }}
           >
             <div className="flex gap-3 p-3">

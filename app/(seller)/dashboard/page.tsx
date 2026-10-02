@@ -38,9 +38,9 @@ export default function SellerDashboardPage() {
   const attention = books.filter((book) => book.status === 'flagged' || book.status === 'removed').length;
 
   return (
-    <div className="min-h-screen bg-[#10100f]">
+    <div className="app-canvas min-h-screen bg-[#10100f]">
       <SellerHeader />
-      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+      <main className="app-page mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">Author studio</p>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-5">
           <div>
