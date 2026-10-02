@@ -142,7 +142,7 @@ export default function AgreementGate({ children }: { children: ReactNode }) {
   // Documents remain public and readable without accepting them. Signup records
   // its own explicit checkbox; Google and existing accounts use this same gate.
   if (
-    ['/terms', '/privacy', '/login', '/signup'].includes(path) ||
+    ['/terms', '/privacy', '/about-help', '/login', '/signup'].includes(path) ||
     !profile ||
     hasCurrentAgreement(profile)
   )

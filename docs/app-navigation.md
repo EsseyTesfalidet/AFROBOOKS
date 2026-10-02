@@ -1,0 +1,11 @@
+# Installed app navigation
+
+The installed AfroBooks experience uses three bottom tabs: Browse, Library and Account. Account opens the existing drawer, with Discover, Community, Cart, Book gifts and About & Help available alongside the reader's existing account controls. Guests can open Account to find support and sign-in links. About & Help is also linked from reader/author account settings.
+
+`/about-help` is public and contains a short introduction, the shared support contact (`LEGAL_CONTACT`), Privacy, Terms, and the web app version from `package.json`. A short source commit is displayed when Vercel supplies it. This is explicitly the **web app version**, not a claim about which Android wrapper version is installed. No Android package or billing changes are included.
+
+Installed mode hides the catalog footer, retains the bottom tabs on tablets and landscape phones, and opens `/browse` when the installed PWA launches at `/` (an explicit home-page anchor is preserved). Website tabs and its footer stay unchanged. Reader and sample routes retain their existing policy of no footer or bottom navigation. About & Help remains accessible without accepting account terms so support and policy information stay reachable.
+
+Detection uses standalone/minimal UI/window controls display modes, iOS `navigator.standalone`, or the AfroBooks Android app referrer. Full-screen browser content by itself does not count as an installed app. Detection affects presentation only; it never determines authentication, payment permissions or native app version. See [web.dev display-mode detection](https://web.dev/learn/pwa/detection/).
+
+Validation: TypeScript and targeted ESLint checks; browser fixtures using the actual navigation, drawer, About page, and installed-mode detection. Browser, standalone, iOS home-screen and Android wrapper signals were exercised at 320px, phone landscape, and tablet widths. Verified guest/authenticated Account links, dismissal and focus restoration, support/policy/version content, website footer retention, and footer/navigation absence on reader/sample routes. Platform signals were simulated in Chromium; this does not replace testing a physical installed Android/iOS device.

@@ -3,6 +3,7 @@ import './globals.css';
 import AuthProvider from '@/components/shared/AuthProvider';
 import AgreementGate from '@/components/legal/AgreementGate';
 import AuthWelcome from '@/components/shared/AuthWelcome';
+import AppExperience from '@/components/shared/AppExperience';
 import ServiceWorkerRegistration from '@/components/shared/ServiceWorkerRegistration';
 
 export const viewport: Viewport = {
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="bg-[#0e0e0e] text-[#f5f2eb] font-body antialiased">
         <ServiceWorkerRegistration />
+        <AppExperience />
         <AuthProvider>
           <AgreementGate>{children}<AuthWelcome /></AgreementGate>
         </AuthProvider>

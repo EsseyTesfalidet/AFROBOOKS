@@ -4,21 +4,24 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
+import { useInstalledApp } from '@/hooks/useInstalledApp';
 import './buyer-chrome.css';
 import {
   BUYER_MOBILE_TABS,
+  BUYER_APP_TABS,
   getBuyerRouteState,
   isBuyerNavActive,
 } from '@/components/buyer/buyerNavigation';
 
 export default function BuyerBottomNav() {
   const pathname = usePathname();
+  const installed = useInstalledApp();
   const cartCount = useCartStore((state) => state.items.length);
   const openDrawer = useBuyerDrawerStore((state) => state.open);
   const drawerOpen = useBuyerDrawerStore((state) => state.isOpen);
   const routeState = getBuyerRouteState(pathname);
 
-  if (!routeState.showBottomNav || drawerOpen) {
+  if (!routeState.showBottomNav) {
     return null;
   }
 
@@ -27,8 +30,8 @@ export default function BuyerBottomNav() {
       <div
         className="buyer-bottom-nav-shell mx-auto max-w-md rounded-[24px] p-2"
       >
-        <div className="grid grid-cols-5 gap-1">
-          {BUYER_MOBILE_TABS.map((item) => {
+        <div className={`grid ${installed ? 'grid-cols-3' : 'grid-cols-5'} gap-1`}>
+          {(installed ? BUYER_APP_TABS : BUYER_MOBILE_TABS).map((item) => {
             const { label, href, icon: Icon, drawerSection } = item;
             const active =
               label === 'Profile'
@@ -76,6 +79,8 @@ export default function BuyerBottomNav() {
                 key={label}
                 type="button"
                 data-active={active}
+                aria-haspopup="dialog"
+                aria-expanded={drawerOpen}
                 onClick={() => openDrawer(drawerSection)}
                 className="buyer-nav-item flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-2xl"
               >

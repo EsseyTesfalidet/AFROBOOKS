@@ -49,6 +49,15 @@
 .buyer-footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; padding-top: 16px; border-top: 1px solid #ffffff10; color: #989d90; font-size: 11px; }
 .buyer-footer-bottom nav { display: flex; gap: 24px; }
 .buyer-footer-bottom a { display: inline-flex; align-items: center; min-height: 44px; }
+/* Installed app navigation stays available on tablets and in landscape. */
+html[data-app-mode='installed'] .buyer-bottom-nav,
+html[data-app-mode='installed'] .buyer-nav-space { display: block; }
+html[data-app-mode='installed'] .buyer-header-navigation { display: none; }
+html[data-app-mode='installed'] .buyer-header-action.buyer-header-cart { display: inline-flex; }
+html[data-app-mode='installed'] .buyer-header-inner { padding-bottom: 10px; }
+@media (display-mode: standalone), (display-mode: minimal-ui), (display-mode: window-controls-overlay) {
+  .buyer-footer { display: none; }
+}
 :is(.buyer-header, .buyer-footer, .buyer-bottom-nav) :is(a, button):focus-visible { outline: 2px solid #e3c18a; outline-offset: 4px; }
 @media (min-width: 640px) {
   .buyer-header-inner { padding-inline: 32px; }

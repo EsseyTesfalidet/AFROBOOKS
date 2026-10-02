@@ -4,6 +4,7 @@ import {
   Library,
   ShoppingCart,
   Users,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -39,6 +40,10 @@ const ROUTE_STATE_RULES: Array<{
   matches: string[];
   state: Partial<BuyerRouteState>;
 }> = [
+  {
+    matches: ['/about-help'],
+    state: { eyebrow: 'AfroBooks', title: 'About & Help', subtitle: 'Support, information and app details.', showSwipe: false },
+  },
   {
     matches: ['/community'],
     state: {
@@ -183,6 +188,12 @@ export const BUYER_MOBILE_TABS: BuyerNavItem[] = [
 export const BUYER_DESKTOP_LINKS: BuyerNavItem[] = BUYER_MOBILE_TABS.filter(
   (item) => item.href
 );
+
+export const BUYER_APP_TABS: BuyerNavItem[] = [
+  { label: 'Browse', href: '/browse', icon: BookOpen, matches: ['/browse', '/discover', '/search', '/community'] },
+  { label: 'Library', href: '/library', icon: Library, matches: ['/library'] },
+  { label: 'Account', icon: UserRound, drawerSection: 'account', matches: ['/profile', '/about-help', '/gifts', '/cart'] },
+];
 
 export const BUYER_SWIPE_ROUTES = ['/browse', '/discover', '/library', '/cart'];
 

@@ -9,9 +9,11 @@ import BuyerFooter from '@/components/buyer/BuyerFooter';
 import BuyerProfileDrawer from '@/components/buyer/BuyerProfileDrawer';
 import ReaderResumeBar from '@/components/buyer/ReaderResumeBar';
 import { getBuyerRouteState } from '@/components/buyer/buyerNavigation';
+import { useInstalledApp } from '@/hooks/useInstalledApp';
 
 export default function BuyerChrome() {
   const pathname = usePathname();
+  const installed = useInstalledApp();
   const routeState = getBuyerRouteState(pathname);
 
   return (
@@ -19,7 +21,7 @@ export default function BuyerChrome() {
       <CatalogSync />
       <Suspense><ProfileLinkHandler /></Suspense>
       <ReaderResumeBar />
-      {routeState.showFooter ? <BuyerFooter /> : null}
+      {routeState.showFooter && !installed ? <BuyerFooter /> : null}
       {routeState.showBottomNav ? (
         <div className="buyer-nav-space h-[92px] sm:hidden" aria-hidden="true" />
       ) : null}
