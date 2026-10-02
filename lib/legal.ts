@@ -1,5 +1,5 @@
 export const LEGAL_VERSION = '2026-09-27';
-export const LEGAL_CONTACT = 'esseytesfa@gmail.com';
+export const LEGAL_CONTACT = 'afrobooks.services@gmail.com';
 export function hasCurrentAgreement(
   value?: {
     legalAgreement?: { termsVersion?: string; privacyVersion?: string; acceptedAt?: number };

@@ -10,6 +10,7 @@ import CommunityInvitation from '@/components/community/CommunityInvitation';
 import { useAuthStore } from '@/store/authStore';
 import { useCatalog } from '@/hooks/useCatalog';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import { LEGAL_CONTACT } from '@/lib/legal';
 
 const GENRES = ['Fiction', 'History', 'Science', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 
@@ -322,7 +323,7 @@ export default function LandingPage() {
 
             <div className="space-y-4 mb-8">
               <a
-                href="mailto:esseytesfa@gmail.com"
+                href={`mailto:${LEGAL_CONTACT}`}
                 className="group flex items-center gap-3 p-4 rounded-xl border border-[#2b2821] bg-[#141412] transition-colors hover:border-[#745b37] hover:bg-[#191712] focus-visible:outline-[#e9bd73]"
               >
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#342c20] bg-[#231e16]">
@@ -330,12 +331,12 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <p className="text-xs mb-0.5 text-[#96928a]">General enquiries</p>
-                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">esseytesfa@gmail.com</p>
+                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">{LEGAL_CONTACT}</p>
                 </div>
               </a>
 
               <a
-                href="mailto:esseytesfa@gmail.com"
+                href={`mailto:${LEGAL_CONTACT}`}
                 className="group flex items-center gap-3 p-4 rounded-xl border border-[#2b2821] bg-[#141412] transition-colors hover:border-[#745b37] hover:bg-[#191712] focus-visible:outline-[#e9bd73]"
               >
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#342c20] bg-[#231e16]">
@@ -343,7 +344,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <p className="text-xs mb-0.5 text-[#96928a]">Author support</p>
-                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">esseytesfa@gmail.com</p>
+                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">{LEGAL_CONTACT}</p>
                 </div>
               </a>
 
@@ -438,7 +439,7 @@ export default function LandingPage() {
                   { label: 'About Us', href: '#about' },
                   { label: 'Terms of use', href: '/terms' },
                   { label: 'Privacy information', href: '/privacy' },
-                  { label: 'esseytesfa@gmail.com', href: 'mailto:esseytesfa@gmail.com' },
+                  { label: LEGAL_CONTACT, href: `mailto:${LEGAL_CONTACT}` },
                 ].map(({ label, href }) => (
                   <li key={label}>
                     <Link href={href} className="text-sm transition-colors hover:text-white break-all" style={{ color: '#444' }}>{label}</Link>

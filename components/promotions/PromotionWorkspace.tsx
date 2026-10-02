@@ -7,6 +7,7 @@ import { AdminDrawer } from '@/components/admin/AdminUI';
 import BookCover from '@/components/shared/BookCover';
 import { authenticatedGet, authenticatedPost } from '@/lib/firebase/request';
 import { useAuthStore } from '@/store/authStore';
+import { LEGAL_CONTACT } from '@/lib/legal';
 import {
   promotionIsOpen,
   promotionLabel,
@@ -448,7 +449,7 @@ export default function PromotionWorkspace({ admin = false }: { admin?: boolean 
             counts are approximate, exclude anonymous visits, and are never used for billing.{' '}
             <a
               className="underline"
-              href="mailto:esseytesfa@gmail.com?subject=Book%20promotion%20support"
+              href={`mailto:${LEGAL_CONTACT}?subject=Book%20promotion%20support`}
             >
               Contact support
             </a>
