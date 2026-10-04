@@ -97,8 +97,8 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
         <div
           className="fixed left-0 right-0 top-0 z-50 rounded-b-2xl flex flex-col"
           style={{
-            background: 'linear-gradient(180deg, rgba(21,21,24,0.98) 0%, rgba(12,12,14,0.98) 100%)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--app-surface, linear-gradient(180deg, rgba(21,21,24,0.98) 0%, rgba(12,12,14,0.98) 100%))',
+            borderBottom: '1px solid var(--app-line, rgba(255,255,255,0.08))',
             maxHeight: 'calc(100dvh - 24px - env(safe-area-inset-bottom))',
             paddingTop: 'env(safe-area-inset-top)',
             left: 'env(safe-area-inset-left)',
@@ -116,7 +116,7 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ paddingTop: '16px' }}>
             <h3 className="font-display text-lg text-white">Notifications</h3>
             <div className="flex items-center gap-3">
-              <button type="button" onClick={handleMarkAll} className="text-xs font-medium" style={{ color: '#f5b800' }}>
+              <button type="button" onClick={handleMarkAll} className="text-xs font-medium" style={{ color: 'var(--app-subtle-accent, #f5b800)' }}>
                 Mark all read
               </button>
               <button type="button" title="Close" onClick={onClose}
@@ -127,14 +127,14 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           </div>
 
           {/* Tabs */}
-          <div className="flex px-5 gap-3 flex-shrink-0 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex px-5 gap-3 flex-shrink-0 pb-3" style={{ borderBottom: '1px solid var(--app-line, rgba(255,255,255,0.08))' }}>
             {(['all', 'unread'] as const).map((t) => (
               <button key={t} type="button" onClick={() => setTab(t)}
                 className="rounded-full px-3 py-2 text-sm capitalize transition-colors"
                 style={{
-                  color: tab === t ? '#0e0e0e' : '#8d8d96',
-                  background: tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.08)'}`,
+                  color: tab === t ? 'var(--app-on-inverse, #0e0e0e)' : 'var(--app-muted, #8d8d96)',
+                  background: tab === t ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-soft, rgba(255,255,255,0.04))',
+                  border: `1px solid ${tab === t ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-line, rgba(255,255,255,0.08))'}`,
                 }}>
                 {t}
               </button>
@@ -159,15 +159,15 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <Link href="/notifications" onClick={onClose} className="text-xs font-medium" style={{ color: '#b8b8c0' }}>
+          <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--app-line, rgba(255,255,255,0.08))' }}>
+            <Link href="/notifications" onClick={onClose} className="text-xs font-medium" style={{ color: 'var(--app-muted, #b8b8c0)' }}>
               View all notifications →
             </Link>
           </div>
 
           {/* Swipe-up hint */}
           <div className="flex justify-center pb-3 flex-shrink-0">
-            <div className="w-10 h-1 rounded-full" style={{ background: '#333' }} />
+            <div className="w-10 h-1 rounded-full" style={{ background: 'var(--app-line, #333)' }} />
           </div>
         </div>
       </>, document.body
@@ -182,7 +182,7 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
     >
       <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-3">
         <h3 className="font-display text-lg text-white">Notifications</h3>
-        <button type="button" onClick={handleMarkAll} className="text-xs font-medium" style={{ color: '#f5b800' }}>
+        <button type="button" onClick={handleMarkAll} className="text-xs font-medium" style={{ color: 'var(--app-subtle-accent, #f5b800)' }}>
           Mark all read
         </button>
       </div>
@@ -192,9 +192,9 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           <button key={t} type="button" onClick={() => setTab(t)}
             className="rounded-full px-3 py-1.5 text-sm capitalize transition-colors"
             style={{
-              color: tab === t ? '#0e0e0e' : '#8d8d96',
-              background: tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${tab === t ? '#f5f2eb' : 'rgba(255,255,255,0.08)'}`,
+              color: tab === t ? 'var(--app-on-inverse, #0e0e0e)' : 'var(--app-muted, #8d8d96)',
+              background: tab === t ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-soft, rgba(255,255,255,0.04))',
+              border: `1px solid ${tab === t ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-line, rgba(255,255,255,0.08))'}`,
             }}>
             {t}
           </button>
@@ -208,7 +208,7 @@ export default function NotificationPanel({ onClose, isMobile }: Props) {
           : recent.map((n) => <NotificationItem key={n.id} notification={n} onRead={handleMarkRead} onError={setDeleteError} />)}
       </div>
 
-      <div className="shrink-0 border-t px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <div className="shrink-0 border-t px-4 py-3" style={{ borderColor: 'var(--app-line, rgba(255,255,255,0.08))' }}>
         <Link href="/notifications" onClick={onClose} className="text-xs text-[#aaa] hover:text-white transition-colors">
           View all notifications
         </Link>

@@ -114,13 +114,13 @@ export default function LibraryPage() {
                     key={bookId}
                     href={`/read/${bookId}`}
                     className="app-library-reading-card flex-shrink-0 rounded-xl overflow-hidden snap-start border"
-                    style={{ width: 150, background: '#111', borderColor: '#1a1a1a' }}
+                    style={{ width: 150, background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}
                   >
                     {book && <BookCover book={book} />}
                     <p className="px-2 pt-2 text-[12px] font-medium text-white line-clamp-2">{book?.title ?? bookId}</p>
                     <div className="px-2.5 pt-2 pb-2.5 space-y-1">
                       <ProgressBar value={progress} color="#e8442a" height={3} />
-                      <p className="text-xs" style={{ color: '#555' }}>{progress}% · Ch. {currentChapter}</p>
+                      <p className="text-xs" style={{ color: 'var(--app-muted, #555)' }}>{progress}% · Ch. {currentChapter}</p>
                     </div>
                   </Link>
                 ))}
@@ -131,7 +131,7 @@ export default function LibraryPage() {
 
         {entries.length === 0 ? (
           <div className="text-center py-20">
-            <BookOpen size={48} style={{ color: '#2a2a2a' }} className="mx-auto mb-4" />
+            <BookOpen size={48} style={{ color: 'var(--app-line, #2a2a2a)' }} className="mx-auto mb-4" />
             <p className="text-[#555] mb-4">Your library is empty.</p>
             <Link href="/browse" className="px-5 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
               Browse Books
@@ -140,7 +140,7 @@ export default function LibraryPage() {
         ) : (
           <div className="space-y-3">
             {entries.map(({ bookId, book, progress, currentChapter }) => (
-              <div key={bookId} className="app-library-item app-panel flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <div key={bookId} className="app-library-item app-panel flex items-center gap-4 p-4 rounded-xl border" style={{ background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}>
                 {/* Cover */}
                 <div className="app-library-cover w-12 shrink-0">{book && <BookCover book={book} compact />}</div>
 
@@ -162,7 +162,7 @@ export default function LibraryPage() {
                 {book ? <Link
                   href={`/read/${bookId}`}
                   className="app-library-action px-4 py-2 rounded-lg text-xs font-medium flex-shrink-0"
-                  style={{ background: progress > 0 ? '#1a1a1a' : '#e8442a', color: progress > 0 ? '#aaa' : '#fff', border: progress > 0 ? '1px solid #333' : 'none' }}
+                  style={{ background: progress > 0 ? 'var(--app-field, #1a1a1a)' : '#e8442a', color: progress > 0 ? 'var(--app-muted, #aaa)' : '#fff', border: progress > 0 ? '1px solid var(--app-line, #333)' : 'none' }}
                 >
                   {progress >= 95 ? 'Re-read' : progress > 0 ? 'Continue' : 'Read'}
                 </Link> : <span className="text-xs text-[#aaa]">Currently unavailable</span>}

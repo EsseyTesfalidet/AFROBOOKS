@@ -11,6 +11,16 @@ html[data-app-mode='installed'] {
   --app-success: #4ade80;
   --app-success-surface: #0f2e1a;
   --app-subtle-accent: #d8b68b;
+  --app-track: #333;
+  --app-inverse: #f5f2eb;
+  --app-on-inverse: #101114;
+  --app-warning: #f5b800;
+  --app-warning-surface: #2e1a0f;
+  --app-info: #38bdf8;
+  --app-info-surface: #1a1a2e;
+  --app-danger: #ff977f;
+  --app-danger-surface: #1f0e0c;
+  --app-accent-surface: #30211f;
 }
 html[data-app-mode='installed'][data-app-theme='light'] {
   color-scheme: light;
@@ -29,7 +39,18 @@ html[data-app-mode='installed'][data-app-theme='light'] {
   --app-success: #21723f;
   --app-success-surface: #e5f1e7;
   --app-subtle-accent: #934326;
+  --app-track: #c4c6cc;
+  --app-inverse: #25272c;
+  --app-on-inverse: #fff;
+  --app-warning: #815500;
+  --app-warning-surface: #fff3d6;
+  --app-info: #03658d;
+  --app-info-surface: #e6f3fa;
+  --app-danger: #b1252d;
+  --app-danger-surface: #fce9e7;
+  --app-accent-surface: #f9e9e1;
 }
+html[data-app-mode='installed'] { background: var(--app-canvas); color: var(--app-text); }
 html[data-app-mode='installed'] body { background: var(--app-canvas); color: var(--app-text); }
 html[data-app-mode='installed'] :is(.buyer-header, .seller-header, .app-legal-header) { background: var(--app-header); }
 html[data-app-mode='installed'] :is(.buyer-header-action, .buyer-header-actions .icon-button) { color: var(--app-text); }
@@ -80,27 +101,35 @@ html[data-app-mode='installed'] .app-book-page h1 { font-size: clamp(28px, 7.8vw
 html[data-app-mode='installed'] .app-book-page { padding-top: 32px; }
 html[data-app-mode='installed'] .app-section-heading h2 { font-weight: 750; }
 
-/* Existing fixed-color surfaces are mapped to semantic light colors. The
-   exclusions keep covers, author artwork and every reader theme independent. */
-html[data-app-mode='installed'][data-app-theme='light'] :is(.bg-\[\#0e0e0e\], .bg-\[\#10100f\], .bg-\[\#0a0a0a\]) { background-color: var(--app-canvas); }
+/* Legacy utility colors use exact classes, never prefix matches (which also
+   matched hover classes and unrelated accent colors). Inline UI colors use the
+   same semantic variables at their source. Artwork and reader themes opt out. */
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="bg-[#0e0e0e]"], [class~="bg-[#10100f]"], [class~="bg-[#0a0a0a]"], [class~="bg-bg-primary"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { background-color: var(--app-canvas); }
 html[data-app-mode='installed'][data-app-theme='light'] :is(.app-shell, .auth-shell) { background: var(--app-canvas); }
-html[data-app-mode='installed'][data-app-theme='light'] :is(.text-white, .text-\[\#f5f2eb\], .text-\[\#ddd\], .text-\[\#ccc\], .text-\[\#c6c2b8\], .text-\[\#e5e5e5\]):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: var(--app-text); }
-html[data-app-mode='installed'][data-app-theme='light'] :is([class*='text-[#a'], [class*='text-[#b'], [class*='text-[#5'], [class*='text-[#6'], [class*='text-[#7'], [class*='text-[#8'], [class*='text-[#9'], .text-\[\#444\]):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: var(--app-muted); }
-html[data-app-mode='installed'][data-app-theme='light'] :is([class*='text-[#d'], [class*='text-[#e']):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: var(--app-text); }
-html[data-app-mode='installed'][data-app-theme='light'] :is(.text-\[\#f5b800\], .text-\[\#dec18e\], .text-\[\#c1a56c\], .text-\[\#d8b68b\], .text-\[\#ffad91\], .text-\[\#ffc2ad\], .text-\[\#ffa18b\], .text-\[\#c5a56a\], .text-\[\#ffb199\]):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: #934326; }
-html[data-app-mode='installed'][data-app-theme='light'] :is(.text-red-300, .text-red-400, .text-\[\#e8442a\]) { color: #b1252d; }
-html[data-app-mode='installed'][data-app-theme='light'] :is(.text-green-300, .text-green-400, .text-emerald-300, .text-emerald-400) { color: #21723f; }
-html[data-app-mode='installed'][data-app-theme='light'] :is([class*='border-white/'], .border-\[\#222\], .border-\[\#333\], .border-\[\#1a1a1a\]):not(.reader-shell *, [data-keep-colors], [data-keep-colors] *) { border-color: var(--app-line); }
-html[data-app-mode='installed'][data-app-theme='light'] :is([class*='bg-white/'], .bg-\[\#111\], .bg-\[\#1a1a1a\], .bg-\[\#181816\], .bg-\[\#161616\]):not(.reader-shell *, [data-keep-colors], [data-keep-colors] *) { background-color: var(--app-field); }
-html[data-app-mode='installed'][data-app-theme='light'] :is(.app-community-invitation, .surface-card, .surface-panel, .surface-panel-muted, .surface-glass) { background: var(--app-surface); border-color: var(--app-line); box-shadow: 0 8px 24px #00000012; }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="text-white"], [class~="text-text-primary"], [class~="text-[#f5f2eb]"], [class~="text-[#ddd]"], [class~="text-[#ccc]"], [class~="text-[#c6c2b8]"], [class~="text-[#e5e5e5]"], [class~="text-[#d4d4d8]"], [class~="text-[#eee]"], [class~="text-[#c9c4ba]"], [class~="text-[#c4bfb5]"], [class~="text-[#e5e1d8]"], [class~="text-[#c5beb2]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-text); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="text-text-secondary"], [class~="text-text-muted"], [class~="text-text-hint"], [class~="text-[#aaa]"], [class~="text-[#a8a49c]"], [class~="text-[#a39f97]"], [class~="text-[#555]"], [class~="text-[#b4b1a9]"], [class~="text-[#666]"], [class~="text-[#888]"], [class~="text-[#b9b5ac]"], [class~="text-[#96938b]"], [class~="text-[#444]"], [class~="text-[#bbb]"], [class~="text-[#8d897f]"], [class~="text-[#96928a]"], [class~="text-[#b5b0a6]"], [class~="text-[#9a9aa3]"], [class~="text-[#7b7b84]"], [class~="text-[#bcb4a5]"], [class~="text-[#b9ad98]"], [class~="text-[#5d5d66]"], [class~="text-[#a8abb5]"], [class~="text-[#7a7a84]"], [class~="text-[#8d8d96]"], [class~="text-[#999]"], [class~="text-[#6f6f78]"], [class~="text-[#8b8b94]"], [class~="text-[#bbb5aa]"], [class~="text-[#777]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-muted); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="text-accent-gold"], [class~="text-[#f5b800]"], [class~="text-[#dec18e]"], [class~="text-[#c1a56c]"], [class~="text-[#d8b68b]"], [class~="text-[#ffad91]"], [class~="text-[#ffc2ad]"], [class~="text-[#ffa18b]"], [class~="text-[#c5a56a]"], [class~="text-[#ffb199]"], [class~="text-[#e9bd73]"], [class~="text-[#ff9e83]"], [class~="text-[#e5c68e]"], [class~="text-[#ffd24d]"], [class~="text-[#d8c2a2]"], [class~="text-[#ff977f]"], [class~="text-[#ead8b8]"], [class~="text-[#dbb878]"], [class~="text-[#f3d9ae]"], [class~="text-[#ffab8e]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-subtle-accent); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="text-red-200"], [class~="text-red-300"], [class~="text-red-400"], [class~="text-danger-text"], [class~="text-[#e8442a]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-danger); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="text-green-200"], [class~="text-green-300"], [class~="text-green-400"], [class~="text-emerald-200"], [class~="text-emerald-300"], [class~="text-emerald-400"], [class~="text-success-text"], [class~="text-[#4ade80]"], [class~="text-[#9cddb0]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-success); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="text-amber-200"], [class~="text-amber-300"], [class~="text-amber-400"], [class~="text-yellow-300"], [class~="text-warning-text"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-warning); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="text-blue-200"], [class~="text-blue-300"], [class~="text-sky-300"], [class~="text-cyan-300"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-info); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="border-border-default"], [class~="border-border-subtle"], [class~="border-white/5"], [class~="border-white/10"], [class~="border-white/15"], [class~="border-white/20"], [class~="border-white/30"], [class~="border-white/[0.08]"], [class~="border-[#222]"], [class~="border-[#333]"], [class~="border-[#1a1a1a]"], [class~="border-[#555]"], [class~="border-[#342c20]"], [class~="border-[#292929]"], [class~="border-[#2b2821]"], [class~="border-[#54441e]"], [class~="border-[#745b37]"], [class~="border-[#444]"], [class~="border-[#2a2a2a]"], [class~="border-[#4b4335]"], [class~="border-[#3d3528]"], [class~="border-[#66532b]"], [class~="border-[#777]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { border-color: var(--app-line); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="bg-bg-secondary"], [class~="bg-bg-tertiary"], [class~="bg-white/5"], [class~="bg-white/10"], [class~="bg-white/[0.03]"], [class~="bg-white/[0.035]"], [class~="bg-white/[0.04]"], [class~="bg-white/[0.05]"], [class~="bg-[#111]"], [class~="bg-[#111110]"], [class~="bg-[#1a1a1a]"], [class~="bg-[#181816]"], [class~="bg-[#161616]"], [class~="bg-[#222]"], [class~="bg-[#141412]"], [class~="bg-[#191712]"], [class~="bg-[#1b1a17]"], [class~="bg-[#171814]"], [class~="bg-[#1b1914]"], [class~="bg-[#201d1a]"], [class~="bg-[#17150f]"], [class~="bg-[#151515]"], [class~="bg-[#171717]"], [class~="bg-[#1c1915]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { background-color: var(--app-field); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="bg-warning-bg"], [class~="bg-[#211c12]"], [class~="bg-[#231e16]"], [class~="bg-[#33291e]"], [class~="bg-[#24211b]"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { background-color: var(--app-warning-surface); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="bg-success-bg"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { background-color: var(--app-success-surface); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="bg-danger-bg"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { background-color: var(--app-danger-surface); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="bg-[#10100f]/95"]):not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { background-color: var(--app-header); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="hover:text-white"], [class~="hover:text-[#aaa]"], [class~="hover:text-[#ffad91]"], [class~="hover:text-[#e9bd73]"]):hover:not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { color: var(--app-accent); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class~="hover:bg-white/5"], [class~="hover:bg-white/10"], [class~="hover:bg-[#191712]"], [class~="hover:bg-[#222]"], [class~="hover:bg-[#1a1a1a]"]):hover:not(:where(.reader-shell, .reader-shell *, .reader-panel, .reader-panel *, [data-keep-colors], [data-keep-colors] *)) { background-color: var(--app-soft); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.app-community-invitation, .surface-card, .surface-panel, .surface-panel-muted, .surface-glass, .app-sponsored-book) { background: var(--app-surface); border-color: var(--app-line); box-shadow: 0 8px 24px #00000012; }
 html[data-app-mode='installed'][data-app-theme='light'] .surface-panel-muted { background: var(--app-field); }
-html[data-app-mode='installed'][data-app-theme='light'] .eyebrow-chip { color: var(--app-accent); }
-html[data-app-mode='installed'][data-app-theme='light'] .app-community-invitation > :is(p, a),
-html[data-app-mode='installed'][data-app-theme='light'] .app-page-intro > p:first-child,
-html[data-app-mode='installed'][data-app-theme='light'] .profile-panel > header p { color: var(--app-accent); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.eyebrow-chip, .app-community-invitation > :is(p, a), .app-page-intro > p:first-child, .profile-panel > header p) { color: var(--app-accent); }
 html[data-app-mode='installed'][data-app-theme='light'] :is(.app-primary-action, .button-primary, .bg-\[\#e8442a\], .bg-\[\#c9442c\]) { color: white; }
 html[data-app-mode='installed'][data-app-theme='light'] .app-book-card:hover { background: var(--app-field); border-color: var(--app-line); }
-html[data-app-mode='installed'][data-app-theme='light'] .app-catalog-filters input::placeholder { color: var(--app-muted); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(input, textarea)::placeholder { color: var(--app-muted); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.icon-button, .button-ghost) { color: var(--app-text); background: var(--app-soft); border-color: var(--app-line); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.icon-button, .button-ghost, .button-secondary):hover { color: var(--app-text); background: var(--app-field); border-color: var(--app-line); }
+html[data-app-mode='installed'][data-app-theme='light'] .tiptap-editor, html[data-app-mode='installed'][data-app-theme='light'] .tiptap-editor h2 { color: var(--app-text); }
 
 @media (prefers-reduced-motion: no-preference) {
   /* Opacity only on pages: transforms would re-anchor their fixed controls. */

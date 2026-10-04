@@ -53,7 +53,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
   return (
     <div
       className="rounded-xl border p-5"
-      style={{ background: '#161616', borderColor: '#2a2a2a' }}
+      style={{ background: 'var(--app-surface, #161616)', borderColor: 'var(--app-line, #2a2a2a)' }}
     >
       {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {/* Header */}
@@ -71,7 +71,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
               {review.isVerifiedPurchase && (
                 <span
                   className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ background: '#0f2e1a', color: '#4ade80' }}
+                  style={{ background: 'var(--app-success-surface, #0f2e1a)', color: 'var(--app-success, #4ade80)' }}
                 >
                   Verified Purchase
                 </span>
@@ -112,7 +112,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
             type="button"
             onClick={() => setReplyOpen(!replyOpen)}
             className="flex items-center gap-1.5 text-xs ml-auto transition-colors"
-            style={{ color: '#f5b800' }}
+            style={{ color: 'var(--app-subtle-accent, #f5b800)' }}
           >
             {replyOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             Reply to review
@@ -129,7 +129,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
             placeholder="Write your reply..."
             rows={3}
             className="w-full px-3 py-2.5 rounded-lg border text-sm resize-none"
-            style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}
+            style={{ background: 'var(--app-field, #1a1a1a)', borderColor: 'var(--app-line, #333)', color: 'var(--app-text, #f5f2eb)' }}
           />
           <button
             type="button"
@@ -147,7 +147,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
       {review.sellerReply && (
         <div
           className="mt-4 p-3 rounded-lg"
-          style={{ borderLeft: '3px solid #f5b800', background: '#1a1500' }}
+          style={{ borderLeft: '3px solid #f5b800', background: 'var(--app-warning-surface, #1a1500)' }}
         >
           <div className="flex items-center gap-2 mb-1">
             <span

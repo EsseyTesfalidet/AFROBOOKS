@@ -97,11 +97,11 @@ export default function AnalyticsPage() {
 
         {error && <p role="alert">{error}</p>}
         {/* Tabs */}
-        <div className="flex gap-4 mb-6 border-b" style={{ borderColor: '#1a1a1a' }}>
+        <div className="flex gap-4 mb-6 border-b" style={{ borderColor: "var(--app-line, #1a1a1a)" }}>
           {TABS.map((t) => (
             <button key={t} type="button" onClick={() => setTab(t)}
               className="pb-2 text-sm font-medium transition-colors"
-              style={{ color: tab === t ? '#f5f2eb' : '#555', borderBottom: tab === t ? '2px solid #e8442a' : '2px solid transparent' }}>
+              style={{ color: tab === t ? "var(--app-text, #f5f2eb)" : "var(--app-muted, #555)", borderBottom: tab === t ? '2px solid #e8442a' : '2px solid transparent' }}>
               {t}
             </button>
           ))}
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
                 { label: 'Earnings', value: centsToDisplay(totalRevenue), color: '#4ade80' },
                 { label: 'Avg Rating', value: (books.reduce((s, b) => s + b.averageRating, 0) / Math.max(books.length, 1)).toFixed(1), color: '#f5b800' },
               ].map(({ label, value, color }) => (
-                <div key={label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+                <div key={label} className="p-4 rounded-xl border" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
                   <p className="text-xs text-[#555]">{label}</p>
                   <p className="font-display text-2xl mt-1" style={{ color }}>{value}</p>
                 </div>
@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Revenue chart */}
-            <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <div className="p-5 rounded-xl border" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
               <p className="text-sm font-medium text-white mb-4">Seller earnings (Last 7 Days)</p>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={revenueData}>
@@ -133,8 +133,8 @@ export default function AnalyticsPage() {
                   <XAxis dataKey="day" tick={{ fill: '#555', fontSize: 11 }} />
                   <YAxis tick={{ fill: '#555', fontSize: 11 }} tickFormatter={(v) => `$${(v / 100).toFixed(0)}`} />
                   <Tooltip
-                    contentStyle={{ background: '#161616', border: '1px solid #222', borderRadius: 8 }}
-                    labelStyle={{ color: '#aaa' }}
+                    contentStyle={{ background: "var(--app-surface, #161616)", border: '1px solid var(--app-line, #222)', borderRadius: 8 }}
+                    labelStyle={{ color: "var(--app-muted, #aaa)" }}
                     formatter={(v: number) => [`$${(v / 100).toFixed(2)}`, 'Revenue']}
                   />
                   <Line type="monotone" dataKey="revenue" stroke="#e8442a" strokeWidth={2} dot={false} />
@@ -144,14 +144,14 @@ export default function AnalyticsPage() {
 
             {/* Sales by book */}
             {bookSalesData.length > 0 && (
-              <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <div className="p-5 rounded-xl border" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
                 <p className="text-sm font-medium text-white mb-4">Sales by Book</p>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={bookSalesData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                     <XAxis dataKey="name" tick={{ fill: '#555', fontSize: 10 }} />
                     <YAxis tick={{ fill: '#555', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ background: '#161616', border: '1px solid #222', borderRadius: 8 }} labelStyle={{ color: '#aaa' }} />
+                    <Tooltip contentStyle={{ background: "var(--app-surface, #161616)", border: '1px solid var(--app-line, #222)', borderRadius: 8 }} labelStyle={{ color: "var(--app-muted, #aaa)" }} />
                     <Bar dataKey="sales" fill="#e8442a" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
                 { label: 'Sent to Stripe', value: centsToDisplay(totalPaid), color: '#4ade80' },
                 { label: 'Pending', value: centsToDisplay(pending), color: '#f5b800' },
               ].map(({ label, value, color }) => (
-                <div key={label} className="p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+                <div key={label} className="p-4 rounded-xl border" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
                   <p className="text-xs text-[#555]">{label}</p>
                   <p className="font-display text-2xl mt-1" style={{ color }}>{value}</p>
                 </div>
@@ -179,7 +179,7 @@ export default function AnalyticsPage() {
             {payouts.length === 0 ? (
               <p className="text-center text-[#444] py-8 text-sm">No payout history is available yet.</p>
             ) : (
-              <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <div className="rounded-xl border overflow-hidden" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
@@ -195,7 +195,7 @@ export default function AnalyticsPage() {
                         <td className="px-4 py-3" style={{ color: '#4ade80' }}>{centsToDisplay(p.amountCents)}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-0.5 rounded"
-                            style={{ background: p.status === 'paid' ? '#0f2e1a' : '#2e1a0f', color: p.status === 'paid' ? '#4ade80' : '#f5b800' }}>
+                            style={{ background: p.status === 'paid' ? "var(--app-success-surface, #0f2e1a)" : "var(--app-warning-surface, #2e1a0f)", color: p.status === 'paid' ? '#4ade80' : '#f5b800' }}>
                             {p.status === 'paid' ? p.stripeTransferId ? 'Transferred to Stripe' : 'Recorded paid; unverified' : p.status}
                           </span>
                         </td>
@@ -210,7 +210,7 @@ export default function AnalyticsPage() {
 
         {/* By Book */}
         {tab === 'By Book' && (
-          <div className="rounded-xl border overflow-hidden" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <div className="rounded-xl border overflow-hidden" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a1a' }}>
@@ -245,14 +245,14 @@ export default function AnalyticsPage() {
         {tab === 'Audience' && (
           <div className="grid grid-cols-2 gap-5">
             {genreData.length > 0 && (
-              <div className="p-5 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <div className="p-5 rounded-xl border" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
                 <p className="text-sm font-medium text-white mb-4">Sales by Genre</p>
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie data={genreData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name} (${value})`}>
                       {genreData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ background: '#161616', border: '1px solid #222', borderRadius: 8 }} />
+                    <Tooltip contentStyle={{ background: "var(--app-surface, #161616)", border: '1px solid var(--app-line, #222)', borderRadius: 8 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

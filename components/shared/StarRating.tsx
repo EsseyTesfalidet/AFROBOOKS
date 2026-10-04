@@ -33,8 +33,8 @@ export default function StarRating({
             <Star
               size={size}
               style={{
-                fill: filled || half ? '#f5b800' : 'transparent',
-                color: '#f5b800',
+                fill: filled || half ? 'var(--app-warning, #f5b800)' : 'transparent',
+                color: 'var(--app-warning, #f5b800)',
               }}
             />
           </button>

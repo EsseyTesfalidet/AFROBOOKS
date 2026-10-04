@@ -97,7 +97,7 @@ export default function SponsoredBook({ books }: { books: Book[] }) {
     <section
       ref={container}
       aria-label="Sponsored book"
-      className="rounded-2xl border border-[#4b4335] bg-gradient-to-r from-[#2b271f] to-[#191b17] p-5 sm:p-7"
+      className="app-sponsored-book rounded-2xl border border-[#4b4335] bg-gradient-to-r from-[#2b271f] to-[#191b17] p-5 sm:p-7"
     >
       <p className="mb-5 text-[11px] font-semibold uppercase tracking-[.16em] text-[#d8c2a2]">
         Sponsored · Author promotion

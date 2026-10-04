@@ -131,7 +131,7 @@ export function useReaderSession(bookId: string, userId: string | null, hasAcces
 
   function turnPage(direction: -1 | 1) {
     const scroller = scrollerRef.current;
-    if (!scroller || restoring.current) return;
+    if (!scroller || restoring.current) return false;
     const { page, count, stride } = readerPageMetrics(scroller);
     const target = page + direction;
     if (target >= 0 && target < count) { scroller.scrollLeft = target * stride; measure(); appHaptic(); }
@@ -139,7 +139,9 @@ export function useReaderSession(bookId: string, userId: string | null, hasAcces
       const index = chapters.findIndex(item => item.chapterNumber === chapter);
       const adjacent = chapters[index + direction];
       if (adjacent) changeChapter(adjacent.chapterNumber, direction === -1);
+      else return false;
     }
+    return true;
   }
 
   return { chapters, chapter, loading, loadError, saveError, percent, pagination, turnPage, scrollerRef, bodyRef, changeChapter,

@@ -1,22 +1,22 @@
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  live: { bg: '#0f2e1a', text: '#4ade80' },
-  active: { bg: '#0f2e1a', text: '#4ade80' },
-  completed: { bg: '#0f2e1a', text: '#4ade80' },
-  paid: { bg: '#0f2e1a', text: '#4ade80' },
-  draft: { bg: '#1a1a1a', text: '#888' },
-  pending: { bg: '#2e1a0f', text: '#f5b800' },
-  needs_review: { bg: '#2e1a0f', text: '#f5b800' },
-  in_review: { bg: '#1a1a2e', text: '#0ea5e9' },
-  processing: { bg: '#1a1a2e', text: '#0ea5e9' },
-  flagged: { bg: '#2e1a0f', text: '#f5b800' },
-  removed: { bg: '#1f0e0c', text: '#e8442a' },
-  banned: { bg: '#1f0e0c', text: '#e8442a' },
-  suspended: { bg: '#1f0e0c', text: '#e8442a' },
-  failed: { bg: '#1f0e0c', text: '#e8442a' },
-  cancelled: { bg: '#1f0e0c', text: '#e8442a' },
-  warned: { bg: '#2e1a0f', text: '#f5b800' },
-  refunded: { bg: '#2e1a0f', text: '#f5b800' },
-  past_due: { bg: '#2e1a0f', text: '#f5b800' },
+  live: { bg: 'var(--app-success-surface, #0f2e1a)', text: 'var(--app-success, #4ade80)' },
+  active: { bg: 'var(--app-success-surface, #0f2e1a)', text: 'var(--app-success, #4ade80)' },
+  completed: { bg: 'var(--app-success-surface, #0f2e1a)', text: 'var(--app-success, #4ade80)' },
+  paid: { bg: 'var(--app-success-surface, #0f2e1a)', text: 'var(--app-success, #4ade80)' },
+  draft: { bg: 'var(--app-field, #1a1a1a)', text: 'var(--app-muted, #888)' },
+  pending: { bg: 'var(--app-warning-surface, #2e1a0f)', text: 'var(--app-warning, #f5b800)' },
+  needs_review: { bg: 'var(--app-warning-surface, #2e1a0f)', text: 'var(--app-warning, #f5b800)' },
+  in_review: { bg: 'var(--app-info-surface, #1a1a2e)', text: 'var(--app-info, #0ea5e9)' },
+  processing: { bg: 'var(--app-info-surface, #1a1a2e)', text: 'var(--app-info, #0ea5e9)' },
+  flagged: { bg: 'var(--app-warning-surface, #2e1a0f)', text: 'var(--app-warning, #f5b800)' },
+  removed: { bg: 'var(--app-danger-surface, #1f0e0c)', text: 'var(--app-danger, #e8442a)' },
+  banned: { bg: 'var(--app-danger-surface, #1f0e0c)', text: 'var(--app-danger, #e8442a)' },
+  suspended: { bg: 'var(--app-danger-surface, #1f0e0c)', text: 'var(--app-danger, #e8442a)' },
+  failed: { bg: 'var(--app-danger-surface, #1f0e0c)', text: 'var(--app-danger, #e8442a)' },
+  cancelled: { bg: 'var(--app-danger-surface, #1f0e0c)', text: 'var(--app-danger, #e8442a)' },
+  warned: { bg: 'var(--app-warning-surface, #2e1a0f)', text: 'var(--app-warning, #f5b800)' },
+  refunded: { bg: 'var(--app-warning-surface, #2e1a0f)', text: 'var(--app-warning, #f5b800)' },
+  past_due: { bg: 'var(--app-warning-surface, #2e1a0f)', text: 'var(--app-warning, #f5b800)' },
 };
 
 interface StatusPillProps {
@@ -25,7 +25,7 @@ interface StatusPillProps {
 }
 
 export default function StatusPill({ status, label }: StatusPillProps) {
-  const style = STATUS_STYLES[status] ?? { bg: '#1a1a1a', text: '#aaa' };
+  const style = STATUS_STYLES[status] ?? { bg: 'var(--app-field, #1a1a1a)', text: 'var(--app-muted, #aaa)' };
   return (
     <span
       className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"

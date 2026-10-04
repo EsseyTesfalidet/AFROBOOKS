@@ -14,6 +14,10 @@ async function main() {
 import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
 import Shell from './components/shared/MobileAppShell';import Experience from './components/shared/AppExperience';
 import Browse from './app/(buyer)/browse/page';import Book from './app/(buyer)/book/[id]/page';
+import Search from './app/(buyer)/search/page';import Library from './app/(buyer)/library/page';
+import AccountSettings from './components/shared/AccountSettings';import StatusPill from './components/shared/StatusPill';
+import ReviewForm from './components/buyer/ReviewForm';import ReviewCard from './components/buyer/ReviewCard';
+import NotificationPanel from './components/notifications/NotificationPanel';import {useNotificationStore} from './store/notificationStore';
 import Checkout from './app/(buyer)/checkout/page';import Receipt from './app/(buyer)/checkout/receipt/page';
 import Reader from './components/reader/InAppReader';import Header from './components/buyer/BuyerHeader';
 import Chrome from './components/buyer/BuyerChrome';import Settings from './components/shared/AppAppearanceSettings';
@@ -28,12 +32,19 @@ window.orderStatus='pending';window.orderListeners=[];
 window.setOrderStatus=s=>{window.orderStatus=s;window.orderListeners.forEach(cb=>cb())};
 window.path=location.pathname;window.vibrations=[];
 Object.defineProperty(navigator,'vibrate',{configurable:true,value:pattern=>{window.vibrations.push(pattern);return true}});
-useAuthStore.setState({loading:false,firebaseUser:{uid:'fixture',getIdToken:async()=>'fixture'},userProfile:{uid:'fixture',role:'buyer',activeRole:'buyer',status:'active',firstName:'Reader'}});
+useAuthStore.setState({loading:false,firebaseUser:{uid:'fixture',providerData:[{providerId:'password'}],getIdToken:async()=>'fixture'},userProfile:{uid:'fixture',role:'buyer',activeRole:'buyer',status:'active',firstName:'Reader',lastName:'Test'}});
+useNotificationStore.setState({notifications:[{id:'notice',title:'New chapter',message:'A new chapter is ready.',type:'new_chapter',isRead:false},{id:'read-notice',title:'Welcome',message:'Welcome to your library.',type:'system',isRead:true}]});
 useCartStore.setState({items:window.books.map(b=>({...b,bookId:b.id}))});
 window.appPrefs=useAppAppearanceStore;window.readerPrefs=useReaderStore;window.tap=appHaptic;
 window.fetch=async()=>new Response(JSON.stringify({available:true}),{status:200,headers:{'Content-Type':'application/json'}});
+function ThemeSurfaces(){const[notices,setNotices]=useState(false);return <><Header/><main className="app-page" style={{padding:24}}>
+<h1>Theme surfaces</h1><div id="statuses">{['paid','pending','failed','processing','draft'].map(status=><StatusPill key={status} status={status}/>)}</div>
+<button onClick={()=>setNotices(true)}>Open notifications</button><div id="account-settings"><AccountSettings/></div>
+<div id="review-form"><ReviewForm bookId="one" user={useAuthStore.getState().userProfile} onSuccess={()=>{}}/></div>
+<div id="review-card"><ReviewCard review={{id:'review',reviewerName:'Fixture reader',reviewerInitials:'FR',isVerifiedPurchase:true,stars:4,title:'A wonderful story',body:'A beautifully told story.',helpfulCount:0,sellerReply:{text:'Thank you for reading.'}}}/></div>
+</main>{notices&&<NotificationPanel isMobile onClose={()=>setNotices(false)}/>}</>}
 function App(){const[path,setPath]=useState(window.path);window.navigate=p=>{history.pushState(null,'',p);window.path=p.split('?')[0];setPath(p)};
-const route=path.split('?')[0];return <Shell><Experience/>{route==='/browse'?<Browse/>:route.startsWith('/book/')?<Book/>:route==='/checkout'?<Checkout/>:route==='/checkout/receipt'?<Receipt/>:route.startsWith('/read/')?<Reader book={window.books[0]} userId="fixture" hasAccess/>:<><Header/><main className="app-page" style={{padding:24}}><Settings/></main></>}<Chrome/></Shell>}
+const route=path.split('?')[0];return <Shell><Experience/>{route==='/browse'?<Browse/>:route==='/search'?<Search/>:route==='/library'?<Library/>:route==='/theme-check'?<ThemeSurfaces/>:route.startsWith('/book/')?<Book/>:route==='/checkout'?<Checkout/>:route==='/checkout/receipt'?<Receipt/>:route.startsWith('/read/')?<Reader book={window.books[0]} userId="fixture" hasAccess/>:<><Header/><main className="app-page" style={{padding:24}}><Settings/></main></>}<Chrome/></Shell>}
 createRoot(document.getElementById('root')).render(<App/>);
 ` }, plugins: [{ name: 'fixtures', setup(b) {
       b.onResolve({ filter: /^(next\/navigation|next\/link|next\/image|next\/dynamic)$/ }, a => ({ path: a.path, namespace: 'framework' }));
@@ -42,17 +53,24 @@ createRoot(document.getElementById('root')).render(<App/>);
         a.path === 'next/dynamic' ? `import React,{lazy,Suspense} from 'react';export default load=>{const C=lazy(load);return p=><Suspense><C {...p}/></Suspense>}` :
         `import React from 'react';const router={push:p=>window.navigate(p),replace:p=>window.navigate(p)};export const usePathname=()=>window.path;export const useParams=()=>({id:window.path.split('/').pop()});export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>router;export default function Link({children,href,onClick,...p}){return <a href={href} {...p} onClick={e=>{e.preventDefault();onClick?.(e);window.navigate(href)}}>{children}</a>}` }));
       b.onResolve({ filter: /^(@\/lib\/firebase\/(firestore|config|auth)|@\/hooks\/(useCatalog|useBookOwnership|useBookPreview|useOwnedCart))$/ }, a => ({ path: a.path, namespace: 'data' }));
+      b.onResolve({ filter: /^@\/lib\/firebase\/syncLibrary$/ }, a => ({ path: a.path, namespace: 'data' }));
+      b.onResolve({ filter: /^@\/lib\/firebase\/request$/ }, a => ({ path: a.path, namespace: 'data' }));
+      b.onResolve({ filter: /^@\/hooks\/useDeleteAccount$/ }, a => ({ path: a.path, namespace: 'data' }));
       b.onLoad({ filter: /.*/, namespace: 'data' }, () => ({ contents: `
 export const db={};export const auth={};export const useCatalog=()=>({books:window.books,loading:false});export const useBookOwnership=()=>({owned:false,checking:false});export const useBookPreview=()=>({status:'available',retry:()=>{}});export const useOwnedCart=()=>({loading:false});
 export const getBook=async id=>window.books.find(b=>b.id===id);export const getBookReviews=async()=>[];export const getSimilarBooks=async()=>window.books;export const isBookInWishlist=async()=>false;export const toggleWishlist=async()=>true;export const getFollowedSellerIds=async()=>[];export const getActiveReadingProgress=async()=>[];
-export const getChapters=async()=>window.chapters;export const getPreviewChapters=getChapters;export const getReadingProgress=async()=>null;export const saveReadingProgress=async()=>{};
+export const getChapters=async()=>window.chapters;export const getPreviewChapters=getChapters;export const getReadingProgress=async()=>window.path==='/library'?{percentComplete:42,currentChapter:1}:null;export const saveReadingProgress=async()=>{};
+export const getUserLibrary=async()=>window.books.map(b=>({bookId:b.id}));export const subscribeUserLibrary=(uid,cb)=>{getUserLibrary().then(cb);return()=>{}};export const syncPurchasedLibrary=async()=>({pendingOrderIds:[]});
+export const useDeleteAccount=()=>({deletingAccount:false,deleteError:'',handleDeleteAccount:()=>{throw Error('Unexpected delete')}});export const changePassword=()=>{throw Error('Unexpected password change')};
+export const authenticatedPost=()=>{throw Error('Unexpected authenticated request')};
+export const createReview=()=>{throw Error('Unexpected review')};export const deleteNotification=()=>{throw Error('Unexpected deletion')};export const markNotificationRead=async()=>{};export const markAllNotificationsRead=async()=>{};
 export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export const updateUserProfile=()=>{throw Error('Unexpected profile change')};
 ` }));
       b.onResolve({ filter: /^firebase\/firestore$/ }, a => ({ path: a.path, namespace: 'orders' }));
-      b.onLoad({ filter: /.*/, namespace: 'orders' }, () => ({ contents: `export const doc=(_,collection,id)=>({id});export const onSnapshot=(ref,options,callback)=>{const emit=()=>callback({id:ref.id,exists:()=>true,metadata:{fromCache:false},data:()=>({id:ref.id,buyerId:'fixture',bookId:'one',status:window.orderStatus,finalPrice:199,receiptEmailSent:true,createdAt:{toDate:()=>new Date()}})});window.orderListeners.push(emit);emit();return()=>{window.orderListeners=window.orderListeners.filter(f=>f!==emit)}};` }));
+      b.onLoad({ filter: /.*/, namespace: 'orders' }, () => ({ contents: `export const updateDoc=()=>{throw Error('Unexpected write')};export const serverTimestamp=()=>null;export const doc=(_,collection,id)=>({id});export const onSnapshot=(ref,options,callback)=>{const emit=()=>callback({id:ref.id,exists:()=>true,metadata:{fromCache:false},data:()=>({id:ref.id,buyerId:'fixture',bookId:'one',status:window.orderStatus,finalPrice:199,receiptEmailSent:true,createdAt:{toDate:()=>new Date()}})});window.orderListeners.push(emit);emit();return()=>{window.orderListeners=window.orderListeners.filter(f=>f!==emit)}};` }));
       b.onResolve({ filter: /^(@stripe\/react-stripe-js|@\/lib\/stripe\/client)$/ }, a => ({ path: a.path, namespace: 'stripe' }));
       b.onLoad({ filter: /.*/, namespace: 'stripe' }, () => ({ loader: 'jsx', resolveDir: process.cwd(), contents: `import React from 'react';export const getStripe=()=>null;export const Elements=({children})=>children;const stripe={confirmCardPayment:()=>{throw Error('Unexpected payment')}};export const useStripe=()=>stripe;export const useElements=()=>({getElement:()=>null});export const CardElement=({options})=><input aria-label="Fixture card" style={{color:options.style.base.color}}/>;` }));
-      b.onResolve({ filter: /(CatalogSync|ReaderResumeBar|ProfileLinkHandler|NotificationBell|WorkspaceSwitcher|InstallPWA|FollowButton|ReviewForm|ReviewCard|profile\/ProfileAccount|profile\/ProfileSettings|profile\/ProfileCollections)$/ }, a => ({ path: a.path, namespace: 'empty' }));
+      b.onResolve({ filter: /(CatalogSync|ReaderResumeBar|ProfileLinkHandler|NotificationBell|WorkspaceSwitcher|InstallPWA|FollowButton|profile\/ProfileAccount|profile\/ProfileSettings|profile\/ProfileCollections)$/ }, a => ({ path: a.path, namespace: 'empty' }));
       b.onLoad({ filter: /.*/, namespace: 'empty' }, a => ({ loader: 'jsx', resolveDir: process.cwd(), contents: `import React from 'react';export default function Stub(){return ${a.path.endsWith('NotificationBell') ? '<button className="icon-button" aria-label="Notifications">N</button>' : 'null'}}` }));
     } }],
   });
@@ -88,6 +106,7 @@ export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export co
     await page.waitForFunction(() => document.documentElement.dataset.appTheme === 'dark');
     await page.evaluate(() => { window.testHour=6; window.dispatchEvent(new Event('focus')); });
     await page.waitForFunction(() => document.documentElement.dataset.appTheme === 'light');
+    await require('./mobile-theme-surfaces.cjs')(page);
     await page.evaluate(() => window.navigate('/book/one')); await page.getByRole('heading', { name: 'Ada’s Rain', exact:true }).waitFor();
     await page.waitForFunction(() => document.querySelector('.app-book-scene')?.getAttribute('style')?.includes('#b85a3c'));
     assert.notEqual(await page.locator('.app-detail-cover').evaluate(el=>getComputedStyle(el).boxShadow),'none');
@@ -138,7 +157,13 @@ export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export co
     await legacy.addInitScript(()=>{Object.defineProperty(navigator,'standalone',{value:true});localStorage.setItem('afrobooks-reader',JSON.stringify({state:{theme:'sepia'},version:0}));localStorage.setItem('afrobooks-app-appearance',JSON.stringify({state:{themeMode:'dark'},version:0}));});
     const old=await legacy.newPage();await old.goto(base+'/read/one');await old.getByRole('main',{name:'Book reader'}).waitFor();assert.equal(await old.locator('.reader-shell').evaluate(el=>el.style.getPropertyValue('--reader-bg')),'#f3e7d0');await legacy.close();
     const website=await browser.newContext({viewport:{width:390,height:844}});const web=await website.newPage();await web.goto(base+'/book/one');await web.getByRole('heading',{name:'Ada’s Rain',exact:true}).waitFor();assert.equal(await web.locator('.app-theme-toggle').count(),0);assert.equal(await web.locator('html').getAttribute('data-app-theme'),null);assert.equal(await web.locator('.app-book-scene').getAttribute('style'),null);assert.equal(await web.evaluate(()=>window.tap()),false);await website.close();
-    console.log('PASS legacy reader choices preserved and regular website unchanged');
+    const webSearchContext=await browser.newContext({viewport:{width:390,height:844}});const webSearch=await webSearchContext.newPage();
+    await webSearch.goto(base+'/search');const webInput=webSearch.getByPlaceholder('Search books, authors, or topics...');await webInput.waitFor();
+    assert.equal(await webInput.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(23, 23, 23)','website field keeps original dark color');
+    await webSearch.getByRole('button',{name:'Filters',exact:true}).click();
+    assert.equal(await webSearch.getByRole('dialog',{name:'Search filters'}).evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(17, 17, 17)','website sheet keeps original dark color');
+    await webSearchContext.close();
+    console.log('PASS legacy reader choices preserved and regular website unchanged, including search sheets');
   } finally { await browser.close();await new Promise(r=>server.close(r)); }
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

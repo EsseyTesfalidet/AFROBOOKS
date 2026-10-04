@@ -62,9 +62,9 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
     return (
       <div
         className="p-4 rounded-xl border text-center"
-        style={{ background: '#0f2e1a', borderColor: '#1a4a2a' }}
+        style={{ background: 'var(--app-success-surface, #0f2e1a)', borderColor: 'var(--app-success, #1a4a2a)' }}
       >
-        <p className="text-sm font-medium" style={{ color: '#4ade80' }}>
+        <p className="text-sm font-medium" style={{ color: 'var(--app-success, #4ade80)' }}>
           Thanks for your review!
         </p>
       </div>
@@ -75,7 +75,7 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
     <form
       onSubmit={handleSubmit(onSubmit)}
       className="p-5 rounded-xl border space-y-4"
-      style={{ background: '#161616', borderColor: '#2a2a2a' }}
+      style={{ background: 'var(--app-surface, #161616)', borderColor: 'var(--app-line, #2a2a2a)' }}
     >
       <h3 className="font-display text-display-sm text-white">Write a Review</h3>
 
@@ -94,7 +94,7 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
           {...register('title')}
           placeholder="Summarize your thoughts"
           className="w-full px-3.5 py-2.5 rounded-lg border text-sm"
-          style={{ background: '#1a1a1a', borderColor: errors.title ? '#e8442a' : '#333', color: '#f5f2eb' }}
+          style={{ background: 'var(--app-field, #1a1a1a)', borderColor: errors.title ? '#e8442a' : 'var(--app-line, #333)', color: 'var(--app-text, #f5f2eb)' }}
         />
         {errors.title && <p className="mt-1 text-xs text-[#e8442a]">{errors.title.message}</p>}
       </div>
@@ -109,7 +109,7 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
           placeholder="Share your experience with this book..."
           rows={4}
           className="w-full px-3.5 py-2.5 rounded-lg border text-sm resize-none"
-          style={{ background: '#1a1a1a', borderColor: errors.body ? '#e8442a' : '#333', color: '#f5f2eb' }}
+          style={{ background: 'var(--app-field, #1a1a1a)', borderColor: errors.body ? '#e8442a' : 'var(--app-line, #333)', color: 'var(--app-text, #f5f2eb)' }}
         />
         {errors.body && <p className="mt-1 text-xs text-[#e8442a]">{errors.body.message}</p>}
       </div>

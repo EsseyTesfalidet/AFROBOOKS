@@ -36,7 +36,7 @@ const PreserveParagraphBreaks = Extension.create({
 
 function ToolBtn({ onClick, active, icon: Icon }: { onClick: () => void; active?: boolean; icon: React.ElementType }) {
   return <button type="button" onClick={onClick} className="p-1.5 rounded transition-colors"
-    style={{ background: active ? '#e8442a' : 'transparent', color: active ? '#fff' : '#aaa' }}><Icon size={14} /></button>;
+    style={{ background: active ? '#e8442a' : 'transparent', color: active ? '#fff' : "var(--app-muted, #aaa)" }}><Icon size={14} /></button>;
 }
 
 export default function ChapterEditor({ chapterNumber, onSave, onCancel, onDraftChange, initial }: Props) {
@@ -73,12 +73,12 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, onDraft
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#333', background: '#161616' }}>
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--app-line, #333)", background: "var(--app-surface, #161616)" }}>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b" style={{ borderColor: '#222' }}>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b" style={{ borderColor: "var(--app-line, #222)" }}>
         <p className="text-sm font-medium text-white">Editing Chapter {chapterNumber}</p>
         <div className="flex gap-2">
-          <button type="button" onClick={onCancel} className="px-3 py-1.5 rounded-lg border text-xs" style={{ borderColor: '#333', color: '#888' }}>
+          <button type="button" onClick={onCancel} className="px-3 py-1.5 rounded-lg border text-xs" style={{ borderColor: "var(--app-line, #333)", color: "var(--app-muted, #888)" }}>
             Cancel
           </button>
           <button type="button" onClick={handleSave} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: '#e8442a', color: '#fff' }}>
@@ -99,18 +99,18 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, onDraft
           placeholder="Chapter title..."
           dir="auto"
           className="chapter-title-input w-full px-3 py-2 rounded-lg border text-sm"
-          style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}
+          style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }}
         />
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b" style={{ borderColor: '#222' }}>
+      <div className="flex items-center gap-1 px-4 py-2 border-b" style={{ borderColor: "var(--app-line, #222)" }}>
         <ToolBtn onClick={() => editor?.chain().focus().toggleBold().run()} active={editor?.isActive('bold')} icon={Bold} />
         <ToolBtn onClick={() => editor?.chain().focus().toggleItalic().run()} active={editor?.isActive('italic')} icon={Italic} />
         <ToolBtn onClick={() => editor?.chain().focus().toggleUnderline().run()} active={editor?.isActive('underline')} icon={UnderlineIcon} />
         <ToolBtn onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} active={editor?.isActive('heading', { level: 2 })} icon={Heading2} />
         <ToolBtn onClick={() => editor?.chain().focus().toggleBulletList().run()} active={editor?.isActive('bulletList')} icon={List} />
-        <div className="w-px h-4 mx-1" style={{ background: '#333' }} />
+        <div className="w-px h-4 mx-1" style={{ background: "var(--app-line, #333)" }} />
         <button type="button" onClick={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()} className="p-1.5 rounded text-[#888]"><X size={14} /></button>
       </div>
 

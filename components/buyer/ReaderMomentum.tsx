@@ -116,7 +116,7 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
             <div
               key={index}
               className="h-[148px] animate-pulse rounded-2xl border"
-              style={{ background: '#111', borderColor: '#1a1a1a' }}
+              style={{ background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}
             />
           ))}
         </div>
@@ -136,8 +136,8 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
               href={card.href}
               className="min-w-[260px] flex-1 rounded-2xl border p-4 transition-transform hover:-translate-y-0.5 sm:min-w-0"
               style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-                borderColor: 'rgba(255,255,255,0.08)',
+                background: 'var(--app-surface, linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%))',
+                borderColor: 'var(--app-line, rgba(255,255,255,0.08))',
               }}
             >
               <div className="mb-4 flex items-center justify-between">
@@ -149,13 +149,13 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
                 </span>
                 <span
                   className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                  style={{ background: '#151515', color: '#777' }}
+                  style={{ background: 'var(--app-field, #151515)', color: 'var(--app-muted, #777)' }}
                 >
                   Momentum
                 </span>
               </div>
               <p className="text-base font-semibold text-white">{card.title}</p>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: '#666' }}>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--app-muted, #666)' }}>
                 {card.body}
               </p>
               <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium" style={{ color: card.accent }}>
@@ -173,7 +173,7 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
   return (
     <section className="space-y-3">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: '#666' }}>
+        <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #666)' }}>
           Momentum
         </p>
         <h2 className="font-display text-display-sm text-white">Keep your reading momentum going</h2>

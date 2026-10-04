@@ -19,7 +19,7 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(
           className={`field-input w-full rounded-xl px-3.5 py-3 text-sm pr-11 ${className ?? ''}`}
           style={{
             ...style,
-            borderColor: hasError ? '#e8442a' : style?.borderColor ?? '#333',
+            borderColor: hasError ? '#e8442a' : style?.borderColor ?? 'var(--app-line, #333)',
           }}
           {...props}
         />
@@ -27,7 +27,7 @@ const PasswordInput = forwardRef<HTMLInputElement, Props>(
           type="button"
           onClick={() => setVisible((v) => !v)}
           className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg transition-colors"
-          style={{ color: '#7a7a84' }}
+          style={{ color: 'var(--app-muted, #7a7a84)' }}
           aria-label={visible ? 'Hide password' : 'Show password'}
         >
           {visible ? <EyeOff size={15} /> : <Eye size={15} />}

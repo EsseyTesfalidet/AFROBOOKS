@@ -18,7 +18,7 @@ export default function Toggle({ checked, onChange, label, disabled = false }: T
         onClick={() => onChange(!checked)}
         className="relative w-10 h-5 rounded-full transition-colors"
         style={{
-          background: checked ? '#e8442a' : '#333',
+          background: checked ? 'var(--app-action, #e8442a)' : 'var(--app-track, #333)',
           opacity: disabled ? 0.5 : 1,
         }}
       >

@@ -9,6 +9,7 @@ export type LineSpacing = 'compact' | 'normal' | 'relaxed';
 export type FontFamily = 'serif' | 'sans';
 export type MarginSize = 'narrow' | 'normal' | 'wide';
 export type ReadingMode = 'scroll' | 'pages';
+export type ProgressDisplay = 'page' | 'percent' | 'time';
 
 interface ReaderState {
   theme: ReaderTheme;
@@ -19,6 +20,8 @@ interface ReaderState {
   marginSize: MarginSize;
   readingMode: ReadingMode;
   textFlow: TextFlow;
+  pageMotion: boolean;
+  progressDisplay: ProgressDisplay;
   currentChapter: number;
   setTheme: (theme: ReaderTheme) => void;
   setFontSize: (size: FontSize) => void;
@@ -27,6 +30,9 @@ interface ReaderState {
   setMarginSize: (size: MarginSize) => void;
   setReadingMode: (mode: ReadingMode) => void;
   setTextFlow: (flow: TextFlow) => void;
+  setPageMotion: (enabled: boolean) => void;
+  setProgressDisplay: (display: ProgressDisplay) => void;
+  applyReadingPreset: (preset: 'comfortable' | 'large') => void;
   setCurrentChapter: (chapter: number) => void;
 }
 
@@ -41,6 +47,8 @@ export const useReaderStore = create<ReaderState>()(
       marginSize: 'normal',
       readingMode: 'scroll',
       textFlow: 'auto',
+      pageMotion: true,
+      progressDisplay: 'page',
       currentChapter: 1,
       setTheme: (theme) => { set({ theme, themeExplicit: true }); appHaptic(); },
       setFontSize: (fontSize) => set({ fontSize }),
@@ -49,6 +57,9 @@ export const useReaderStore = create<ReaderState>()(
       setMarginSize: (marginSize) => set({ marginSize }),
       setReadingMode: (readingMode) => set({ readingMode }),
       setTextFlow: (textFlow) => set({ textFlow }),
+      setPageMotion: (pageMotion) => set({ pageMotion }),
+      setProgressDisplay: (progressDisplay) => set({ progressDisplay }),
+      applyReadingPreset: (preset) => set({ fontSize: preset === 'large' ? 'xlarge' : 'medium', lineSpacing: 'normal', marginSize: 'normal' }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
     }),
     { name: 'afrobooks-reader', merge: (saved, current) => {
@@ -56,6 +67,8 @@ export const useReaderStore = create<ReaderState>()(
       const validTheme = previous?.theme && ['paper', 'sepia', 'dark', 'night'].includes(previous.theme);
       // Old saves did not track explicit choices. Preserve their page theme.
       return { ...current, ...previous, theme: validTheme ? previous.theme! : current.theme,
+        pageMotion: typeof previous?.pageMotion === 'boolean' ? previous.pageMotion : true,
+        progressDisplay: previous?.progressDisplay && ['page', 'percent', 'time'].includes(previous.progressDisplay) ? previous.progressDisplay : 'page',
         themeExplicit: validTheme && typeof previous?.themeExplicit === 'boolean' ? previous.themeExplicit : !!validTheme };
     } }
   )

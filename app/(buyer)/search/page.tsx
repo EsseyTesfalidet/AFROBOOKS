@@ -191,17 +191,17 @@ export default function SearchPage() {
           className="rounded-[28px] border p-5 sm:p-6"
           style={{
             background:
-              'radial-gradient(circle at top right, rgba(232,68,42,0.18), transparent 32%), linear-gradient(180deg, #151515 0%, #111 100%)',
-            borderColor: 'rgba(255,255,255,0.08)',
+              'radial-gradient(circle at top right, rgba(232,68,42,0.18), transparent 32%), linear-gradient(180deg, var(--app-surface, #151515) 0%, var(--app-surface, #111) 100%)',
+            borderColor: 'var(--app-line, rgba(255,255,255,0.08))',
           }}
         >
           <div className="flex flex-col gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: '#666' }}>
+              <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #666)' }}>
                 The catalog
               </p>
               <h1 className="mt-2 font-display text-display-lg text-white">Find the exact next read</h1>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: '#777' }}>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--app-muted, #777)' }}>
                 Search by title, author, or genre and find a story that suits you.
               </p>
             </div>
@@ -214,7 +214,7 @@ export default function SearchPage() {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search books, authors, or topics..."
                 className="w-full rounded-2xl border py-3.5 pl-12 pr-4 text-sm"
-                style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+                style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #f5f2eb)' }}
               />
             </div>
 
@@ -225,7 +225,7 @@ export default function SearchPage() {
                   type="button"
                   onClick={action}
                   className="flex-shrink-0 rounded-full border px-3.5 py-2 text-sm transition-colors"
-                  style={{ background: '#161616', borderColor: '#2a2a2a', color: '#ccc' }}
+                  style={{ background: 'var(--app-surface, #161616)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #ccc)' }}
                 >
                   {label}
                 </button>
@@ -234,13 +234,13 @@ export default function SearchPage() {
           </div>
         </section>
 
-        <section className="sticky top-[88px] z-20 -mx-4 px-4 py-3" style={{ background: 'rgba(14,14,14,0.92)', backdropFilter: 'blur(18px)' }}>
+        <section className="sticky top-[88px] z-20 -mx-4 px-4 py-3" style={{ background: 'var(--app-header, rgba(14,14,14,0.92))', backdropFilter: 'blur(18px)' }}>
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
             <button
               type="button"
               onClick={() => { setFilters(appliedFilters); setSheetMode('filters'); }}
               className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
-              style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+              style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #f5f2eb)' }}
             >
               <SlidersHorizontal size={16} />
               Filters
@@ -255,7 +255,7 @@ export default function SearchPage() {
               type="button"
               onClick={() => setSheetMode('sort')}
               className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
-              style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+              style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #f5f2eb)' }}
             >
               <Sparkles size={16} />
               {SORT_OPTIONS.find((option) => option.value === sort)?.label}
@@ -266,7 +266,7 @@ export default function SearchPage() {
                 type="button"
                 onClick={resetFilters}
                 className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
-                style={{ background: '#171717', borderColor: '#2a2a2a', color: '#e8442a' }}
+                style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: '#e8442a' }}
               >
                 Reset
               </button>
@@ -281,7 +281,7 @@ export default function SearchPage() {
                   type="button"
                   onClick={() => removeAppliedGenre(genre)}
                   className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium"
-                  style={{ background: '#1f0e0c', borderColor: '#e8442a', color: '#fff' }}
+                  style={{ background: 'var(--app-accent-surface, #1f0e0c)', borderColor: '#e8442a', color: 'var(--app-text, #fff)' }}
                 >
                   {genre} <X size={12} />
                 </button>
@@ -291,7 +291,7 @@ export default function SearchPage() {
                   type="button"
                   onClick={() => clearAppliedFilter('minRating')}
                   className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium"
-                  style={{ background: '#171717', borderColor: '#2a2a2a', color: '#ddd' }}
+                  style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #ddd)' }}
                 >
                   {appliedFilters.minRating}+ stars <X size={12} />
                 </button>
@@ -301,7 +301,7 @@ export default function SearchPage() {
                   type="button"
                   onClick={() => clearAppliedFilter('language')}
                   className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium"
-                  style={{ background: '#171717', borderColor: '#2a2a2a', color: '#ddd' }}
+                  style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #ddd)' }}
                 >
                   {appliedFilters.language} <X size={12} />
                 </button>
@@ -311,7 +311,7 @@ export default function SearchPage() {
                   type="button"
                   onClick={() => clearAppliedFilter('verifiedOnly')}
                   className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium"
-                  style={{ background: '#171717', borderColor: '#2a2a2a', color: '#ddd' }}
+                  style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #ddd)' }}
                 >
                   Verified only <X size={12} />
                 </button>
@@ -321,7 +321,7 @@ export default function SearchPage() {
                   type="button"
                   onClick={() => clearAppliedFilter('inSubscription')}
                   className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium"
-                  style={{ background: '#171717', borderColor: '#2a2a2a', color: '#ddd' }}
+                  style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #ddd)' }}
                 >
                   Subscription <X size={12} />
                 </button>
@@ -334,11 +334,11 @@ export default function SearchPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-display-sm text-white">Results</h2>
-              <p className="text-sm" style={{ color: '#666' }}>
+              <p className="text-sm" style={{ color: 'var(--app-muted, #666)' }}>
                 {loading ? 'Loading books…' : error ? 'Catalog unavailable' : `${results.length} title${results.length === 1 ? '' : 's'} found`}
               </p>
             </div>
-            <Link href="/browse" className="text-xs transition-colors hover:text-white" style={{ color: '#666' }}>
+            <Link href="/browse" className="text-xs transition-colors hover:text-white" style={{ color: 'var(--app-muted, #666)' }}>
               Back to home →
             </Link>
           </div>
@@ -348,8 +348,8 @@ export default function SearchPage() {
               <LoadingSpinner size={36} />
             </div>
           ) : error ? null : results.length === 0 ? (
-            <div className="rounded-3xl border px-4 py-14 text-center" style={{ background: '#111', borderColor: '#1a1a1a' }}>
-              <p className="text-sm" style={{ color: '#666' }}>
+            <div className="rounded-3xl border px-4 py-14 text-center" style={{ background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}>
+              <p className="text-sm" style={{ color: 'var(--app-muted, #666)' }}>
                 No books match that search. Try a broader query or reset the filters.
               </p>
             </div>
@@ -368,13 +368,13 @@ export default function SearchPage() {
       {sheetMode ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" onClick={() => setSheetMode(null)}>
           <div
-            className="w-full max-w-xl rounded-t-[28px] border p-5 sm:rounded-[28px]"
-            style={{ background: '#111', borderColor: '#1a1a1a' }}
+            role="dialog" aria-label={sheetMode === 'filters' ? 'Search filters' : 'Sort books'} className="w-full max-w-xl rounded-t-[28px] border p-5 sm:rounded-[28px]"
+            style={{ background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: '#666' }}>
+                <p className="text-[11px] uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #666)' }}>
                   {sheetMode === 'filters' ? 'Refine results' : 'Sort results'}
                 </p>
                 <h3 className="mt-1 font-display text-display-sm text-white">
@@ -383,9 +383,10 @@ export default function SearchPage() {
               </div>
               <button
                 type="button"
+                aria-label="Close search sheet"
                 onClick={() => setSheetMode(null)}
                 className="flex h-9 w-9 items-center justify-center rounded-xl"
-                style={{ background: '#171717', color: '#888' }}
+                style={{ background: 'var(--app-field, #171717)', color: 'var(--app-muted, #888)' }}
               >
                 <X size={16} />
               </button>
@@ -394,7 +395,7 @@ export default function SearchPage() {
             {sheetMode === 'filters' ? (
               <div className="space-y-5">
                 <div>
-                  <p className="mb-3 text-xs uppercase tracking-[0.24em]" style={{ color: '#555' }}>
+                  <p className="mb-3 text-xs uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #555)' }}>
                     Genre
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -407,9 +408,9 @@ export default function SearchPage() {
                           onClick={() => toggleGenre(genre)}
                           className="rounded-full px-3.5 py-2 text-sm font-medium"
                           style={{
-                            background: active ? '#f5f2eb' : '#171717',
-                            color: active ? '#000' : '#ccc',
-                            border: `1px solid ${active ? '#f5f2eb' : '#2a2a2a'}`,
+                            background: active ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-field, #171717)',
+                            color: active ? 'var(--app-on-inverse, #000)' : 'var(--app-text, #ccc)',
+                            border: `1px solid ${active ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-line, #2a2a2a)'}`,
                           }}
                         >
                           {genre}
@@ -421,7 +422,7 @@ export default function SearchPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: '#555' }}>
+                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #555)' }}>
                       Min price
                     </label>
                     <input
@@ -429,12 +430,12 @@ export default function SearchPage() {
                       value={filters.minPrice}
                       onChange={(event) => setFilters((current) => ({ ...current, minPrice: event.target.value }))}
                       className="w-full rounded-2xl border px-4 py-3 text-sm"
-                      style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+                      style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #f5f2eb)' }}
                       placeholder="0"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: '#555' }}>
+                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #555)' }}>
                       Max price
                     </label>
                     <input
@@ -442,7 +443,7 @@ export default function SearchPage() {
                       value={filters.maxPrice}
                       onChange={(event) => setFilters((current) => ({ ...current, maxPrice: event.target.value }))}
                       className="w-full rounded-2xl border px-4 py-3 text-sm"
-                      style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+                      style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #f5f2eb)' }}
                       placeholder="25"
                     />
                   </div>
@@ -450,14 +451,14 @@ export default function SearchPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: '#555' }}>
+                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #555)' }}>
                       Language
                     </label>
                     <select
                       value={filters.language}
                       onChange={(event) => setFilters((current) => ({ ...current, language: event.target.value }))}
                       className="w-full rounded-2xl border px-4 py-3 text-sm"
-                      style={{ background: '#171717', borderColor: '#2a2a2a', color: '#f5f2eb' }}
+                      style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #f5f2eb)' }}
                     >
                       <option value="">Any language</option>
                       {LANGUAGES.map((language) => (
@@ -468,7 +469,7 @@ export default function SearchPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: '#555' }}>
+                    <label className="mb-1.5 block text-xs uppercase tracking-[0.24em]" style={{ color: 'var(--app-muted, #555)' }}>
                       Minimum rating
                     </label>
                     <div className="flex gap-2">
@@ -481,9 +482,9 @@ export default function SearchPage() {
                             onClick={() => setFilters((current) => ({ ...current, minRating: rating }))}
                             className="flex-1 rounded-2xl border py-3 text-sm font-medium"
                             style={{
-                              background: active ? '#f5f2eb' : '#171717',
-                              color: active ? '#000' : '#ccc',
-                              borderColor: active ? '#f5f2eb' : '#2a2a2a',
+                              background: active ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-field, #171717)',
+                              color: active ? 'var(--app-on-inverse, #000)' : 'var(--app-text, #ccc)',
+                              borderColor: active ? 'var(--app-inverse, #f5f2eb)' : 'var(--app-line, #2a2a2a)',
                             }}
                           >
                             {rating === 0 ? 'Any' : `${rating}+`}
@@ -494,7 +495,7 @@ export default function SearchPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border p-4" style={{ background: '#151515', borderColor: '#1f1f1f' }}>
+                <div className="space-y-3 rounded-2xl border p-4" style={{ background: 'var(--app-field, #151515)', borderColor: 'var(--app-line, #1f1f1f)' }}>
                   {[
                     { key: 'verifiedOnly', label: 'Verified authors only' },
                     { key: 'inSubscription', label: 'Included in subscription' },
@@ -512,7 +513,7 @@ export default function SearchPage() {
                           className="flex h-6 w-6 items-center justify-center rounded-full border"
                           style={{
                             background: checked ? '#e8442a' : 'transparent',
-                            borderColor: checked ? '#e8442a' : '#333',
+                            borderColor: checked ? '#e8442a' : 'var(--app-line, #333)',
                             color: '#fff',
                           }}
                         >
@@ -532,7 +533,7 @@ export default function SearchPage() {
                       setSheetMode(null);
                     }}
                     className="flex-1 rounded-2xl border py-3 text-sm font-medium"
-                    style={{ background: '#171717', borderColor: '#2a2a2a', color: '#ddd' }}
+                    style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-text, #ddd)' }}
                   >
                     Clear
                   </button>
@@ -560,9 +561,9 @@ export default function SearchPage() {
                       }}
                       className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-medium"
                       style={{
-                        background: active ? '#1f0e0c' : '#171717',
-                        borderColor: active ? '#e8442a' : '#2a2a2a',
-                        color: active ? '#fff' : '#ddd',
+                        background: active ? 'var(--app-accent-surface, #1f0e0c)' : 'var(--app-field, #171717)',
+                        borderColor: active ? '#e8442a' : 'var(--app-line, #2a2a2a)',
+                        color: active ? 'var(--app-text, #fff)' : 'var(--app-text, #ddd)',
                       }}
                     >
                       {option.label}

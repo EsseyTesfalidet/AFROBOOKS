@@ -18,7 +18,7 @@ export default function ProgressBar({
     <div className="flex items-center gap-2 w-full">
       <div
         className="flex-1 rounded-full overflow-hidden"
-        style={{ height, background: '#222' }}
+        style={{ height, background: 'var(--app-track, #222)' }}
       >
         <div
           className="h-full rounded-full transition-all"

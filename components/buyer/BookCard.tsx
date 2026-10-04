@@ -20,7 +20,7 @@ export default function BookCard({ book, rank, badge, eager }: BookCardProps) {
     <Link href={`/${isPreorder ? 'book' : 'read'}/${encodeURIComponent(book.id)}`} aria-label={`${book.title} by ${book.authorName}`} className="app-book-card group block min-w-0 rounded-lg">
       <div className="app-book-artwork relative transition-transform duration-200 group-hover:-translate-y-1">
         <BookCover book={book} eager={eager} />
-        {(rank || badge || isPreorder) && <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+        {(rank || badge || isPreorder) && <div data-keep-colors className="absolute left-2 top-2 flex flex-wrap gap-1">
           {rank && <span className="rounded bg-black/80 px-2 py-1 text-[11px] font-semibold text-white">#{rank}</span>}
           {badge && <span className="rounded px-2 py-1 text-[11px] font-semibold" style={{background:badge.bg,color:badge.color}}>{badge.label}</span>}
           {isPreorder && <span className="rounded bg-black/80 px-2 py-1 text-[11px] text-white">Pre-order</span>}

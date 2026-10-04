@@ -59,7 +59,7 @@ export default function WorkspaceSwitcher({
               style={{
                 background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'transparent',
                 border: `1px solid ${active ? '#e8442a' : 'transparent'}`,
-                color: active ? '#fff' : '#a1a1aa',
+                color: active ? '#fff' : 'var(--app-muted, #a1a1aa)',
                 boxShadow: active ? '0 12px 24px rgba(232,68,42,0.18)' : 'none',
               }}
             >

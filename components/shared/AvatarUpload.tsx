@@ -65,9 +65,9 @@ export default function AvatarUpload({ size = 56 }: Props) {
         )}
         <span
           className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
-          style={{ background: '#1a1a1a', border: '2px solid #0e0e0e' }}
+          style={{ background: 'var(--app-field, #1a1a1a)', border: '2px solid var(--app-canvas, #0e0e0e)' }}
         >
-          {uploading ? <LoadingSpinner size={10} color="#aaa" /> : <Camera size={10} style={{ color: '#aaa' }} />}
+          {uploading ? <LoadingSpinner size={10} color="#aaa" /> : <Camera size={10} style={{ color: 'var(--app-muted, #aaa)' }} />}
         </span>
       </button>
       <input ref={inputRef} type="file" accept="image/*" aria-label="Upload profile picture" className="hidden" onChange={handleFile} />

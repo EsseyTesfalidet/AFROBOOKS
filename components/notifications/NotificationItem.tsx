@@ -51,9 +51,9 @@ export default function NotificationItem({ notification, onRead, onError }: Prop
       className="mx-3 my-2 flex w-[calc(100%-1.5rem)] items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-colors"
       style={{
         background: notification.isRead
-          ? 'linear-gradient(180deg, rgba(20,20,22,0.84) 0%, rgba(14,14,16,0.9) 100%)'
-          : 'radial-gradient(circle at top right, rgba(232,68,42,0.12), transparent 40%), linear-gradient(180deg, rgba(30,22,18,0.96) 0%, rgba(16,14,14,0.98) 100%)',
-        borderColor: notification.isRead ? 'rgba(255,255,255,0.06)' : 'rgba(232,68,42,0.28)',
+          ? 'var(--app-field, linear-gradient(180deg, rgba(20,20,22,0.84) 0%, rgba(14,14,16,0.9) 100%))'
+          : 'var(--app-accent-surface, radial-gradient(circle at top right, rgba(232,68,42,0.12), transparent 40%), linear-gradient(180deg, rgba(30,22,18,0.96) 0%, rgba(16,14,14,0.98) 100%))',
+        borderColor: notification.isRead ? 'var(--app-line, rgba(255,255,255,0.06))' : 'rgba(232,68,42,0.28)',
         boxShadow: notification.isRead ? '0 10px 22px rgba(0,0,0,0.14)' : '0 14px 28px rgba(232,68,42,0.08)',
       }}
     >

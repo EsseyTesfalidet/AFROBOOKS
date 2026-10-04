@@ -444,14 +444,14 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                   <div className="flex items-center gap-1.5">
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{ background: done || active ? '#e8442a' : '#1a1a1a', color: done || active ? '#fff' : '#555' }}
+                      style={{ background: done || active ? '#e8442a' : "var(--app-field, #1a1a1a)", color: done || active ? '#fff' : "var(--app-muted, #555)" }}
                     >
                       {done ? <Check size={12} /> : i + 1}
                     </div>
-                    <span className="text-xs" style={{ color: active ? '#f5f2eb' : '#555' }}>{s}</span>
+                    <span className="text-xs" style={{ color: active ? "var(--app-text, #f5f2eb)" : "var(--app-muted, #555)" }}>{s}</span>
                   </div>
                   {i < STEPS.length - 1 && (
-                    <div className="mx-2 h-px w-8" style={{ background: done ? '#e8442a' : '#222' }} />
+                    <div className="mx-2 h-px w-8" style={{ background: done ? '#e8442a' : "var(--app-track, #222)" }} />
                   )}
                 </div>
               );
@@ -462,7 +462,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
             <div
               className="p-4 rounded-xl border flex items-start justify-between gap-4"
               style={{
-                background: requiresIdVerificationForPublishingNow ? '#2e1a0f' : '#0f172a',
+                background: requiresIdVerificationForPublishingNow ? "var(--app-warning-surface, #2e1a0f)" : "var(--app-info-surface, #0f172a)",
                 borderColor: requiresIdVerificationForPublishingNow ? '#5b3a0a' : '#1e293b',
               }}
             >
@@ -500,7 +500,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
           )}
 
           {/* Step content */}
-          <div className="p-4 rounded-xl border sm:p-6" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <div className="p-4 rounded-xl border sm:p-6" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
 
             {/* Step 1: Details */}
             {step === 0 && (
@@ -515,7 +515,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                 </div>
                 <div>
                   <label htmlFor="publication-title" className="block text-sm text-[#aaa] mb-1.5">{publicationType === 'magazine' ? 'Magazine title' : 'Book Title'}</label>
-                  <input id="publication-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={publicationType === 'magazine' ? 'e.g. African Culture Review' : 'Enter book title'} className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                  <input id="publication-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={publicationType === 'magazine' ? 'e.g. African Culture Review' : 'Enter book title'} className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }} />
                 </div>
                 {publicationType === 'magazine' && <div>
                   <label htmlFor="magazine-issue" className="mb-1.5 block text-sm text-[#aaa]">Issue / edition (optional)</label>
@@ -523,11 +523,11 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                 </div>}
                 <div>
                   <label htmlFor="publication-author" className="block text-sm text-[#aaa] mb-1.5">{publicationType === 'magazine' ? 'Publisher / organization name' : 'Author Name'}</label>
-                  <input id="publication-author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                  <input id="publication-author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }} />
                 </div>
                 <div>
                   <label className="block text-sm text-[#aaa] mb-1.5">Description</label>
-                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Tell readers what your book is about..." className="w-full px-3.5 py-2.5 rounded-lg border text-sm resize-none" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Tell readers what your book is about..." className="w-full px-3.5 py-2.5 rounded-lg border text-sm resize-none" style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }} />
                 </div>
                 <div>
                   <label className="block text-sm text-[#aaa] mb-2">Genre</label>
@@ -535,7 +535,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                     {GENRES.map((g) => (
                       <button key={g} type="button" onClick={() => setGenre(g)}
                         className="px-3 py-1.5 rounded-lg text-sm transition-all"
-                        style={{ background: genre === g ? '#e8442a' : '#1a1a1a', color: genre === g ? '#fff' : '#888', border: `1px solid ${genre === g ? '#e8442a' : '#333'}` }}>
+                        style={{ background: genre === g ? '#e8442a' : "var(--app-field, #1a1a1a)", color: genre === g ? '#fff' : "var(--app-muted, #888)", border: `1px solid ${genre === g ? '#e8442a' : "var(--app-line, #333)"}` }}>
                         {g}
                       </button>
                     ))}
@@ -544,22 +544,22 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm text-[#aaa] mb-1.5">Language</label>
-                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }}>
                       {['English', 'Tigrinya', 'Amharic', 'Arabic', 'French', 'Swahili', 'Yoruba', 'Portuguese', 'Chinese'].map((l) => <option key={l}>{l}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm text-[#aaa] mb-1.5">Target Age</label>
-                    <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value as typeof ageGroup)} className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}>
+                    <select value={ageGroup} onChange={(e) => setAgeGroup(e.target.value as typeof ageGroup)} className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }}>
                       {['all', 'children', 'teen', 'adult'].map((a) => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm text-[#aaa] mb-1.5">ISBN (optional)</label>
-                  <input value={isbn} onChange={(e) => setIsbn(e.target.value)} placeholder="978-..." className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                  <input value={isbn} onChange={(e) => setIsbn(e.target.value)} placeholder="978-..." className="w-full px-3.5 py-2.5 rounded-lg border text-sm" style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }} />
                 </div>
-                <div className="space-y-3 rounded-xl border p-4" style={{ background: '#151515', borderColor: '#252525' }}>
+                <div className="space-y-3 rounded-xl border p-4" style={{ background: "var(--app-field, #151515)", borderColor: "var(--app-line, #252525)" }}>
                   <div>
                     <p className="text-sm font-medium text-white">Publishing Rights</p>
                     <p className="mt-1 text-xs text-[#666]">Tell the platform why you are legally allowed to publish this book.</p>
@@ -570,8 +570,8 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                         key={option.value}
                         className="flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all"
                         style={{
-                          border: copyrightBasis === option.value ? '1.5px solid #e8442a' : '1.5px solid #2a2a2a',
-                          background: copyrightBasis === option.value ? '#1f0e0c' : '#1a1a1a',
+                          border: copyrightBasis === option.value ? '1.5px solid #e8442a' : '1.5px solid var(--app-line, #2a2a2a)',
+                          background: copyrightBasis === option.value ? "var(--app-accent-surface, #1f0e0c)" : "var(--app-field, #1a1a1a)",
                         }}
                       >
                         <input
@@ -599,10 +599,10 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                       rows={3}
                       placeholder="Add license, source, assignment, or public-domain details for the review team."
                       className="w-full px-3.5 py-2.5 rounded-lg border text-sm resize-none"
-                      style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}
+                      style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }}
                     />
                   </div>
-                  <label className="flex items-start gap-3 rounded-xl border p-3" style={{ background: '#111', borderColor: '#2a2a2a' }}>
+                  <label className="flex items-start gap-3 rounded-xl border p-3" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #2a2a2a)" }}>
                     <input
                       type="checkbox"
                       checked={copyrightAttested}
@@ -625,7 +625,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                   <label className="block text-sm text-[#aaa] mb-2">Upload Cover Image (optional)</label>
                   <label
                     className="flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed cursor-pointer transition-colors"
-                    style={{ borderColor: coverFile ? '#4ade80' : '#333', background: '#1a1a1a' }}
+                    style={{ borderColor: coverFile ? '#4ade80' : "var(--app-line, #333)", background: "var(--app-field, #1a1a1a)" }}
                   >
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} />
                     <p className="text-sm text-[#666]">{coverFile ? coverFile.name : 'Click to upload cover image'}</p>
@@ -648,7 +648,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                     {BG_COLORS.map((c) => (
                       <button key={c} type="button" onClick={() => setBgColor(c)}
                         className="w-8 h-8 rounded-full border-2 transition-all"
-                        style={{ background: c, borderColor: bgColor === c ? '#fff' : '#444' }} />
+                        style={{ background: c, borderColor: bgColor === c ? '#fff' : "var(--app-line, #444)" }} />
                     ))}
                   </div>
                 </div>
@@ -681,7 +681,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                 {editingChapter === null && !manuscriptImporting && <ReadingSectionSplitter chapters={chapters} onApply={setChapters} />}
                 <ChapterPreviewSummary chapters={chapters} />
 
-                <div className="rounded-xl border p-4" style={{ background: '#131313', borderColor: '#232323' }}>
+                <div className="rounded-xl border p-4" style={{ background: "var(--app-surface, #131313)", borderColor: "var(--app-line, #232323)" }}>
                   <p className="text-sm font-medium text-white">Manual editing stays available</p>
                   <p className="mt-1 text-xs text-[#666]">
                     After uploading the full book, you can still edit titles, preview access, and chapter content below before publishing.
@@ -689,7 +689,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                 </div>
 
                 {chapters.map((ch) => (
-                  <div key={ch.chapterNumber} className="flex items-center justify-between p-3 rounded-lg border" style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}>
+                  <div key={ch.chapterNumber} className="flex items-center justify-between p-3 rounded-lg border" style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #2a2a2a)" }}>
                     <div>
                       <span className="text-sm font-medium text-white">Ch. {ch.chapterNumber}: {ch.title}</span>
                       <span className="ml-3 text-xs text-[#555]">{ch.wordCount} words</span>
@@ -698,7 +698,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                       <button type="button" onClick={() => toggleChapterPreview(ch.chapterNumber)}
                         aria-label={`Free preview for chapter ${ch.chapterNumber}: ${ch.title}`} aria-pressed={ch.isPreview === true}
                         className="text-xs px-2 py-0.5 rounded transition-colors"
-                        style={{ background: ch.isPreview ? '#0f2e1a' : '#1a1a2e', color: ch.isPreview ? '#4ade80' : '#555' }}>
+                        style={{ background: ch.isPreview ? "var(--app-success-surface, #0f2e1a)" : "var(--app-info-surface, #1a1a2e)", color: ch.isPreview ? '#4ade80' : "var(--app-muted, #555)" }}>
                         {ch.isPreview ? 'FREE PREVIEW' : 'LOCKED'}
                       </button>
                       <button type="button" disabled={editingChapter !== null && editingChapter !== ch.chapterNumber} onClick={() => setEditingChapter(ch.chapterNumber)} className="min-h-11 text-xs text-[#e8442a] disabled:opacity-40">Edit</button>
@@ -718,7 +718,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                 ) : (
                   <button type="button" onClick={() => setEditingChapter(chapters.length + 1)}
                     className="w-full py-3 rounded-xl border-2 border-dashed text-sm transition-colors"
-                    style={{ borderColor: '#333', color: '#666' }}>
+                    style={{ borderColor: "var(--app-line, #333)", color: "var(--app-muted, #666)" }}>
                     + Add Chapter
                   </button>
                 )}
@@ -746,10 +746,10 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                   {checklist.map(({ label, done }) => (
                     <div key={label} className="flex items-center gap-3">
                       <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: done ? '#0f2e1a' : '#1a1a1a', border: `1.5px solid ${done ? '#4ade80' : '#333'}` }}>
+                        style={{ background: done ? "var(--app-success-surface, #0f2e1a)" : "var(--app-field, #1a1a1a)", border: `1.5px solid ${done ? '#4ade80' : "var(--app-line, #333)"}` }}>
                         {done && <Check size={10} style={{ color: '#4ade80' }} />}
                       </div>
-                      <span className="text-sm" style={{ color: done ? '#f5f2eb' : '#555' }}>{label}</span>
+                      <span className="text-sm" style={{ color: done ? "var(--app-text, #f5f2eb)" : "var(--app-muted, #555)" }}>{label}</span>
                     </div>
                   ))}
                 </div>
@@ -762,7 +762,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                       { value: 'draft', label: 'Save as draft', desc: 'Not visible to readers yet.' },
                     ].map(({ value, label, desc }) => (
                       <label key={value} className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all"
-                        style={{ border: publishMode === value ? '1.5px solid #4ade80' : '1.5px solid #2a2a2a', background: publishMode === value ? '#0a1f0a' : '#1a1a1a' }}>
+                        style={{ border: publishMode === value ? '1.5px solid #4ade80' : '1.5px solid var(--app-line, #2a2a2a)', background: publishMode === value ? "var(--app-success-surface, #0a1f0a)" : "var(--app-field, #1a1a1a)" }}>
                         <input type="radio" name="publishMode" value={value} checked={publishMode === value}
                           onChange={() => setPublishMode(value as typeof publishMode)} className="mt-0.5 accent-[#4ade80]" />
                         <div>
@@ -778,12 +778,12 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                       <input type="date" title="Release date" value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)}
                         min={new Date().toISOString().split('T')[0]}
                         className="w-full px-3.5 py-2.5 rounded-lg border text-sm"
-                        style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }} />
+                        style={{ background: "var(--app-field, #1a1a1a)", borderColor: "var(--app-line, #333)", color: "var(--app-text, #f5f2eb)" }} />
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-xl border p-4" style={{ background: '#151515', borderColor: '#252525' }}>
+                <div className="rounded-xl border p-4" style={{ background: "var(--app-field, #151515)", borderColor: "var(--app-line, #252525)" }}>
                   <p className="text-sm font-medium text-white">Copyright review</p>
                   <p className="mt-1 text-xs text-[#666]">
                     Rights basis: {getCopyrightBasisLabel(copyrightBasis)}.
@@ -809,10 +809,10 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
             )}
 
             {/* Navigation */}
-            <div className="flex justify-between pt-5 mt-5 border-t" style={{ borderColor: '#1a1a1a' }}>
+            <div className="flex justify-between pt-5 mt-5 border-t" style={{ borderColor: "var(--app-line, #1a1a1a)" }}>
               <button type="button" onClick={prevStep} disabled={step === 0 || manuscriptImporting}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border disabled:opacity-30"
-                style={{ borderColor: '#333', color: '#aaa' }}>
+                style={{ borderColor: "var(--app-line, #333)", color: "var(--app-muted, #aaa)" }}>
                 <ArrowLeft size={14} /> Back
               </button>
               {step < 4 && (
@@ -828,11 +828,11 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
 
         {/* Live Preview */}
         <div className="w-full xl:w-72 xl:flex-shrink-0">
-          <div className="rounded-xl border p-4 xl:sticky xl:top-20" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+          <div className="rounded-xl border p-4 xl:sticky xl:top-20" style={{ background: "var(--app-surface, #111)", borderColor: "var(--app-line, #1a1a1a)" }}>
             <p className="text-xs text-[#555] uppercase tracking-wider mb-3">Live Preview</p>
 
             {/* Mini cover */}
-            <div className="rounded-xl overflow-hidden mb-3 relative" style={{ height: 160, background: bgColor }}>
+            <div data-keep-colors className="rounded-xl overflow-hidden mb-3 relative" style={{ height: 160, background: bgColor }}>
               <div className="absolute top-0 left-0 right-0 h-1.5" style={{ background: accentColor }} />
               <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85))' }} />
               <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-bold" style={{ background: '#f5b800', color: '#000', fontSize: 8 }}>{publicationType === 'magazine' ? 'MAGAZINE' : 'EBOOK'}</span>
