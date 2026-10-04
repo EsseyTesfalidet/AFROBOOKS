@@ -40,7 +40,7 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
     <div className="app-continue-shelf mb-6">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-medium text-white">Continue Reading</p>
-        <Link href="/library" className="text-xs transition-colors hover:text-white" style={{ color: '#555' }}>
+        <Link href="/library" className="text-xs transition-colors hover:text-white" style={{ color: 'var(--app-muted, #555)' }}>
           View all
         </Link>
       </div>
@@ -53,7 +53,7 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
             key={book.id}
             href={`/read/${book.id}`}
             className="app-continue-card flex-shrink-0 snap-start rounded-xl overflow-hidden border"
-            style={{ width: 200, background: '#111', borderColor: '#1a1a1a' }}
+            style={{ width: 200, background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}
           >
             <div className="flex gap-3 p-3">
               {/* Cover thumbnail */}
@@ -72,20 +72,20 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
                   <p className="text-xs font-medium text-white truncate">{book.title}</p>
-                  <p className="text-xs truncate mt-0.5" style={{ color: '#666' }}>{book.authorName}</p>
+                  <p className="text-xs truncate mt-0.5" style={{ color: 'var(--app-muted, #666)' }}>{book.authorName}</p>
                 </div>
 
                 {/* Progress bar */}
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs" style={{ color: '#555' }}>
+                    <span className="text-xs" style={{ color: 'var(--app-muted, #555)' }}>
                       {progress.percentComplete > 0 ? `${Math.round(progress.percentComplete)}%` : 'Just started'}
                     </span>
                     <span className="flex items-center gap-0.5 text-xs" style={{ color: '#e8442a' }}>
                       <BookOpen size={9} /> Continue
                     </span>
                   </div>
-                  <div className="h-1 rounded-full" style={{ background: '#222' }}>
+                  <div className="h-1 rounded-full" style={{ background: 'var(--app-line, #222)' }}>
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${Math.max(3, progress.percentComplete)}%`, background: '#e8442a' }}

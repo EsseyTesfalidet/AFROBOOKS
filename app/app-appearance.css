@@ -20,6 +20,11 @@ html[data-app-mode='installed'], html[data-app-mode='installed'] body {
   height: 100%; min-height: 0; overflow: hidden; overscroll-behavior: none;
 }
 html[data-app-mode='installed'] body { padding: 0; }
+/* Allow native one-finger scrolling, without page pinch or double-tap zoom.
+   Include nested scrollers and portal sheets; custom drag controls override it. */
+html[data-app-mode='installed'],
+html[data-app-mode='installed'] :where(*) { touch-action: pan-x pan-y; }
+html[data-app-mode='installed'] .reader-viewport { touch-action: pan-y; }
 html[data-app-mode='installed'] .mobile-app-viewport {
   display: block; position: fixed;
   inset: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
@@ -42,7 +47,7 @@ html[data-app-mode='installed']::-webkit-scrollbar,
 html[data-app-mode='installed'] *::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 html[data-app-mode='installed'] .app-shelf-viewport { overflow-x: auto; }
-html[data-app-mode='installed'] .app-swipe-shelf[data-ready='true'] .app-shelf-viewport { overflow: hidden; cursor: grab; touch-action: pan-y pinch-zoom; }
+html[data-app-mode='installed'] .app-swipe-shelf[data-ready='true'] .app-shelf-viewport { overflow: hidden; cursor: grab; touch-action: pan-y; }
 html[data-app-mode='installed'] .app-swipe-shelf[data-ready='true'] .app-shelf-viewport:active { cursor: grabbing; }
 html[data-app-mode='installed'] .app-shelf-track {
   overflow: visible; scroll-snap-type: none; margin-inline: 0; padding-inline: 0;

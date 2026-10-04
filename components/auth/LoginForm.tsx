@@ -1,5 +1,7 @@
 'use client';
 
+import './login.css';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -18,6 +20,8 @@ import { loginDestination, publicReturnPath } from '@/lib/utils/loginDestination
 import { queueWelcome } from '@/lib/auth/welcome';
 import { beginAuthFlow } from '@/lib/auth/flow';
 import { mobileAuthDestination, mobileAuthSwitchHref } from '@/lib/auth/mobileAccess';
+import { useInstalledApp } from '@/hooks/useInstalledApp';
+import MobileSignIn from './MobileSignIn';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -27,6 +31,11 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function LoginForm() {
+  const installed = useInstalledApp();
+  return installed ? <MobileSignIn /> : <WebsiteLoginForm />;
+}
+
+function WebsiteLoginForm() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -159,7 +168,7 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+    <div className="app-login relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -168,23 +177,23 @@ export default function LoginForm() {
         }}
       />
       <div
-        className="surface-panel relative w-full max-w-[460px] overflow-hidden rounded-[28px] p-8 sm:p-10"
+        className="app-login-card surface-panel relative w-full max-w-[460px] overflow-hidden rounded-[28px] p-8 sm:p-10"
       >
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-32"
           style={{ background: 'linear-gradient(180deg, rgba(245,184,0,0.08) 0%, transparent 100%)' }}
         />
-        <div className="relative">
-          <span className="eyebrow-chip">Secure Sign In</span>
-          <div className="mt-5 text-center">
-            <Logo size="lg" href="/" />
+        <div className="app-login-content relative">
+          <span className="app-login-eyebrow eyebrow-chip">Secure Sign In</span>
+          <div className="app-login-intro mt-5 text-center">
+            <div className="app-login-brand"><Logo size="lg" href="/" /></div>
             <h1 className="mt-6 font-display text-[32px] leading-tight text-white sm:text-5xl">Welcome back</h1>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[#9a9aa3]">
+            <p className="app-login-description mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[#9a9aa3]">
               Get back to your library, purchases, and reading progress without missing a beat.
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-3 gap-2">
+          <div className="app-login-benefits mt-6 grid grid-cols-3 gap-2">
             {[
               { label: 'Saved library', icon: BookOpen },
               { label: 'Fast checkout', icon: Sparkles },
@@ -197,7 +206,7 @@ export default function LoginForm() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="app-login-form mt-6 space-y-4">
             <div>
               <label htmlFor="email" className="field-label mb-1.5 block text-sm">
                 Email
@@ -208,6 +217,8 @@ export default function LoginForm() {
                 autoComplete="email"
                 autoCapitalize="none"
                 spellCheck={false}
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'login-email-error' : undefined}
                 enterKeyHint="next"
                 {...register('email')}
                 placeholder="you@example.com"
@@ -217,7 +228,7 @@ export default function LoginForm() {
                 }}
               />
               {errors.email && (
-                <p className="mt-1 text-xs text-[#e8442a]">{errors.email.message}</p>
+                <p id="login-email-error" role="alert" className="mt-1 text-xs text-[#e8442a]">{errors.email.message}</p>
               )}
             </div>
 
@@ -229,17 +240,19 @@ export default function LoginForm() {
                 id="password"
                 autoComplete="current-password"
                 enterKeyHint="go"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'login-password-error' : undefined}
                 {...register('password')}
                 placeholder="••••••••"
                 hasError={!!errors.password}
               />
               {errors.password && (
-                <p className="mt-1 text-xs text-[#e8442a]">{errors.password.message}</p>
+                <p id="login-password-error" role="alert" className="mt-1 text-xs text-[#e8442a]">{errors.password.message}</p>
               )}
             </div>
 
             {error && (
-              <p className="text-center text-sm text-[#e8442a]">{error}</p>
+              <p role="alert" className="text-center text-sm text-[#e8442a]">{error}</p>
             )}
 
             <button
@@ -252,7 +265,7 @@ export default function LoginForm() {
             </button>
           </form>
 
-          <div className="my-5 flex items-center gap-3">
+          <div className="app-login-divider my-5 flex items-center gap-3">
             <div className="h-px flex-1 bg-white/10" />
             <span className="text-xs uppercase tracking-[0.2em] text-[#5d5d66]">or</span>
             <div className="h-px flex-1 bg-white/10" />
@@ -262,7 +275,7 @@ export default function LoginForm() {
             type="button"
             onClick={handleGoogle}
             disabled={googleLoading || authenticating}
-            className="button-secondary flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+            className="app-login-google button-secondary flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
           >
             {googleLoading ? (
               <LoadingSpinner size={16} color="#f5f2eb" />
@@ -277,7 +290,7 @@ export default function LoginForm() {
             Continue with Google
           </button>
 
-          <p className="mt-6 text-center text-sm text-[#7b7b84]">
+          <p className="app-login-signup mt-6 text-center text-sm text-[#7b7b84]">
             Don't have an account?{' '}
             <Link href={signupHref} className="font-medium text-[#f5b800] transition-colors hover:text-[#ffd24d]">
               Sign up

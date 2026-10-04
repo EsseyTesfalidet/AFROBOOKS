@@ -1,8 +1,10 @@
 'use client';
 
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useInstalledApp } from '@/hooks/useInstalledApp';
+import AppAppearance from './AppAppearance';
+import { lockInstalledAppZoom } from '@/lib/app/zoom';
 
 export default function MobileAppShell({ children }: { children: ReactNode }) {
   const installed = useInstalledApp();
@@ -10,6 +12,10 @@ export default function MobileAppShell({ children }: { children: ReactNode }) {
   const viewport = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const positions = useRef(new Map<string, number>());
+
+  useEffect(() => {
+    if (installed) return lockInstalledAppZoom();
+  }, [installed]);
 
   useLayoutEffect(() => {
     const scroller = viewport.current;
@@ -49,8 +55,9 @@ export default function MobileAppShell({ children }: { children: ReactNode }) {
     };
   }, [installed, path]);
 
-  return <div ref={viewport} className="mobile-app-viewport" role={installed ? 'region' : undefined}
+  return <div ref={viewport} className="mobile-app-viewport" data-app-screen={path === '/login' ? 'signin' : undefined} role={installed ? 'region' : undefined}
     aria-label={installed ? 'App content' : undefined} tabIndex={installed ? 0 : undefined}>
+    <AppAppearance />
     <div ref={content} className="mobile-app-content">{children}</div>
   </div>;
 }

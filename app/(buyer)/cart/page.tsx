@@ -54,7 +54,7 @@ export default function CartPage() {
           {/* Items */}
           <div className="flex-1 space-y-3">
             {items.map((item) => (
-              <div key={item.bookId} className="app-panel flex items-center gap-4 p-4 rounded-xl border" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+              <div key={item.bookId} className="app-panel flex items-center gap-4 p-4 rounded-xl border" style={{ background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}>
                 {/* Mini cover */}
                 <div className="w-10 shrink-0"><BookCover book={item} compact /></div>
 
@@ -63,12 +63,12 @@ export default function CartPage() {
                   <p className="text-xs text-[#666]">{item.authorName}</p>
                 </div>
 
-                <p className="text-sm font-medium flex-shrink-0" style={{ color: '#f5b800' }}>
+                <p className="text-sm font-medium flex-shrink-0" style={{ color: 'var(--app-subtle-accent, #f5b800)' }}>
                   {centsToDisplay(item.price)}
                 </p>
 
                 <button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => removeItem(item.bookId)} className="p-1.5 rounded-lg hover:bg-[#1a1a1a] transition-colors flex-shrink-0">
-                  <Trash2 size={14} style={{ color: '#666' }} />
+                  <Trash2 size={14} style={{ color: 'var(--app-muted, #666)' }} />
                 </button>
               </div>
             ))}
@@ -76,7 +76,7 @@ export default function CartPage() {
 
           {/* Summary */}
           <div className="lg:w-64 flex-shrink-0">
-            <div className="app-panel p-5 rounded-xl border space-y-3" style={{ background: '#111', borderColor: '#1a1a1a' }}>
+            <div className="app-panel p-5 rounded-xl border space-y-3" style={{ background: 'var(--app-surface, #111)', borderColor: 'var(--app-line, #1a1a1a)' }}>
               <h2 className="font-display text-display-sm text-white">Order Summary</h2>
 
               <div className="space-y-2 text-sm">
@@ -86,17 +86,17 @@ export default function CartPage() {
                 </div>
                 {bundle > 0 && (
                   <div className="flex justify-between">
-                    <span style={{ color: '#4ade80' }}>Bundle discount (5%)</span>
-                    <span style={{ color: '#4ade80' }}>-{centsToDisplay(bundle)}</span>
+                    <span style={{ color: 'var(--app-success, #4ade80)' }}>Bundle discount (5%)</span>
+                    <span style={{ color: 'var(--app-success, #4ade80)' }}>-{centsToDisplay(bundle)}</span>
                   </div>
 
                 )}
               </div>
 
-              <div className="border-t pt-3" style={{ borderColor: '#222' }}>
+              <div className="border-t pt-3" style={{ borderColor: 'var(--app-line, #222)' }}>
                 <div className="flex justify-between font-medium">
                   <span className="text-[#f5f2eb]">Total</span>
-                  <span className="font-display text-xl" style={{ color: '#f5b800' }}>{centsToDisplay(tot)}</span>
+                  <span className="font-display text-xl" style={{ color: 'var(--app-subtle-accent, #f5b800)' }}>{centsToDisplay(tot)}</span>
                 </div>
               </div>
 

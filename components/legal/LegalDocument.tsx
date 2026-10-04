@@ -27,7 +27,7 @@ export default function LegalDocument({
       >
         Skip to document
       </a>
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#10100f]/95 backdrop-blur-md">
+      <header className="app-legal-header sticky top-0 z-40 border-b border-white/10 bg-[#10100f]/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
           <Logo size="sm" href="/" />
           <Link

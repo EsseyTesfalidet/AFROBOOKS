@@ -115,7 +115,7 @@ export default function ReaderResumeBar() {
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-white">{book.title}</p>
-            <p className="mt-0.5 text-xs" style={{ color: '#666' }}>
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--app-muted, #666)' }}>
               {Math.max(1, Math.round(progress.percentComplete))}% · Chapter {progress.currentChapter}
             </p>
           </div>
@@ -133,7 +133,7 @@ export default function ReaderResumeBar() {
             type="button"
             onClick={() => setDismissedId(book.id)}
             className="flex h-8 w-8 items-center justify-center rounded-xl"
-            style={{ color: '#666' }}
+            style={{ color: 'var(--app-muted, #666)' }}
             aria-label="Dismiss reader resume bar"
           >
             <X size={14} />

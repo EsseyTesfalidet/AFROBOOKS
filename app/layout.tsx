@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './app-appearance.css';
+import './app-themes.css';
 import AuthProvider from '@/components/shared/AuthProvider';
 import AgreementGate from '@/components/legal/AgreementGate';
 import AuthWelcome from '@/components/shared/AuthWelcome';
@@ -10,6 +11,7 @@ import MobileKeyboard from '@/components/shared/MobileKeyboard';
 import ServiceWorkerRegistration from '@/components/shared/ServiceWorkerRegistration';
 import MobileAccessGate from '@/components/auth/MobileAccessGate';
 import { APP_MODE_BOOTSTRAP } from '@/lib/app/installed';
+import { APP_APPEARANCE_BOOTSTRAP } from '@/lib/app/appearance';
 import MobileAppShell from '@/components/shared/MobileAppShell';
 
 export const viewport: Viewport = {
@@ -66,7 +68,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head><script id="afrobooks-app-mode" dangerouslySetInnerHTML={{ __html: APP_MODE_BOOTSTRAP }} /></head>
+      <head><script id="afrobooks-app-mode" dangerouslySetInnerHTML={{ __html: APP_MODE_BOOTSTRAP + ';' + APP_APPEARANCE_BOOTSTRAP }} /></head>
       <body className="bg-[#0e0e0e] text-[#f5f2eb] font-body antialiased">
         <ServiceWorkerRegistration />
         <ConnectionStatus />

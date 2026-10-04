@@ -6,6 +6,7 @@ import { calculateReadingProgress } from '@/lib/utils/readingProgress';
 import { captureReaderPosition, chapterPercent, localReaderPosition, newestReaderPosition, restoreReaderPosition, storeReaderPosition, readerPageMetrics, type ReaderPosition } from '@/lib/utils/readerPosition';
 import type { Chapter } from '@/types/book';
 import type { ReadingProgress } from '@/types/order';
+import { appHaptic } from '@/lib/app/haptics';
 
 export function useReaderSession(bookId: string, userId: string | null, hasAccess: boolean, layoutKey: string) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -125,6 +126,7 @@ export function useReaderSession(bookId: string, userId: string | null, hasAcces
     flush();
     positionRef.current = { currentChapter: number, scrollPosition: 0, scrollFraction: end ? 1 : 0 };
     setChapter(number); setPercent(0);
+    appHaptic();
   }
 
   function turnPage(direction: -1 | 1) {
@@ -132,7 +134,7 @@ export function useReaderSession(bookId: string, userId: string | null, hasAcces
     if (!scroller || restoring.current) return;
     const { page, count, stride } = readerPageMetrics(scroller);
     const target = page + direction;
-    if (target >= 0 && target < count) { scroller.scrollLeft = target * stride; measure(); }
+    if (target >= 0 && target < count) { scroller.scrollLeft = target * stride; measure(); appHaptic(); }
     else {
       const index = chapters.findIndex(item => item.chapterNumber === chapter);
       const adjacent = chapters[index + direction];

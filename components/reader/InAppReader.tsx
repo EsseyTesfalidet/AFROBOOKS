@@ -10,6 +10,7 @@ import { calculateReadingProgress } from '@/lib/utils/readingProgress';
 import { readerPageMetrics } from '@/lib/utils/readerPosition';
 import { flowReaderParagraphs } from '@/lib/utils/paragraphFlow';
 import { useReaderSession } from '@/hooks/useReaderSession';
+import { useReaderTheme } from '@/hooks/useReaderTheme';
 import { useReaderStore, THEME_STYLES, FONT_SIZE_PX, LINE_SPACING_VALUE, FONT_FAMILIES, MARGIN_MAX_WIDTH, MARGIN_PADDING_X } from '@/store/readerStore';
 import type { Book } from '@/types/book';
 import ReaderPanel from './ReaderPanel';
@@ -20,6 +21,7 @@ interface Props { book: Book; userId: string | null; hasAccess: boolean }
 
 export default function InAppReader({ book, userId, hasAccess }: Props) {
   const prefs = useReaderStore();
+  const readerTheme = useReaderTheme();
   const paged = prefs.readingMode === 'pages';
   const { chapters, chapter: chapterNumber, loading, loadError, saveError, percent, pagination, turnPage, scrollerRef, bodyRef, changeChapter, onScroll, retry, retrySave } = useReaderSession(book.id, userId, hasAccess, `${prefs.readingMode}:${prefs.textFlow}:${prefs.fontSize}:${prefs.lineSpacing}:${prefs.fontFamily}:${prefs.marginSize}`);
   const [panel, setPanel] = useState<'chapters' | 'appearance' | null>(null);
@@ -36,13 +38,13 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
   const wordCount = useMemo(() => content.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length, [content]);
   const minutesLeft = Math.ceil(wordCount * (1 - percent / 100) / 238);
   const totalProgress = calculateReadingProgress(index, chapters.length, percent, hasAccess).percentComplete;
-  const theme = THEME_STYLES[prefs.theme];
+  const theme = THEME_STYLES[readerTheme];
   const style = {
     '--reader-bg': theme.bg, '--reader-text': theme.text, '--reader-muted': theme.muted,
     '--reader-surface': theme.surface, '--reader-border': theme.border, '--reader-accent': theme.accent,
     '--reader-font': `'AfroBooks Ethiopic', ${FONT_FAMILIES[prefs.fontFamily]}`, '--reader-size': FONT_SIZE_PX[prefs.fontSize],
     '--reader-leading': LINE_SPACING_VALUE[prefs.lineSpacing], '--reader-width': MARGIN_MAX_WIDTH[prefs.marginSize], '--reader-gutter': MARGIN_PADDING_X[prefs.marginSize],
-    colorScheme: prefs.theme === 'paper' || prefs.theme === 'sepia' ? 'light' : 'dark',
+    colorScheme: readerTheme === 'paper' || readerTheme === 'sepia' ? 'light' : 'dark',
   } as CSSProperties;
 
   function navigate(number: number) {

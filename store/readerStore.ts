@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { TextFlow } from '@/lib/utils/paragraphFlow';
+import { appHaptic } from '@/lib/app/haptics';
 
 export type ReaderTheme = 'dark' | 'night' | 'sepia' | 'paper';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
@@ -11,6 +12,7 @@ export type ReadingMode = 'scroll' | 'pages';
 
 interface ReaderState {
   theme: ReaderTheme;
+  themeExplicit: boolean;
   fontSize: FontSize;
   lineSpacing: LineSpacing;
   fontFamily: FontFamily;
@@ -32,6 +34,7 @@ export const useReaderStore = create<ReaderState>()(
   persist(
     (set) => ({
       theme: 'paper',
+      themeExplicit: false,
       fontSize: 'medium',
       lineSpacing: 'normal',
       fontFamily: 'serif',
@@ -39,7 +42,7 @@ export const useReaderStore = create<ReaderState>()(
       readingMode: 'scroll',
       textFlow: 'auto',
       currentChapter: 1,
-      setTheme: (theme) => set({ theme }),
+      setTheme: (theme) => { set({ theme, themeExplicit: true }); appHaptic(); },
       setFontSize: (fontSize) => set({ fontSize }),
       setLineSpacing: (lineSpacing) => set({ lineSpacing }),
       setFontFamily: (fontFamily) => set({ fontFamily }),
@@ -48,7 +51,13 @@ export const useReaderStore = create<ReaderState>()(
       setTextFlow: (textFlow) => set({ textFlow }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
     }),
-    { name: 'afrobooks-reader' }
+    { name: 'afrobooks-reader', merge: (saved, current) => {
+      const previous = saved as Partial<ReaderState> | null;
+      const validTheme = previous?.theme && ['paper', 'sepia', 'dark', 'night'].includes(previous.theme);
+      // Old saves did not track explicit choices. Preserve their page theme.
+      return { ...current, ...previous, theme: validTheme ? previous.theme! : current.theme,
+        themeExplicit: validTheme && typeof previous?.themeExplicit === 'boolean' ? previous.themeExplicit : !!validTheme };
+    } }
   )
 );
 

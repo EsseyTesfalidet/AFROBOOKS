@@ -1,0 +1,118 @@
+/* Presentation for installed apps only. Reader pages and cover artwork retain
+   their own palettes, including when the app itself switches themes. */
+@property --book-tint { syntax: '<color>'; inherits: true; initial-value: #ac7058; }
+html[data-app-mode='installed'] {
+  color-scheme: dark;
+  --app-header: #121317f2;
+  --app-nav: #1a1c21f5;
+  --app-field: #1a1c21;
+  --app-soft: #ffffff08;
+  --app-price: #f1c4a6;
+  --app-success: #4ade80;
+  --app-success-surface: #0f2e1a;
+  --app-subtle-accent: #d8b68b;
+}
+html[data-app-mode='installed'][data-app-theme='light'] {
+  color-scheme: light;
+  --app-canvas: #f7f5f1;
+  --app-surface: #ffffff;
+  --app-line: #25272c22;
+  --app-text: #25272c;
+  --app-muted: #616672;
+  --app-accent: #a53724;
+  --app-action: #b83d28;
+  --app-header: #f7f5f1f2;
+  --app-nav: #fffffff5;
+  --app-field: #eeede9;
+  --app-soft: #25272c08;
+  --app-price: #884523;
+  --app-success: #21723f;
+  --app-success-surface: #e5f1e7;
+  --app-subtle-accent: #934326;
+}
+html[data-app-mode='installed'] body { background: var(--app-canvas); color: var(--app-text); }
+html[data-app-mode='installed'] :is(.buyer-header, .seller-header, .app-legal-header) { background: var(--app-header); }
+html[data-app-mode='installed'] :is(.buyer-header-action, .buyer-header-actions .icon-button) { color: var(--app-text); }
+html[data-app-mode='installed'] .buyer-bottom-nav-shell { background: var(--app-nav); border-color: var(--app-line); box-shadow: 0 8px 28px #0002; }
+html[data-app-mode='installed'] :is(.buyer-bottom-nav .buyer-nav-item, .seller-bottom-nav a) { color: var(--app-muted); }
+html[data-app-mode='installed'] .seller-bottom-nav { background: var(--app-nav); }
+html[data-app-mode='installed'] .buyer-account-button { box-shadow: none; border-color: var(--app-line); }
+html[data-app-mode='installed'] .app-book-card { background: var(--app-surface); border-color: var(--app-line); }
+html[data-app-mode='installed'] .app-book-price { color: var(--app-price); background: var(--app-soft); }
+html[data-app-mode='installed'] :is(.app-section-heading > a, .app-continue-shelf > div:first-child > a) { color: var(--app-muted) !important; }
+html[data-app-mode='installed'] :is(.app-catalog-filters input, .app-catalog-filters select, .field-input, .profile-panel input:not([type='radio']):not([type='checkbox']), .profile-panel textarea, .profile-panel select) {
+  color: var(--app-text); background: var(--app-field); border-color: var(--app-line);
+}
+html[data-app-mode='installed'] .profile-panel { color: var(--app-text); background: var(--app-surface); border-color: var(--app-line); }
+html[data-app-mode='installed'] .profile-panel > :is(header, footer) { border-color: var(--app-line); }
+html[data-app-mode='installed'] .reader-resume-bar > div { background: var(--app-nav) !important; border-color: var(--app-line) !important; }
+html[data-app-mode='installed'] .app-muted { color: var(--app-muted); }
+html[data-app-mode='installed'] .field-label { color: var(--app-muted); }
+html[data-app-mode='installed'] :is(.app-book-page, .app-page, .profile-panel) :is(.text-\[\#444\], .text-\[\#555\], .text-\[\#666\], .text-\[\#777\], .text-\[\#888\]):not([data-keep-colors] *) { color: var(--app-muted); }
+html[data-app-mode='installed'] :is(.button-secondary, .empty-state-card) { color: var(--app-text); background: var(--app-soft); border-color: var(--app-line); }
+
+/* Keep the header's 44px actions usable even on narrow phones. */
+html[data-app-mode='installed'] .app-theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; min-width: 44px; padding: 0 10px; border: 1px solid var(--app-line); border-radius: 999px; color: var(--app-text); background: var(--app-soft); font-size: 11px; font-weight: 650; }
+html[data-app-mode='installed'] .buyer-logo-full { display: none; }
+html[data-app-mode='installed'] .buyer-logo-compact { display: block; }
+@media (max-width: 359px) {
+  html[data-app-mode='installed'] .app-theme-toggle { padding-inline: 6px; }
+  html[data-app-mode='installed'] .app-theme-toggle span { display: none; }
+  html[data-app-mode='installed'] .buyer-header-inner { padding-inline: 10px; }
+  html[data-app-mode='installed'] .buyer-header-actions { gap: 0; }
+}
+html[data-app-mode='installed'] .app-theme-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+html[data-app-mode='installed'] .app-theme-choices label { position: relative; }
+html[data-app-mode='installed'] .app-theme-choices input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+html[data-app-mode='installed'] .app-theme-choices span { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid var(--app-line); border-radius: 12px; }
+html[data-app-mode='installed'] .app-theme-choices input:checked + span { background: var(--app-soft); border-color: var(--app-accent); color: var(--app-accent); }
+html[data-app-mode='installed'] .app-theme-choices input:focus-visible + span { outline: 2px solid var(--app-accent); outline-offset: 3px; }
+html[data-app-mode='installed'] input[role='switch'] { width: 22px; height: 22px; accent-color: var(--app-action); }
+
+/* Soft cover tint sits behind content; text always uses a tested neutral palette. */
+html[data-app-mode='installed'] .app-book-scene {
+  background-color: var(--app-canvas);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--book-tint) 20%, transparent), transparent 650px);
+  transition: --book-tint 350ms ease;
+}
+html[data-app-mode='installed'] .app-detail-cover { box-shadow: 0 16px 48px color-mix(in srgb, var(--book-tint) 48%, transparent), 0 4px 12px #0003; }
+html[data-app-mode='installed'] .app-book-page h1 { font-size: clamp(28px, 7.8vw, 38px); font-weight: 800; line-height: 1.16; letter-spacing: -.04em; }
+html[data-app-mode='installed'] .app-book-page { padding-top: 32px; }
+html[data-app-mode='installed'] .app-section-heading h2 { font-weight: 750; }
+
+/* Existing fixed-color surfaces are mapped to semantic light colors. The
+   exclusions keep covers, author artwork and every reader theme independent. */
+html[data-app-mode='installed'][data-app-theme='light'] :is(.bg-\[\#0e0e0e\], .bg-\[\#10100f\], .bg-\[\#0a0a0a\]) { background-color: var(--app-canvas); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.app-shell, .auth-shell) { background: var(--app-canvas); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.text-white, .text-\[\#f5f2eb\], .text-\[\#ddd\], .text-\[\#ccc\], .text-\[\#c6c2b8\], .text-\[\#e5e5e5\]):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: var(--app-text); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class*='text-[#a'], [class*='text-[#b'], [class*='text-[#5'], [class*='text-[#6'], [class*='text-[#7'], [class*='text-[#8'], [class*='text-[#9'], .text-\[\#444\]):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: var(--app-muted); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class*='text-[#d'], [class*='text-[#e']):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: var(--app-text); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.text-\[\#f5b800\], .text-\[\#dec18e\], .text-\[\#c1a56c\], .text-\[\#d8b68b\], .text-\[\#ffad91\], .text-\[\#ffc2ad\], .text-\[\#ffa18b\], .text-\[\#c5a56a\], .text-\[\#ffb199\]):not(.reader-shell *, .reader-panel *, [data-keep-colors], [data-keep-colors] *) { color: #934326; }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.text-red-300, .text-red-400, .text-\[\#e8442a\]) { color: #b1252d; }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.text-green-300, .text-green-400, .text-emerald-300, .text-emerald-400) { color: #21723f; }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class*='border-white/'], .border-\[\#222\], .border-\[\#333\], .border-\[\#1a1a1a\]):not(.reader-shell *, [data-keep-colors], [data-keep-colors] *) { border-color: var(--app-line); }
+html[data-app-mode='installed'][data-app-theme='light'] :is([class*='bg-white/'], .bg-\[\#111\], .bg-\[\#1a1a1a\], .bg-\[\#181816\], .bg-\[\#161616\]):not(.reader-shell *, [data-keep-colors], [data-keep-colors] *) { background-color: var(--app-field); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.app-community-invitation, .surface-card, .surface-panel, .surface-panel-muted, .surface-glass) { background: var(--app-surface); border-color: var(--app-line); box-shadow: 0 8px 24px #00000012; }
+html[data-app-mode='installed'][data-app-theme='light'] .surface-panel-muted { background: var(--app-field); }
+html[data-app-mode='installed'][data-app-theme='light'] .eyebrow-chip { color: var(--app-accent); }
+html[data-app-mode='installed'][data-app-theme='light'] .app-community-invitation > :is(p, a),
+html[data-app-mode='installed'][data-app-theme='light'] .app-page-intro > p:first-child,
+html[data-app-mode='installed'][data-app-theme='light'] .profile-panel > header p { color: var(--app-accent); }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.app-primary-action, .button-primary, .bg-\[\#e8442a\], .bg-\[\#c9442c\]) { color: white; }
+html[data-app-mode='installed'][data-app-theme='light'] .app-book-card:hover { background: var(--app-field); border-color: var(--app-line); }
+html[data-app-mode='installed'][data-app-theme='light'] .app-catalog-filters input::placeholder { color: var(--app-muted); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Opacity only on pages: transforms would re-anchor their fixed controls. */
+  html[data-app-mode='installed'] :is(.app-page, .app-book-page) { animation: app-screen-enter 180ms ease-out; }
+  html[data-app-mode='installed'] .app-detail-cover { animation: app-cover-enter 280ms cubic-bezier(.2,.8,.2,1); }
+  html[data-app-mode='installed'] .reader-panel[open] { animation: app-sheet-enter 220ms cubic-bezier(.2,.8,.2,1); }
+  html[data-app-mode='installed'] :is(button, .app-book-card, .app-library-reading-card, .app-continue-card) { transition: transform 120ms ease, background-color 180ms ease; }
+  html[data-app-mode='installed'] :is(button:enabled, .app-book-card, .app-library-reading-card, .app-continue-card):active { transform: scale(.97); }
+}
+@keyframes app-screen-enter { from { opacity: .55; } to { opacity: 1; } }
+@keyframes app-cover-enter { from { opacity: .4; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes app-sheet-enter { from { opacity: .5; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-app-mode='installed'] *, html[data-app-mode='installed'] *::before, html[data-app-mode='installed'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

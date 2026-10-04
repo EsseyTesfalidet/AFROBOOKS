@@ -38,7 +38,8 @@ createRoot(document.getElementById('root')).render(<App/>);
     .process(fs.readFileSync('app/globals.css', 'utf8'), { from: undefined })).css
     + (bundle.outputFiles.find(f => f.path.endsWith('.css'))?.text || '')
     + fs.readFileSync('components/reader/reader.css', 'utf8')
-    + fs.readFileSync('app/app-appearance.css', 'utf8');
+    + fs.readFileSync('app/app-appearance.css', 'utf8')
+    + fs.readFileSync('app/app-themes.css', 'utf8');
   const js = bundle.outputFiles.find(f => f.path.endsWith('.js')).text;
   const server = http.createServer((req, res) => {
     if (req.url === '/app.js') { res.setHeader('Content-Type', 'application/javascript'); res.end(js); }

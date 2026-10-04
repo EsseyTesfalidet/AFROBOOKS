@@ -9,10 +9,13 @@ import { useBuyerDrawerStore, useSellerDrawerStore } from '@/store/profileDrawer
 import { changePassword } from '@/lib/firebase/auth';
 import { useDeleteAccount } from '@/hooks/useDeleteAccount';
 import PasswordInput from '@/components/shared/PasswordInput';
+import AppAppearanceSettings from './AppAppearanceSettings';
+import { useReaderTheme } from '@/hooks/useReaderTheme';
 import { buttonClass, inputClass, panelClass } from '../buyer/profile/profileSections';
 
 export default function AccountSettings({ seller = false }: { seller?: boolean }) {
   const prefs = useReaderStore();
+  const readerTheme = useReaderTheme();
   const firebaseUser = useAuthStore(s => s.firebaseUser);
   const closeBuyer = useBuyerDrawerStore(s => s.close);
   const closeSeller = useSellerDrawerStore(s => s.close);
@@ -23,7 +26,7 @@ export default function AccountSettings({ seller = false }: { seller?: boolean }
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const usesPassword = firebaseUser?.providerData?.some(provider => provider.providerId === 'password');
-  const theme = THEME_STYLES[prefs.theme];
+  const theme = THEME_STYLES[readerTheme];
 
   async function savePassword(event: FormEvent) {
     event.preventDefault();
@@ -44,11 +47,12 @@ export default function AccountSettings({ seller = false }: { seller?: boolean }
   }
   return <div className="space-y-6">
     <div><h2 className="text-[26px] font-semibold tracking-tight">{seller ? 'Account settings' : 'Make yourself at home'}</h2><p className="mt-2 text-[14px] leading-relaxed text-[#a39f97]">{seller ? 'Manage your password and account.' : 'Adjust your reading experience and manage your account.'}</p></div>
+    <AppAppearanceSettings />
     {!seller && <section className={`${panelClass} space-y-5`} aria-labelledby="reading-settings-title">
       <div><h3 id="reading-settings-title" className="font-semibold">Reading appearance</h3><p className="mt-1 text-[12px] leading-relaxed text-[#a39f97]">Changes apply to the reader and save automatically on this device.</p></div>
       <fieldset><legend className="mb-3 text-[14px] text-[#c6c2b8]">Page theme</legend>
-        <div className="grid grid-cols-4 gap-2">{(Object.keys(THEME_STYLES) as ReaderTheme[]).map(key => <label key={key} className="relative cursor-pointer">
-          <input type="radio" name="reader-page-theme" aria-label={THEME_STYLES[key].label} value={key} checked={prefs.theme === key} onChange={() => prefs.setTheme(key)} className="peer sr-only" />
+        <div data-keep-colors className="grid grid-cols-4 gap-2">{(Object.keys(THEME_STYLES) as ReaderTheme[]).map(key => <label key={key} className="relative cursor-pointer">
+          <input type="radio" name="reader-page-theme" aria-label={THEME_STYLES[key].label} value={key} checked={readerTheme === key} onChange={() => prefs.setTheme(key)} className="peer sr-only" />
           <span className="flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-xl border-2 border-transparent p-1 text-[12px] peer-checked:border-[#f5b800] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#f5b800]" style={{ background: THEME_STYLES[key].bg, color: THEME_STYLES[key].text }}><span className="font-serif text-xl">Aa</span>{THEME_STYLES[key].label}</span>
         </label>)}</div>
       </fieldset>
@@ -56,7 +60,7 @@ export default function AccountSettings({ seller = false }: { seller?: boolean }
         <div><label htmlFor="reader-font-size" className="mb-2 block text-[14px] text-[#c6c2b8]">Text size</label><select id="reader-font-size" value={prefs.fontSize} onChange={e => prefs.setFontSize(e.target.value as FontSize)} className={inputClass}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option><option value="xlarge">Extra large</option></select></div>
         <div><label htmlFor="reader-line-spacing" className="mb-2 block text-[14px] text-[#c6c2b8]">Line spacing</label><select id="reader-line-spacing" value={prefs.lineSpacing} onChange={e => prefs.setLineSpacing(e.target.value as LineSpacing)} className={inputClass}><option value="compact">Compact</option><option value="normal">Normal</option><option value="relaxed">Relaxed</option></select></div>
       </div>
-      <div className="overflow-hidden rounded-xl border p-4" style={{ background: theme.bg, color: theme.text, borderColor: theme.border }}>
+      <div data-keep-colors className="overflow-hidden rounded-xl border p-4" style={{ background: theme.bg, color: theme.text, borderColor: theme.border }}>
         <p className="mb-3 text-[10px] uppercase tracking-[0.15em] opacity-70">Reading preview</p>
         <p style={{ fontSize: FONT_SIZE_PX[prefs.fontSize], lineHeight: LINE_SPACING_VALUE[prefs.lineSpacing], fontFamily: FONT_FAMILIES[prefs.fontFamily] }}>A good story begins with a moment of curiosity. Turn the page, and find a world of your own.</p>
       </div>

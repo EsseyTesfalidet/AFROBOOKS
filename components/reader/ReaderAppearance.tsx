@@ -2,10 +2,12 @@
 
 import { FONT_FAMILIES, FONT_LABELS, FONT_SIZE_PX, THEME_STYLES, useReaderStore, type ReaderTheme, type FontFamily, type FontSize, type LineSpacing, type MarginSize } from '@/store/readerStore';
 import type { TextFlow } from '@/lib/utils/paragraphFlow';
+import { useReaderTheme } from '@/hooks/useReaderTheme';
 
 const sizes: FontSize[] = ['small', 'medium', 'large', 'xlarge'];
 export default function ReaderAppearance() {
   const prefs = useReaderStore();
+  const readerTheme = useReaderTheme();
   return <div className="reader-appearance">
     <fieldset><legend>Reading mode</legend><div className="reader-choice-options">
       <label><input type="radio" name="reading-mode" checked={prefs.readingMode === 'pages'} onChange={() => prefs.setReadingMode('pages')} /><span>Pages</span></label>
@@ -14,7 +16,7 @@ export default function ReaderAppearance() {
     <div><label className="reader-setting-label" htmlFor="reader-text-flow">Text flow</label><select id="reader-text-flow" className="reader-flow-select" value={prefs.textFlow} onChange={event => prefs.setTextFlow(event.target.value as TextFlow)}><option value="auto">Automatic</option><option value="paragraphs">Flow as paragraphs</option><option value="original">Keep original lines</option></select><p className="reader-panel-note mt-3">Automatic joins clearly wrapped text and respects the author’s line breaks. Flow as paragraphs also joins preserved lines, keeping separate paragraphs. Choose original lines for poetry. This changes only your reading view.</p></div>
     <fieldset><legend>Page color</legend><div className="reader-theme-options">
       {(['paper', 'sepia', 'dark', 'night'] as ReaderTheme[]).map(key => <label key={key} className="reader-theme-option">
-        <input type="radio" name="page-color" aria-label={THEME_STYLES[key].label} checked={prefs.theme === key} onChange={() => prefs.setTheme(key)} />
+        <input type="radio" name="page-color" aria-label={THEME_STYLES[key].label} checked={readerTheme === key} onChange={() => prefs.setTheme(key)} />
         <span style={{ background: THEME_STYLES[key].bg, color: THEME_STYLES[key].text }}><b>Aa</b>{THEME_STYLES[key].label}</span>
       </label>)}
     </div></fieldset>

@@ -6,6 +6,7 @@ import { Search, ShoppingCart, UserRound } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import InstallPWA from '@/components/shared/InstallPWA';
+import AppThemeToggle from '@/components/shared/AppThemeToggle';
 import WorkspaceSwitcher from '@/components/shared/WorkspaceSwitcher';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
@@ -53,6 +54,7 @@ export default function BuyerHeader() {
               </div>
             ) : null}
             <InstallPWA />
+            <AppThemeToggle />
             <Link href="/search" className="buyer-header-action" aria-label="Search books" title="Search books">
               <Search size={19} aria-hidden="true" />
             </Link>

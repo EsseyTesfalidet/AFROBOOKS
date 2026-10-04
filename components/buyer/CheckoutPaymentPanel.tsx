@@ -13,6 +13,8 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { giftCheckoutSchema, type GiftResume } from '@/lib/gifts';
 import { appFetch } from '@/lib/network';
 import { useConnectionRecovery } from '@/hooks/useConnectionRecovery';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { useInstalledApp } from '@/hooks/useInstalledApp';
 
 const CARD_ELEMENT_OPTIONS = {
   style: {
@@ -29,6 +31,10 @@ const CARD_ELEMENT_OPTIONS = {
 interface GiftCheckout { bookId: string; price: number; resume?: GiftResume }
 
 function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
+  const installed = useInstalledApp();
+  const appTheme = useAppTheme();
+  const cardOptions = installed && appTheme === 'light' ? { ...CARD_ELEMENT_OPTIONS, style: { ...CARD_ELEMENT_OPTIONS.style,
+    base: { ...CARD_ELEMENT_OPTIONS.style.base, color: '#25272c', '::placeholder': { color: '#666b76' } } } } : CARD_ELEMENT_OPTIONS;
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
@@ -201,14 +207,14 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
           required
           placeholder="Name on card"
           className="w-full px-3.5 py-3 rounded-lg border text-sm"
-          style={{ background: '#1a1a1a', borderColor: '#333', color: '#f5f2eb' }}
+          style={{ background: 'var(--app-field, #1a1a1a)', borderColor: 'var(--app-line, #333)', color: 'var(--app-text, #f5f2eb)' }}
         />
       </div>
 
       <div>
         <label className="block text-sm text-[#aaa] mb-1.5">Card Details</label>
-        <div className="px-3.5 py-3 rounded-lg border" style={{ background: '#1a1a1a', borderColor: '#333' }}>
-          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        <div className="px-3.5 py-3 rounded-lg border" style={{ background: 'var(--app-field, #1a1a1a)', borderColor: 'var(--app-line, #333)' }}>
+          <CardElement options={cardOptions} />
         </div>
       </div>
 

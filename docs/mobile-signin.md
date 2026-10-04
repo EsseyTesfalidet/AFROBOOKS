@@ -1,0 +1,38 @@
+# Installed app sign-in
+
+`LoginForm` selects `MobileSignIn` after installed mode has hydrated. The normal browser website keeps its existing email/password and Google layout. `/login` uses a fixed, scrollbar-free app frame. Typical phone sizes fit the screen, and landscape uses a two-column layout. The form panel can scroll internally when the keyboard, enlarged text or unusually long errors need room. At the owner's request, installed app page zoom is now locked; normal website zoom is unchanged.
+
+The revised screen centers the existing AfroBooks logo and wordmark above a rounded form card. It uses a subtle warm background, clearer spacing, floating labels, Email/Phone selection, Google/Apple buttons, password reveal, a brief button sheen, press feedback, inline error shake, supported optional haptics and a drawn success check. The full screen follows light/dark mode. Book illustrations and the diamond-pattern hero were removed at the owner's request. Reduced motion disables decorative effects. Small portrait screens use a compact horizontal logo; landscape places the logo beside the form.
+
+Phone entry uses `libphonenumber-js/min` and a native accessible country selector. The initial SMS rollout allows Ghana (+233), Nigeria (+234) and the United States (+1), matching countries recorded in existing profiles. Pasted international numbers outside that list produce an email/Google alternative before requesting reCAPTCHA or sending SMS. Firebase enforces the matching allowlist; the client list is presentation only. Six code inputs support advance, backspace, arrow keys, autofill and full-code paste. The sixth digit verifies once; failed codes can be corrected. Resend uses a 30-second deadline that survives a refresh, without storing the number or code. Firebase reCAPTCHA and Firebase quotas remain enabled. The client countdown is a usability feature, not a security rate limit.
+
+Successful buyer sign-in opens `/library`. Valid `appReturn`, gift/community returns and author/admin workspaces retain priority. Authentication holds the existing observer guard until the profile is ready. Credentials, tokens and codes are not logged or persisted by this UI.
+
+## Provider configuration remains required
+
+A follow-up check on 2026-10-04 confirmed that the owner enabled Phone and Apple in Firebase. Google and email/password remain enabled, and `afrobs.com` is authorized. Apple still has no Service ID (`clientId`) and an empty signing configuration. No fictional phone numbers are configured. After the owner delegated the SMS country choice, the Firebase SMS policy was changed from unset to an allowlist of US, NG and GH and read back to verify it. The update mask covered only `sms_region_config`. This live Firebase policy change did not deploy the app or enable its production UI. No live SMS was sent and no real account was created.
+
+The local `.env.local` settings now enable the phone interface for review while keeping Apple unavailable:
+
+```dotenv
+NEXT_PUBLIC_AUTH_PHONE_ENABLED=true
+NEXT_PUBLIC_AUTH_APPLE_ENABLED=false
+```
+
+Phone entry is available in the local build. Apple remains marked unavailable and explains this when tapped; email and Google remain usable. These are build-time switches. Deployment environments still default to off unless explicitly configured. Before enabling Phone in production, verify the flow with a fictional test number on an authorized hosted domain. Before enabling Apple, complete its web configuration and verify the flow. Then set the appropriate deployment flags and rebuild as part of an approved deployment. Adding SMS countries requires updating both Firebase's allowlist and `mobileSmsCountries` in `lib/auth/mobileSignIn.ts`. Region limits do not cap spending; SMS is billed by destination under [Google's current pricing](https://cloud.google.com/identity-platform/pricing?hl=en).
+
+- Phone: enable Firebase Authentication → Sign-in method → Phone, set allowed SMS regions, confirm authorized production domains, review SMS billing/quotas, and configure fictional test numbers. Verify a fictional number on an authorized hosted domain before real SMS testing. Never disable app verification in production. [Firebase phone authentication](https://firebase.google.com/docs/auth/web/phone-auth).
+- Apple: requires Apple Developer membership and a Services ID. Configure the Firebase return URL in Apple, then add the Team ID, Key ID and private key directly to Firebase's Apple provider settings. Never put private keys in `NEXT_PUBLIC_` variables, source control or chat. Configure Apple's private email relay as needed. Test both ordinary email and Hide My Email identities. [Firebase Apple authentication](https://firebase.google.com/docs/auth/web/apple).
+- Social sign-in uses Firebase popups directly from the button click. Cancellation stays cancelled; blocked popups display a recoverable message. Test real installed iOS and Android TWA devices, including popup cancellation and blocking. [Firebase redirect/storage considerations](https://firebase.google.com/docs/auth/web/redirect-best-practices).
+
+## Account integrity
+
+`POST /api/auth/mobile-profile` requires a revocation-checked Firebase bearer token from Phone, Apple or Google and rejects cross-site mutations. UID, email, phone and display name come from the Admin SDK identity, never the request body. An atomic Firestore transaction creates only a buyer profile and never overwrites existing profiles. Suspended, banned and disabled identities are denied. A missing profile on an identity older than ten minutes requires support rather than automatic recreation.
+
+A different, unlinked identity can create a separate account. A contact phone saved in a profile is not a linked Firebase sign-in provider. Existing readers are directed to their original method. This feature never merges accounts or grants purchases by matching contact details. Phone-only accounts have no email address: in-app receipts remain available, but email delivery needs an email-backed identity. Account linking/email collection is a separate follow-up before marketing phone sign-in as interchangeable with existing account access.
+
+## Verification
+
+`npm test` covers number normalization, profile creation/preservation, restricted/old identities, unauthorized requests and errors. `tests/mobile-signin.browser.cjs` tests the actual form/shell/keyboard with fake Firebase boundaries: six portrait/landscape sizes, fixed frame, validation, password reveal, return links, keyboard/large text, country selection, OTP entry/paste/retry, resend, success, social adapters, reduced motion and unchanged website behavior. Set `PLAYWRIGHT_PATH`, optional `EDGE_PATH` and optional `SCREENSHOT_DIR`. These simulations do not verify live SMS delivery or real Apple OAuth configuration.
+
+The owner approved publishing this release on 2026-10-04. Production keeps Phone and Apple switches off pending the provider verification described above; email and Google remain available. The separately authorized Firebase SMS country policy is already active.
