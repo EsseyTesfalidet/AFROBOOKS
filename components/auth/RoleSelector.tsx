@@ -2,7 +2,8 @@
 
 import { BookOpen, PenLine } from 'lucide-react';
 import { useInstalledApp } from '@/hooks/useInstalledApp';
-import { AUTHOR_WEB_START } from '@/lib/app/authorWebsite';
+import { authorWebsiteHref } from '@/lib/app/authorWebsite';
+import { useAndroidDevice } from '@/hooks/useAndroidDevice';
 
 interface RoleSelectorProps {
   selected: 'buyer' | 'seller';
@@ -26,6 +27,7 @@ const roles = [
 
 export default function RoleSelector({ selected, onChange }: RoleSelectorProps) {
   const installed = useInstalledApp();
+  const android = useAndroidDevice();
   return (
     <div className="grid grid-cols-2 gap-3">
       {roles.map(({ id, icon: Icon, label, description }) => {
@@ -35,7 +37,7 @@ export default function RoleSelector({ selected, onChange }: RoleSelectorProps) 
         return (
           <Element
             key={id}
-            {...(external ? { href: AUTHOR_WEB_START, target: '_blank', rel: 'noopener noreferrer' } : { type: 'button' as const, onClick: () => onChange(id) })}
+            {...(external ? { href: authorWebsiteHref(android), ...(!android ? { target: '_blank', rel: 'noopener noreferrer' } : {}) } : { type: 'button' as const, onClick: () => onChange(id) })}
             className="surface-panel-muted flex flex-col items-start gap-3 rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
             style={{
               borderColor: active ? 'rgba(232,68,42,0.72)' : 'rgba(255,255,255,0.08)',
@@ -56,7 +58,7 @@ export default function RoleSelector({ selected, onChange }: RoleSelectorProps) 
             </div>
             <div>
               <p className="text-sm font-semibold text-[#f5f2eb]">{label}</p>
-              <p className="mt-1 text-xs leading-relaxed text-[#7a7a84]">{external ? 'Continue on the website ↗' : description}</p>
+              <p className="mt-1 text-xs leading-relaxed text-[#7a7a84]">{external ? android ? 'Continue in Chrome ↗' : 'Continue on the website ↗' : description}</p>
             </div>
           </Element>
         );

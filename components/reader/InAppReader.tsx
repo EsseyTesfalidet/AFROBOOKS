@@ -76,11 +76,16 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
 
     <div ref={scrollerRef} className="reader-viewport" data-reading-mode={prefs.readingMode} data-empty={loading || !!loadError || !chapter} role="main" aria-label="Book reader" tabIndex={0}
       onFocusCapture={event => {
-        if (!paged || event.target === event.currentTarget) return;
+        // Tapping a link must not move it away between pointer-down and click.
+        // Only keyboard focus needs us to reveal an off-page control.
+        if (!paged || event.target === event.currentTarget || !event.target.matches(':focus-visible')) return;
         const viewport = event.currentTarget;
         const { stride, count } = readerPageMetrics(viewport);
-        const rect = event.target.getClientRects()[0];
-        if (rect) viewport.scrollLeft = Math.max(0, Math.min(count - 1, Math.floor((rect.left - viewport.getBoundingClientRect().left + viewport.scrollLeft) / stride))) * stride;
+        const bounds = viewport.getBoundingClientRect();
+        const rects = Array.from(event.target.getClientRects());
+        const rect = rects.find(item => item.right > bounds.left + 1 && item.left < bounds.right - 1) ?? rects[0];
+        // A subpixel column boundary must not round into the preceding page.
+        if (rect) viewport.scrollLeft = Math.max(0, Math.min(count - 1, Math.floor((rect.left - bounds.left + viewport.scrollLeft + 1) / stride))) * stride;
       }}
       onScroll={() => {
         if (!onScroll()) return;

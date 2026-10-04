@@ -13,6 +13,7 @@ import MobileAccessGate from '@/components/auth/MobileAccessGate';
 import { APP_MODE_BOOTSTRAP } from '@/lib/app/installed';
 import { APP_APPEARANCE_BOOTSTRAP } from '@/lib/app/appearance';
 import MobileAppShell from '@/components/shared/MobileAppShell';
+import AuthorReturnBar from '@/components/shared/AuthorReturnBar';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ServiceWorkerRegistration />
         <ConnectionStatus />
         <MobileKeyboard />
+        <AuthorReturnBar />
         <AuthProvider>
           <MobileAppShell>
             <MobileAccessGate>

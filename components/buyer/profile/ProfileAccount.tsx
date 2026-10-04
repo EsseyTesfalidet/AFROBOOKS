@@ -11,7 +11,7 @@ import { hasAuthorWorkspace } from '@/lib/utils/workspace';
 import AvatarUpload from '@/components/shared/AvatarUpload';
 import { PROFILE_SECTIONS, buttonClass, inputClass, panelClass } from './profileSections';
 import { useInstalledApp } from '@/hooks/useInstalledApp';
-import { AUTHOR_WEB_START } from '@/lib/app/authorWebsite';
+import { AUTHOR_APP_START } from '@/lib/app/authorWebsite';
 
 export default function ProfileAccount() {
   const user = useAuthStore(s => s.userProfile)!;
@@ -104,6 +104,6 @@ export default function ProfileAccount() {
       <Link href="/library" onClick={close} className="flex min-h-16 items-center gap-4 rounded-lg px-1 py-4 text-[14px] transition-colors hover:text-[#c1a56c] focus-visible:outline focus-visible:outline-[#f5b800]"><BookOpen size={18} className="text-[#a39f97]" /><span className="flex-1">My library</span><ChevronRight size={16} className="text-[#8d897f]" /></Link>
       {PROFILE_SECTIONS.filter(item => item.id !== 'account').map(({ id, label, icon: Icon }) => <button type="button" key={id} onClick={() => setSection(id)} className="flex min-h-16 w-full items-center gap-4 rounded-lg px-1 py-4 text-left text-[14px] transition-colors hover:text-[#c1a56c] focus-visible:outline focus-visible:outline-[#f5b800]"><Icon size={18} className="text-[#a39f97]" /><span className="flex-1">{id === 'wishlist' ? 'Saved books' : id === 'reviews' ? 'My reviews' : id === 'settings' ? 'Reading & account settings' : label}</span><ChevronRight size={16} className="text-[#8d897f]" /></button>)}
     </nav>}
-    {!editing && (installed ? <div><a href={AUTHOR_WEB_START} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-2 text-[14px] text-[#c1a56c] hover:underline">{author ? 'Open Author Studio on the web' : 'Become an author'}<ArrowUpRight size={16} /></a><p className="text-[12px] text-[#a39f97]">Author setup and publishing open on the AfroBooks website.</p></div> : author && <button type="button" onClick={openAuthorWorkspace} disabled={workspaceBusy} className="flex min-h-11 items-center gap-2 text-[14px] text-[#c1a56c] hover:underline disabled:opacity-50">{workspaceBusy ? 'Opening…' : 'Open author workspace'}<ArrowUpRight size={16} /></button>)}
+    {!editing && (installed ? <div><Link href={AUTHOR_APP_START} onClick={close} className="flex min-h-11 items-center gap-2 text-[14px] text-[#c1a56c] hover:underline">{author ? 'My author space' : 'Become an author'}<ChevronRight size={16} /></Link><p className="text-[12px] text-[#a39f97]">Open your author space and return to reading any time.</p></div> : author && <button type="button" onClick={openAuthorWorkspace} disabled={workspaceBusy} className="flex min-h-11 items-center gap-2 text-[14px] text-[#c1a56c] hover:underline disabled:opacity-50">{workspaceBusy ? 'Opening…' : 'Open author workspace'}<ArrowUpRight size={16} /></button>)}
   </div>;
 }

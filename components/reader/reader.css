@@ -141,6 +141,7 @@
 .reader-viewport[data-reading-mode='pages'][data-empty='true'] { overflow-y: auto; }
 .reader-viewport[data-reading-mode='pages'] .reader-state { min-height: 100%; padding: 24px 10px; }
 .reader-viewport[data-reading-mode='pages'] :is(.reader-chapter-heading, .reader-book-end, .reader-chapter-navigation) { break-inside: avoid; }
+.reader-viewport[data-reading-mode='pages'] .reader-purchase-link { break-inside: avoid; }
 .reader-viewport[data-reading-mode='pages'] .reader-content :is(h1,h2,h3,h4,h5,h6) { break-after: avoid; }
 .reader-shell[data-reading-mode='pages'] .reader-progress { position: relative; grid-row: 3; }
 .reader-page-controls { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 4px 16px; border-top: 1px solid var(--reader-border); }

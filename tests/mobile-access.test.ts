@@ -5,6 +5,47 @@ import { APP_MODE_BOOTSTRAP } from '../lib/app/installed';
 import { hasMobileAccount, isPublicMobilePage, mobileReturnPath } from '../lib/auth/mobileAccess';
 import { authorReturnPath, loginDestination } from '../lib/utils/loginDestination';
 import { mobileSignInDestination } from '../lib/auth/mobileSignIn';
+import { authorWebsiteHref, readerAppHref, READER_APP_RETURN } from '../lib/app/authorWebsite';
+import { readFileSync } from 'node:fs';
+
+test('author website return clears website presentation and retains reader mode through full navigations', () => {
+  const values = new Map<string, string>([['afrobooks:website-tab', '1']]);
+  const env = {
+    URLSearchParams, location: { pathname: '/browse', search: '?view=app' },
+    document: { referrer: '', documentElement: { dataset: { websiteTab: 'true' } as Record<string, string> } },
+    navigator: { standalone: false }, matchMedia: () => ({ matches: false }),
+    sessionStorage: { getItem: (key: string) => values.get(key), setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) },
+  };
+  runInNewContext(APP_MODE_BOOTSTRAP, env);
+  assert.equal(values.has('afrobooks:website-tab'), false);
+  assert.equal(env.document.documentElement.dataset.websiteTab, undefined);
+  assert.equal(env.document.documentElement.dataset.appMode, 'installed');
+  for (const pathname of ['/login', '/library', '/author/start']) {
+    env.location = { pathname, search: '' }; env.document.documentElement.dataset = {};
+    runInNewContext(APP_MODE_BOOTSTRAP, env); assert.equal(env.document.documentElement.dataset.appMode, 'installed');
+  }
+  // Opening author tools again explicitly restores website mode in that tab.
+  env.location = { pathname: '/author/start', search: '?view=web' };
+  runInNewContext(APP_MODE_BOOTSTRAP, env); assert.equal(env.document.documentElement.dataset.appMode, 'browser');
+  env.location = { pathname: '/browse', search: '?view=app' };
+  Object.defineProperty(env, 'sessionStorage', { get() { throw Error('Storage blocked'); } });
+  runInNewContext(APP_MODE_BOOTSTRAP, env); assert.equal(env.document.documentElement.dataset.appMode, 'installed');
+  assert.equal(env.document.documentElement.dataset.websiteTab, undefined);
+});
+
+test('author and reader Android links use fixed packages and matching safe HTTPS fallbacks', () => {
+  const manifest = JSON.parse(readFileSync('android/twa-manifest.json', 'utf8'));
+  for (const [href, packageId, path] of [[authorWebsiteHref(true), 'com.android.chrome', '/author/start?view=web'], [readerAppHref(true), manifest.packageId, READER_APP_RETURN]]) {
+    const [destination, options] = href.split('#Intent;');
+    assert.equal(destination, `intent://${manifest.host}${path}`);
+    assert.ok(options.includes(`package=${packageId};`));
+    assert.ok(options.startsWith('scheme=https;'));
+    const fallback = options.match(/S\.browser_fallback_url=([^;]+);end$/)![1];
+    assert.equal(decodeURIComponent(fallback), `https://${manifest.host}${path}`);
+  }
+  assert.equal(authorWebsiteHref(false), '/author/start?view=web');
+  assert.equal(readerAppHref(false), '/browse?view=app');
+});
 
 test('author website handoff stays in its own tab through authentication and leaves the reader app installed', () => {
   const values = new Map<string, string>();
