@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware';
 import type { Book } from '@/types/book';
 import { calculateCartTotals } from '@/lib/utils/fees';
 import { publicationTitle } from '@/lib/utils/publication';
+import { isInstalledApp } from '@/lib/app/installed';
+import { hasMobileAccount } from '@/lib/auth/mobileAccess';
+import { useAuthStore } from './authStore';
 
 export interface CartItem {
   bookId: string;
@@ -21,7 +24,7 @@ interface CartState {
   promoCode: string | null;
   promoBookId: string | null;
   discountAmount: number;
-  addItem: (book: Book) => void;
+  addItem: (book: Book) => boolean;
   removeItem: (bookId: string) => void;
   reconcileBooks: (books: Book[]) => void;
   clearCart: () => void;
@@ -42,8 +45,11 @@ export const useCartStore = create<CartState>()(
       discountAmount: 0,
 
       addItem: (book) => {
+        // The website still supports guest carts. Installed app entry points
+        // also check here to cover sign-out races and every Add button.
+        if (isInstalledApp() && !hasMobileAccount(useAuthStore.getState())) return false;
         const { items } = get();
-        if (items.some((i) => i.bookId === book.id)) return;
+        if (items.some((i) => i.bookId === book.id)) return true;
         set({
           items: [
             ...items,
@@ -60,6 +66,7 @@ export const useCartStore = create<CartState>()(
             },
           ],
         });
+        return true;
       },
 
       removeItem: (bookId) =>

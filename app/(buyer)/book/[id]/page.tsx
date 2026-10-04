@@ -15,6 +15,7 @@ import { getBook, getBookReviews, getSimilarBooks } from '@/lib/firebase/firesto
 import { useBookOwnership } from '@/hooks/useBookOwnership';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
+import { mobileLoginHref } from '@/lib/auth/mobileAccess';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Book } from '@/types/book';
@@ -161,7 +162,7 @@ export default function BookDetailPage() {
     if (isPreorder) return;
     if (selectedOption === 'subscribe') { router.push('/subscription'); return; }
     if (!book) return;
-    addItem(book);
+    if (!addItem(book)) { router.push(mobileLoginHref(`/book/${book.id}`)); return; }
     router.push('/cart');
   }
 

@@ -19,6 +19,7 @@ import PasswordInput from '@/components/shared/PasswordInput';
 import { publicReturnPath, loginDestination } from '@/lib/utils/loginDestination';
 import { queueWelcome } from '@/lib/auth/welcome';
 import { beginAuthFlow } from '@/lib/auth/flow';
+import { mobileAuthDestination, mobileAuthSwitchHref } from '@/lib/auth/mobileAccess';
 
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
@@ -37,7 +38,7 @@ export default function SignupForm() {
   const [loginHref, setLoginHref] = useState('/login');
   useEffect(() => {
     const destination = publicReturnPath(new URLSearchParams(window.location.search).get('redirect'));
-    if (destination) setLoginHref(`/login?redirect=${encodeURIComponent(destination)}`);
+    setLoginHref(mobileAuthSwitchHref('/login', window.location.search, destination ? `/login?redirect=${encodeURIComponent(destination)}` : '/login'));
   }, []);
   const { setFirebaseUser, setLoading } = useAuthStore();
   const [signupsOpen, setSignupsOpen] = useState({
@@ -47,7 +48,7 @@ export default function SignupForm() {
   });
 
   function finishAuthNavigation(destination: string) {
-    window.location.replace(destination);
+    window.location.replace(mobileAuthDestination(window.location.search, destination));
   }
 
   const {

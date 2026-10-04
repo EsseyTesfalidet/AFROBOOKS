@@ -8,6 +8,8 @@ import AppExperience from '@/components/shared/AppExperience';
 import ConnectionStatus from '@/components/shared/ConnectionStatus';
 import MobileKeyboard from '@/components/shared/MobileKeyboard';
 import ServiceWorkerRegistration from '@/components/shared/ServiceWorkerRegistration';
+import MobileAccessGate from '@/components/auth/MobileAccessGate';
+import { APP_MODE_BOOTSTRAP } from '@/lib/app/installed';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
@@ -62,14 +64,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head><script id="afrobooks-app-mode" dangerouslySetInnerHTML={{ __html: APP_MODE_BOOTSTRAP }} /></head>
       <body className="bg-[#0e0e0e] text-[#f5f2eb] font-body antialiased">
         <ServiceWorkerRegistration />
-        <AppExperience />
         <ConnectionStatus />
         <MobileKeyboard />
         <AuthProvider>
-          <AgreementGate>{children}<AuthWelcome /></AgreementGate>
+          <MobileAccessGate>
+            <AppExperience />
+            <AgreementGate>{children}<AuthWelcome /></AgreementGate>
+          </MobileAccessGate>
         </AuthProvider>
       </body>
     </html>

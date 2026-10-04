@@ -10,6 +10,10 @@ html[data-app-mode='installed'] {
   --app-action: #c9442c;
 }
 
+/* Hide the initial server-rendered app screen until Firebase restores the user.
+   Browser website content is not hidden. */
+html[data-app-mode='installed'] [data-mobile-access='pending'] { display: none; }
+
 html[data-app-mode='installed'] .app-canvas { background: var(--app-canvas); }
 html[data-app-mode='installed'] .app-page { padding-top: 28px; padding-bottom: 32px; }
 html[data-app-mode='installed'] .app-page :is(h1, h2) { text-wrap: balance; }

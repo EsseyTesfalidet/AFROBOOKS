@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { mobileLoginHref } from '@/lib/auth/mobileAccess';
 import { Search } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCard from '@/components/buyer/BookCard';
@@ -18,6 +20,7 @@ import type { Book } from '@/types/book';
 import { useCartStore } from '@/store/cartStore';
 
 export default function BrowsePage() {
+  const router = useRouter();
   const userProfile = useAuthStore(state => state.userProfile);
   const recentBookIds = useRecentlyViewedStore(state => state.bookIds);
   const { books: allBooks, loading, error, retry } = useCatalog();
@@ -42,6 +45,10 @@ export default function BrowsePage() {
   const followedBooks = followed?.uid === userProfile?.uid ? allBooks.filter(book => followed?.ids.includes(book.sellerId)).slice(0, 8) : [];
   const filtering = !!search.trim() || genre !== 'All' || publicationType !== 'all';
 
+  function addStory(book: Book) {
+    if (!cart.addItem(book)) router.push(mobileLoginHref('/browse'));
+  }
+
   return <div className="app-canvas min-h-screen bg-[#10100f]">
     <BuyerHeader />
     <main className="app-page mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
@@ -61,7 +68,7 @@ export default function BrowsePage() {
           {!filtering && followedBooks.length > 0 && <BookRail title="Authors you follow" books={followedBooks} />}
           <section className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-[22px] font-semibold">{publicationType === 'magazine' ? 'Magazine issues' : filtering ? 'Search results' : 'All titles'}</h2><p role="status" className="mt-2 text-[13px] text-[#a8a49c]">{filteredBooks.length} {filteredBooks.length === 1 ? 'title' : 'titles'}</p></div><Link href="/search" className="min-h-11 py-3 text-[13px] text-[#b4b1a9] hover:text-white">More filters →</Link></div>
-            {filteredBooks.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">{filteredBooks.map((book,index)=><div key={book.id}><BookCard book={book} eager={index<5} />{book.publicationType === 'short_story' && <button type="button" disabled={cart.isInCart(book.id) || cart.items.length >= 20} onClick={() => cart.addItem(book)} className="mt-3 min-h-11 w-full rounded-lg border border-[#54441e] px-2 text-sm text-[#f5b800] disabled:opacity-50">{cart.isInCart(book.id) ? 'In your cart' : cart.items.length >= 20 ? 'Cart limit reached' : 'Add story'}</button>}</div>)}</div>
+            {filteredBooks.length ? <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">{filteredBooks.map((book,index)=><div key={book.id}><BookCard book={book} eager={index<5} />{book.publicationType === 'short_story' && <button type="button" disabled={cart.isInCart(book.id) || cart.items.length >= 20} onClick={() => addStory(book)} className="mt-3 min-h-11 w-full rounded-lg border border-[#54441e] px-2 text-sm text-[#f5b800] disabled:opacity-50">{cart.isInCart(book.id) ? 'In your cart' : cart.items.length >= 20 ? 'Cart limit reached' : 'Add story'}</button>}</div>)}</div>
               : <div className="py-8"><p className="text-[14px] text-[#a8a49c]">No titles match your search.</p><button type="button" onClick={()=>{setSearch('');setGenre('All');setPublicationType('all');}} className="mt-2 min-h-11 text-[14px] text-[#ffad91] underline">Clear filters</button></div>}
           </section>
           {!filtering && recentlyViewed.length > 0 && <BookRail title="Recently viewed" books={recentlyViewed} />}

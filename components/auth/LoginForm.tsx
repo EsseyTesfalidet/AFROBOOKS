@@ -17,6 +17,7 @@ import type { User as UserProfile } from '@/types/user';
 import { loginDestination, publicReturnPath } from '@/lib/utils/loginDestination';
 import { queueWelcome } from '@/lib/auth/welcome';
 import { beginAuthFlow } from '@/lib/auth/flow';
+import { mobileAuthDestination, mobileAuthSwitchHref } from '@/lib/auth/mobileAccess';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -33,12 +34,12 @@ export default function LoginForm() {
   const [signupHref, setSignupHref] = useState('/signup');
   useEffect(() => {
     const destination = publicReturnPath(new URLSearchParams(window.location.search).get('redirect'));
-    if (destination) setSignupHref(`/signup?redirect=${encodeURIComponent(destination)}`);
+    setSignupHref(mobileAuthSwitchHref('/signup', window.location.search, destination ? `/signup?redirect=${encodeURIComponent(destination)}` : '/signup'));
   }, []);
   const { userProfile, loading, setFirebaseUser, setUserProfile, setLoading } = useAuthStore();
 
   function finishAuthNavigation(profile: UserProfile) {
-    window.location.replace(loginDestination(profile, new URLSearchParams(window.location.search).get('redirect')));
+    window.location.replace(mobileAuthDestination(window.location.search, loginDestination(profile, new URLSearchParams(window.location.search).get('redirect'))));
   }
 
   async function clearBlockedSession(message: string) {
@@ -66,7 +67,7 @@ export default function LoginForm() {
 
   useEffect(() => {
     if (!authenticating && !loading && userProfile) {
-      router.replace(loginDestination(userProfile, new URLSearchParams(window.location.search).get('redirect')));
+      router.replace(mobileAuthDestination(window.location.search, loginDestination(userProfile, new URLSearchParams(window.location.search).get('redirect'))));
     }
   }, [authenticating, loading, userProfile, router]);
 
