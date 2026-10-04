@@ -90,3 +90,15 @@ html[data-app-mode='installed'][data-keyboard-open='true'] .signin-panel { margi
 html[data-app-mode='installed'][data-keyboard-open='true'] .signin-intro { display:none; }
 html[data-app-mode='installed'][data-keyboard-open='true'] .signin-legal { position:static; transform:none; flex-direction:row; color:var(--app-muted); }
 @media(prefers-reduced-motion:reduce) { .mobile-signin *, .mobile-signin *::before { animation:none!important; transition:none!important; }.signin-success path { stroke-dashoffset:0; } }
+
+/* Author handoff uses the same identity methods in a normal browser window.
+   Only this sign-in variant uses these colors; the website layout is retained. */
+.author-web-login {
+  --app-canvas:#101114; --app-surface:#191a1e; --app-line:#36383f; --app-field:#222329;
+  --app-text:#f5f2eb; --app-muted:#b0b2bc; --app-accent:#e9bd73;
+  --app-success:#82d6a1; --app-success-surface:#203c2b;
+  min-height:100dvh; background:var(--app-canvas); color:var(--app-text);
+}
+.author-web-login .mobile-signin { min-height:100dvh; height:auto; overflow:visible; grid-template-columns:1fr; grid-template-rows:auto auto; max-width:540px; margin-inline:auto; gap:16px; }
+.author-web-login .signin-panel { max-height:none; overflow:visible; }
+.author-web-login .signin-legal { position:static; }

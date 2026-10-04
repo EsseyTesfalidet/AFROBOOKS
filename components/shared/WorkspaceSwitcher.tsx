@@ -2,6 +2,8 @@
 
 import { BookOpen, PenSquare } from 'lucide-react';
 import type { WorkspaceRole } from '@/lib/utils/workspace';
+import { useInstalledApp } from '@/hooks/useInstalledApp';
+import { AUTHOR_WEB_START } from '@/lib/app/authorWebsite';
 
 interface WorkspaceSwitcherProps {
   activeRole: WorkspaceRole;
@@ -34,6 +36,7 @@ export default function WorkspaceSwitcher({
   showLabel = false,
 }: WorkspaceSwitcherProps) {
   const styles = SIZE_STYLES[size];
+  const installed = useInstalledApp();
 
   return (
     <div className={`${fullWidth ? 'w-full' : ''} space-y-2`}>
@@ -47,14 +50,13 @@ export default function WorkspaceSwitcher({
           { id: 'buyer' as const, label: 'Reader', icon: BookOpen },
           { id: 'seller' as const, label: 'Author Studio', icon: PenSquare },
         ].map(({ id, label, icon: Icon }) => {
-          const active = activeRole === id;
+          const active = (installed ? 'buyer' : activeRole) === id;
+          const external = installed && id === 'seller';
+          const Element = external ? 'a' : 'button';
           return (
-            <button
+            <Element
               key={id}
-              type="button"
-              onClick={() => {
-                if (!active) onChange(id);
-              }}
+              {...(external ? { href: AUTHOR_WEB_START, target: '_blank', rel: 'noopener noreferrer', title: 'Open Author Studio on the website' } : { type: 'button' as const, onClick: () => { if (!active) onChange(id); } })}
               className={`${styles.button} ${fullWidth ? 'flex-1 justify-center' : ''} inline-flex items-center font-medium transition-all`}
               style={{
                 background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'transparent',
@@ -64,8 +66,8 @@ export default function WorkspaceSwitcher({
               }}
             >
               <Icon size={styles.icon} />
-              <span>{label}</span>
-            </button>
+              <span>{label}{external ? ' ↗' : ''}</span>
+            </Element>
           );
         })}
       </div>

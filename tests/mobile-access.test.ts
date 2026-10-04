@@ -3,6 +3,40 @@ import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
 import { APP_MODE_BOOTSTRAP } from '../lib/app/installed';
 import { hasMobileAccount, isPublicMobilePage, mobileReturnPath } from '../lib/auth/mobileAccess';
+import { authorReturnPath, loginDestination } from '../lib/utils/loginDestination';
+import { mobileSignInDestination } from '../lib/auth/mobileSignIn';
+
+test('author website handoff stays in its own tab through authentication and leaves the reader app installed', () => {
+  const values = new Map<string, string>();
+  const env = {
+    URLSearchParams, location: { pathname: '/author/start', search: '?view=web' },
+    document: { referrer: 'android-app://com.afrobs.app', documentElement: { dataset: {} as Record<string, string> } },
+    navigator: { standalone: true }, matchMedia: () => ({ matches: true }),
+    sessionStorage: { getItem: (key: string) => values.get(key), setItem: (key: string, value: string) => values.set(key, value) },
+  };
+  runInNewContext(APP_MODE_BOOTSTRAP, env);
+  assert.equal(env.document.documentElement.dataset.appMode, 'browser');
+  for (const path of ['/login', '/signup', '/dashboard']) {
+    env.location = { pathname: path, search: '' }; env.document.documentElement.dataset = {};
+    runInNewContext(APP_MODE_BOOTSTRAP, env); assert.equal(env.document.documentElement.dataset.appMode, 'browser');
+  }
+  values.clear(); env.location = { pathname: '/browse', search: '?view=web' }; env.document.documentElement.dataset = {};
+  runInNewContext(APP_MODE_BOOTSTRAP, env); assert.equal(env.document.documentElement.dataset.appMode, 'installed');
+  env.location = { pathname: '/author/start', search: '?view=web' };
+  Object.defineProperty(env, 'sessionStorage', { get() { throw Error('Storage blocked'); } });
+  runInNewContext(APP_MODE_BOOTSTRAP, env); assert.equal(env.document.documentElement.dataset.appMode, 'browser');
+});
+
+test('author sign-in returns only to the author entry; installed author accounts default to their library', () => {
+  const author = { role: 'both', activeRole: 'seller' };
+  for (const path of ['/author/start', '/author/start?view=web']) {
+    assert.equal(authorReturnPath(path), path);
+    assert.equal(loginDestination(author, path), path);
+    assert.equal(mobileSignInDestination(author, '?redirect=' + encodeURIComponent(path)), path);
+  }
+  for (const path of ['https://evil.test', '//evil.test', '/author/start?next=evil', '/author/start?view=web&redirect=evil', '/author/start#token', '/author/other']) assert.equal(authorReturnPath(path), null);
+  assert.equal(mobileSignInDestination(author, ''), '/library');
+});
 
 test('installed entry requires a matching active Firebase account, not a profile or cookie hint alone', () => {
   const valid = { loading: false, firebaseUser: { uid: 'reader' }, userProfile: { uid: 'reader', status: 'active' } };

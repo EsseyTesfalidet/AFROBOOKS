@@ -5,7 +5,11 @@ export function communityReturnPath(requested: string | null): string | null {
 }
 
 export function publicReturnPath(requested: string | null): string | null {
-  return giftReturnPath(requested) ?? communityReturnPath(requested);
+  return authorReturnPath(requested) ?? giftReturnPath(requested) ?? communityReturnPath(requested);
+}
+
+export function authorReturnPath(requested: string | null): string | null {
+  return requested === '/author/start' || requested === '/author/start?view=web' ? requested : null;
 }
 
 export function giftReturnPath(requested: string | null): string | null {

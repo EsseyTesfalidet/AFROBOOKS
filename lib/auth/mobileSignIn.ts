@@ -24,7 +24,7 @@ export function normalizePhone(value: string, country: CountryCode): string | nu
 
 export function mobileSignInDestination(profile: { role: string; activeRole: string }, search: string) {
   const fallback = loginDestination(profile, new URLSearchParams(search).get('redirect'));
-  return mobileAuthDestination(search, fallback === '/browse' ? '/library' : fallback);
+  return mobileAuthDestination(search, ['/browse', '/dashboard'].includes(fallback) ? '/library' : fallback);
 }
 
 export function signInError(error: unknown): string {

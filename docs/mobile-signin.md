@@ -6,7 +6,17 @@ The revised screen centers the existing AfroBooks logo and wordmark above a roun
 
 Phone entry uses `libphonenumber-js/min` and a native accessible country selector. The initial SMS rollout allows Ghana (+233), Nigeria (+234) and the United States (+1), matching countries recorded in existing profiles. Pasted international numbers outside that list produce an email/Google alternative before requesting reCAPTCHA or sending SMS. Firebase enforces the matching allowlist; the client list is presentation only. Six code inputs support advance, backspace, arrow keys, autofill and full-code paste. The sixth digit verifies once; failed codes can be corrected. Resend uses a 30-second deadline that survives a refresh, without storing the number or code. Firebase reCAPTCHA and Firebase quotas remain enabled. The client countdown is a usability feature, not a security rate limit.
 
-Successful buyer sign-in opens `/library`. Valid `appReturn`, gift/community returns and author/admin workspaces retain priority. Authentication holds the existing observer guard until the profile is ready. Credentials, tokens and codes are not logged or persisted by this UI.
+Successful installed-app sign-in opens `/library` for readers and authors. Explicit valid return links and the admin workspace retain priority. Authentication holds the existing observer guard until the profile is ready. Credentials, tokens and codes are not logged or persisted by this UI.
+
+## Author website handoff
+
+In the installed app, the signup Author option, profile author action and Author Studio switch open `/author/start?view=web` with a separate `noopener` browser context. The originating app stays in its reader view. Normal website role controls retain their existing behavior. The browser decides whether to display the destination as a new tab or window.
+
+The landing page offers existing-account sign-in or new author signup. A signed-in reader explicitly enables author tools through the existing authenticated profile endpoint; opening the link alone does not change their role. Existing authors continue to their dashboard. New author setup respects the platform signup/maintenance setting, with server authorization remaining authoritative. The same Firebase identity preserves the library and reading progress; users should use their original sign-in method. The browser may require another login, and the author sign-in flow includes the existing phone option for phone-only readers. No tokens or account identifiers are passed in the URL.
+
+The exact author entry URL sets a per-tab website presentation marker so installed-mode signals do not force that tab back into reader layout. This is a display choice, not an authentication bypass. With session storage blocked, the initial entry still uses website presentation, but it may not survive a full navigation. Other tabs remain unchanged.
+
+`tests/author-web-handoff.browser.cjs` exercises the real links, bootstrap, signup selection, landing page and phone sign-in return with mocked authentication boundaries. It checks separate tabs, unchanged mobile roles, explicit same-account activation, closed registrations and normal website behavior using simulated iOS/Android installed signals. The existing mobile access and sign-in browser suites also pass. These checks do not verify placement on physical iOS or Android devices. The owner approved deploying this handoff on 2026-10-04. The proposed preview-to-checkout change was withdrawn: “View full book” retains its book-details destination. The reported backward jump for Tigrinya previews remains unconfirmed; live browser checks of the three titles reached their book details in scrolling and paged modes.
 
 ## Provider configuration remains required
 

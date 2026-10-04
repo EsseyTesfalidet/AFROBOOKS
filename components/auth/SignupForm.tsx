@@ -20,6 +20,7 @@ import { publicReturnPath, loginDestination } from '@/lib/utils/loginDestination
 import { queueWelcome } from '@/lib/auth/welcome';
 import { beginAuthFlow } from '@/lib/auth/flow';
 import { mobileAuthDestination, mobileAuthSwitchHref } from '@/lib/auth/mobileAccess';
+import { isInstalledApp } from '@/lib/app/installed';
 
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
@@ -37,6 +38,7 @@ export default function SignupForm() {
   const [error, setError] = useState('');
   const [loginHref, setLoginHref] = useState('/login');
   useEffect(() => {
+    if (!isInstalledApp() && new URLSearchParams(window.location.search).get('role') === 'seller') setRole('seller');
     const destination = publicReturnPath(new URLSearchParams(window.location.search).get('redirect'));
     setLoginHref(mobileAuthSwitchHref('/login', window.location.search, destination ? `/login?redirect=${encodeURIComponent(destination)}` : '/login'));
   }, []);

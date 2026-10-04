@@ -2,7 +2,7 @@
 
 import './login.css';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -16,7 +16,7 @@ import Logo from '@/components/shared/Logo';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import PasswordInput from '@/components/shared/PasswordInput';
 import type { User as UserProfile } from '@/types/user';
-import { loginDestination, publicReturnPath } from '@/lib/utils/loginDestination';
+import { authorReturnPath, loginDestination, publicReturnPath } from '@/lib/utils/loginDestination';
 import { queueWelcome } from '@/lib/auth/welcome';
 import { beginAuthFlow } from '@/lib/auth/flow';
 import { mobileAuthDestination, mobileAuthSwitchHref } from '@/lib/auth/mobileAccess';
@@ -30,9 +30,16 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+const subscribeLocation = () => () => {};
+const authorSignIn = () => !!authorReturnPath(new URLSearchParams(window.location.search).get('redirect'));
+
 export default function LoginForm() {
   const installed = useInstalledApp();
-  return installed ? <MobileSignIn /> : <WebsiteLoginForm />;
+  const authorHandoff = useSyncExternalStore(subscribeLocation, authorSignIn, () => false);
+  if (installed) return <MobileSignIn />;
+  // A phone-only reader must be able to use that same identity on the website.
+  if (authorHandoff) return <div className="author-web-login"><MobileSignIn /></div>;
+  return <WebsiteLoginForm />;
 }
 
 function WebsiteLoginForm() {
