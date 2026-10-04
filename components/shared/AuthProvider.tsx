@@ -8,7 +8,6 @@ import { clearAuthSession, setClientAuthHints, syncAuthSession } from '@/lib/fir
 import { useAuthStore } from '@/store/authStore';
 import { waitForAuthFlow } from '@/lib/auth/flow';
 import { isInstalledApp } from '@/lib/app/installed';
-import { useCartStore } from '@/store/cartStore';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setFirebaseUser, setUserProfile, setLoading, reset } = useAuthStore();
@@ -60,7 +59,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             setFirebaseUser(null);
             setUserProfile(null);
             setLoading(true);
-            useCartStore.getState().clearCart();
           }
           await clearAuthSession();
           reset();
