@@ -14,6 +14,47 @@ html[data-app-mode='installed'] {
    Browser website content is not hidden. */
 html[data-app-mode='installed'] [data-mobile-access='pending'] { display: none; }
 
+/* The installed app has one fixed frame; only its content viewport scrolls. */
+.mobile-app-viewport, .mobile-app-content { display: contents; }
+html[data-app-mode='installed'], html[data-app-mode='installed'] body {
+  height: 100%; min-height: 0; overflow: hidden; overscroll-behavior: none;
+}
+html[data-app-mode='installed'] body { padding: 0; }
+html[data-app-mode='installed'] .mobile-app-viewport {
+  display: block; position: fixed;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch; scroll-padding-block: 76px 104px;
+  padding-bottom: env(safe-area-inset-bottom); background: var(--app-canvas);
+}
+html[data-app-mode='installed'] .mobile-app-content { display: block; min-height: 100%; }
+html[data-app-mode='installed'] .mobile-app-viewport :is(.min-h-screen, .min-h-dvh) {
+  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+html[data-app-mode='installed'] .app-header { position: sticky; top: 0; }
+html[data-app-mode='installed'][data-keyboard-open='true'] .mobile-app-viewport {
+  top: var(--visual-top, 0px); bottom: auto; height: var(--visual-height, 100dvh);
+  scroll-padding-block: 72px 24px;
+}
+/* Hide the chrome, not the scrolling mechanism (including sheets and reader). */
+html[data-app-mode='installed'], html[data-app-mode='installed'] * { scrollbar-width: none !important; }
+html[data-app-mode='installed']::-webkit-scrollbar,
+html[data-app-mode='installed'] *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+html[data-app-mode='installed'] .app-shelf-viewport { overflow-x: auto; }
+html[data-app-mode='installed'] .app-swipe-shelf[data-ready='true'] .app-shelf-viewport { overflow: hidden; cursor: grab; touch-action: pan-y pinch-zoom; }
+html[data-app-mode='installed'] .app-swipe-shelf[data-ready='true'] .app-shelf-viewport:active { cursor: grabbing; }
+html[data-app-mode='installed'] .app-shelf-track {
+  overflow: visible; scroll-snap-type: none; margin-inline: 0; padding-inline: 0;
+  align-items: stretch;
+}
+html[data-app-mode='installed'] .app-shelf-track > * { flex-shrink: 0; min-width: 0; scroll-snap-align: none; }
+html[data-app-mode='installed'] .app-shelf-track img { -webkit-user-drag: none; }
+html[data-app-mode='installed'] .app-shelf-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--app-muted); font-size: 11px; }
+html[data-app-mode='installed'] .app-shelf-controls > div { display: flex; gap: 6px; }
+html[data-app-mode='installed'] .app-shelf-controls button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--app-line); border-radius: 50%; color: var(--app-text); background: var(--app-surface); }
+html[data-app-mode='installed'] .app-shelf-controls button:disabled { opacity: .35; }
+
 html[data-app-mode='installed'] .app-canvas { background: var(--app-canvas); }
 html[data-app-mode='installed'] .app-page { padding-top: 28px; padding-bottom: 32px; }
 html[data-app-mode='installed'] .app-page :is(h1, h2) { text-wrap: balance; }

@@ -7,6 +7,7 @@ import { getActiveReadingProgress, getBook } from '@/lib/firebase/firestore';
 import type { ReadingProgress } from '@/types/order';
 import type { Book } from '@/types/book';
 import { useCatalog } from '@/hooks/useCatalog';
+import SwipeShelf from '@/components/shared/SwipeShelf';
 
 interface ShelfItem {
   progress: ReadingProgress;
@@ -43,7 +44,7 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
           View all
         </Link>
       </div>
-      <div
+      <SwipeShelf label="Continue reading"
         className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
         style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
@@ -95,7 +96,7 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
             </div>
           </Link>
         ))}
-      </div>
+      </SwipeShelf>
     </div>
   );
 }

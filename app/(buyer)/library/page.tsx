@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { BookOpen, PlayCircle } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import BookCover from '@/components/shared/BookCover';
+import SwipeShelf from '@/components/shared/SwipeShelf';
 import ProgressBar from '@/components/shared/ProgressBar';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { subscribeUserLibrary, getUserLibrary, getBook, getReadingProgress } from '@/lib/firebase/firestore';
@@ -104,7 +105,7 @@ export default function LibraryPage() {
                 <PlayCircle size={14} style={{ color: '#e8442a' }} />
                 <p className="text-sm font-medium text-white">Continue Reading</p>
               </div>
-              <div
+              <SwipeShelf label="Continue reading in your library"
                 className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
                 style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
               >
@@ -123,7 +124,7 @@ export default function LibraryPage() {
                     </div>
                   </Link>
                 ))}
-              </div>
+              </SwipeShelf>
             </div>
           );
         })()}

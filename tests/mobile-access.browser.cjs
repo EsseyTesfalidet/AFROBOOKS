@@ -6,6 +6,7 @@ async function main(){
 const bundle=await build({bundle:true,write:false,platform:'browser',format:'iife',define:{'process.env.NODE_ENV':'"test"'},stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
 import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
 import Gate from './components/auth/MobileAccessGate';import Provider from './components/shared/AuthProvider';import Experience from './components/shared/AppExperience';
+import Shell from './components/shared/MobileAppShell';
 import {useAuthStore} from './store/authStore';import {useCartStore} from './store/cartStore';
 import {mobileAuthDestination,mobileAuthSwitchHref} from './lib/auth/mobileAccess';
 import {APP_MODE_BOOTSTRAP} from './lib/app/installed';
@@ -15,7 +16,7 @@ window.add=()=>useCartStore.getState().addItem(book);window.cart=()=>useCartStor
 window.setAuth=state=>useAuthStore.setState(state);window.finishLogin=()=>window.navigate(mobileAuthDestination(location.search,'/browse'));
 function App(){const[path,setPath]=useState(window.path);window.navigate=p=>{history.replaceState(null,'',p);window.path=location.pathname;setPath(window.path)};
 const publicPage=['/login','/signup','/terms','/privacy'].includes(path);
-return <Provider><Gate><Experience/><main><h1>{publicPage?path.slice(1):'App content'}</h1>{!publicPage&&<button onClick={()=>window.add()}>Add story</button>}{path==='/login'&&<a href={mobileAuthSwitchHref('/signup',location.search,'/signup')}>Sign up</a>}</main></Gate></Provider>}
+return <Provider><Shell><Gate><Experience/><main><h1>{publicPage?path.slice(1):'App content'}</h1>{!publicPage&&<button onClick={()=>window.add()}>Add story</button>}{path==='/login'&&<a href={mobileAuthSwitchHref('/signup',location.search,'/signup')}>Sign up</a>}</main></Gate></Shell></Provider>}
 createRoot(document.getElementById('root')).render(<App/>);
 `},plugins:[{name:'boundaries',setup(b){
 b.onResolve({filter:/^(next\/navigation|next\/link)$/},a=>({path:a.path,namespace:'framework'}));

@@ -1,0 +1,9 @@
+# Installed app scrolling
+
+Android/TWA, installed PWA and iOS standalone use a fixed `MobileAppShell` with a native vertical scroll viewport. Headers remain sticky inside that viewport and the bottom navigation stays fixed. Scrollbars are hidden throughout installed mode, including drawers and the reader. Normal desktop and mobile browser websites retain document scrolling and their existing shelf presentation.
+
+`SwipeShelf` loads Embla Carousel 8 and its wheel-gestures plugin only in installed mode. Catalog, continue-reading, library and related-title shelves support touch swipes, mouse drags, horizontal wheel/trackpad gestures, arrow buttons and keyboard arrows/Home/End. Vertical wheel gestures still scroll the page. A native overflow fallback remains available if the interaction chunk cannot load. Reduced-motion settings disable animated shelf navigation.
+
+The shell remembers vertical positions by pathname during the current session, including when catalog content loads asynchronously. It yields restoration to user input. `MobileKeyboard` supplies the visible viewport size so focused inputs remain reachable. Keep the shell free of transforms: the reader and other fixed overlays must remain positioned against the viewport. Reader pagination and text selection use their existing controls.
+
+Validation: `npm test`, `npm run build`, `tests/mobile-scroll.browser.cjs` and `tests/mobile-access.browser.cjs`. Set `PLAYWRIGHT_PATH` to an installed Playwright module and optionally `EDGE_PATH` to a browser executable. The scrolling test uses actual shell, shelf, header, navigation and keyboard components with fixture account data. It covers normal mobile browsing, installed-mode detection, route restoration, touch/drag/wheel/keyboard controls, portrait/landscape/tablet layouts, account-drawer focus, virtual keyboard resizing and the reader's independent scroll layout. Browser mode emulation is not a physical-device test.

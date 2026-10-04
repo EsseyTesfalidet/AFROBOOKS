@@ -10,6 +10,7 @@ import MobileKeyboard from '@/components/shared/MobileKeyboard';
 import ServiceWorkerRegistration from '@/components/shared/ServiceWorkerRegistration';
 import MobileAccessGate from '@/components/auth/MobileAccessGate';
 import { APP_MODE_BOOTSTRAP } from '@/lib/app/installed';
+import MobileAppShell from '@/components/shared/MobileAppShell';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
@@ -71,10 +72,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ConnectionStatus />
         <MobileKeyboard />
         <AuthProvider>
-          <MobileAccessGate>
-            <AppExperience />
-            <AgreementGate>{children}<AuthWelcome /></AgreementGate>
-          </MobileAccessGate>
+          <MobileAppShell>
+            <MobileAccessGate>
+              <AppExperience />
+              <AgreementGate>{children}<AuthWelcome /></AgreementGate>
+            </MobileAccessGate>
+          </MobileAppShell>
         </AuthProvider>
       </body>
     </html>

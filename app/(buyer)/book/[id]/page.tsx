@@ -26,6 +26,7 @@ import { useCatalog } from '@/hooks/useCatalog';
 import { publicationLabel, publicationTitle } from '@/lib/utils/publication';
 import { useBookPreview } from '@/hooks/useBookPreview';
 import BookSampleLink from '@/components/buyer/BookSampleLink';
+import SwipeShelf from '@/components/shared/SwipeShelf';
 
 const REPORT_REASONS = [
   'Inappropriate or offensive content',
@@ -402,7 +403,7 @@ export default function BookDetailPage() {
         {similar.length > 0 && (
           <div>
             <h2 className="font-display text-display-sm text-white mb-4">You might also like</h2>
-            <div
+            <SwipeShelf label="You might also like"
               className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none"
               style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
             >
@@ -430,7 +431,7 @@ export default function BookDetailPage() {
                   </div>
                 </Link>
               ))}
-            </div>
+            </SwipeShelf>
           </div>
         )}
       </main>

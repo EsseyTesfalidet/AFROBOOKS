@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import BookCard from '@/components/buyer/BookCard';
+import SwipeShelf from '@/components/shared/SwipeShelf';
 import type { Book } from '@/types/book';
 
 interface Props {
@@ -64,11 +65,9 @@ export default function BookRail({
           {emptyMessage}
         </div>
       ) : (
-        <div
+        <SwipeShelf
           className="app-book-rail-items flex gap-4 overflow-x-auto py-2 snap-x snap-mandatory"
-          tabIndex={0}
-          role="region"
-          aria-label={title}
+          label={title}
           style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
           {books.map((book) => (
@@ -76,7 +75,7 @@ export default function BookRail({
               <BookCard book={book} />
             </div>
           ))}
-        </div>
+        </SwipeShelf>
       )}
     </section>
   );
