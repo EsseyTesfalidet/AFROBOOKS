@@ -3,9 +3,9 @@ import type { NextRequest } from 'next/server';
 import { PAYOUT_SETUP_PATH, payoutReturnPath, publicReturnPath } from '@/lib/utils/loginDestination';
 
 const BUYER_PATHS = [
-  '/checkout', '/library', '/profile', '/notifications',
+  '/checkout', '/library', '/profile', '/notifications', '/watch',
 ];
-const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller', '/promotions'];
+const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller', '/promotions', '/video-studio'];
 const ADMIN_PATHS = ['/admin'];
 const AUTH_PATHS = ['/login', '/signup'];
 

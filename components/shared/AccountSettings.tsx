@@ -10,6 +10,7 @@ import { changePassword } from '@/lib/firebase/auth';
 import { useDeleteAccount } from '@/hooks/useDeleteAccount';
 import PasswordInput from '@/components/shared/PasswordInput';
 import AppAppearanceSettings from './AppAppearanceSettings';
+import RecoveryPhone from './RecoveryPhone';
 import { useReaderTheme } from '@/hooks/useReaderTheme';
 import { buttonClass, inputClass, panelClass } from '../buyer/profile/profileSections';
 
@@ -80,6 +81,7 @@ export default function AccountSettings({ seller = false }: { seller?: boolean }
         </form>
       </details> : <p className="text-[14px] leading-relaxed text-[#a39f97]">You sign in through a linked provider. Manage your password with that provider.</p>}
     </section>
+    {firebaseUser && <RecoveryPhone key={firebaseUser.uid} uid={firebaseUser.uid} />}
     <div className="flex flex-wrap gap-2"><Link href="/about-help" onClick={close} className={`${buttonClass} !px-2 text-[#a39f97] underline decoration-white/20 underline-offset-4`}>About & Help</Link><Link href="/privacy" onClick={close} className={`${buttonClass} !px-2 text-[#a39f97] underline decoration-white/20 underline-offset-4`}>Privacy information</Link><Link href="/terms" onClick={close} className={`${buttonClass} !px-2 text-[#a39f97] underline decoration-white/20 underline-offset-4`}>Terms of use</Link></div>
     <details className="group rounded-2xl border border-white/10 p-5">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg text-[14px] text-[#a39f97] focus-visible:outline focus-visible:outline-[#f5b800] [&::-webkit-details-marker]:hidden">Delete account<ChevronDown size={16} className="transition-transform group-open:rotate-180" /></summary>

@@ -9,7 +9,7 @@ export function publicReturnPath(requested: string | null): string | null {
 }
 
 export function authorReturnPath(requested: string | null): string | null {
-  return requested === '/author/start' || requested === '/author/start?view=web' ? requested : null;
+  return requested === '/author/start' || requested === '/author/start?view=web' || requested === '/author/start?view=web&studio=video' ? requested : null;
 }
 
 export function giftReturnPath(requested: string | null): string | null {

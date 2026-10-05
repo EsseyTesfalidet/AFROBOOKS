@@ -9,10 +9,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsx --test tests/mobile-signin.test.ts tests/app-appearance.test.ts tests/mobile-access.test.ts tests/mobile-recovery.test.ts tests/auth-welcome.test.ts tests/reader.test.ts tests/firebase-runtime.test.ts tests/checkout.test.ts tests/catalog.test.ts tests/manuscript.test.ts tests/admin.test.ts tests/promotions.test.ts tests/connect.test.ts tests/legal.test.ts tests/payout-reminders.test.ts tests/gifts.test.ts tests/community.test.ts tests/security.test.ts",
+    "test": "tsx --test tests/watch-upload.test.ts tests/watch-stream.test.ts tests/watch-player.test.ts tests/recovery-phone.test.ts tests/mobile-signin.test.ts tests/app-appearance.test.ts tests/mobile-access.test.ts tests/mobile-recovery.test.ts tests/auth-welcome.test.ts tests/reader.test.ts tests/firebase-runtime.test.ts tests/checkout.test.ts tests/catalog.test.ts tests/manuscript.test.ts tests/admin.test.ts tests/promotions.test.ts tests/connect.test.ts tests/legal.test.ts tests/payout-reminders.test.ts tests/gifts.test.ts tests/community.test.ts tests/security.test.ts tests/watch.test.ts tests/watch-play.test.ts",
+    "test:recovery-phone": "npx --yes firebase-tools@13.35.1 emulators:exec --only auth,firestore --project demo-afrobooks-recovery --config firebase.auth.test.json \"tsx --test tests/recovery-phone.integration.test.ts\"",
     "test:integration": "tsx --test tests/firestore.integration.test.ts tests/destination.integration.test.ts tests/community.integration.test.ts",
     "test:community": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-afrobooks-security --config firebase.test.json \"tsx --test tests/community.integration.test.ts\"",
-    "test:rules": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore,storage --project demo-afrobooks-security --config firebase.test.json \"npm run test:integration\""
+    "test:rules": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore,storage --project demo-afrobooks-security --config firebase.test.json \"npm run test:integration\"",
+    "test:watch": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore,storage --project demo-afrobooks-watch --config firebase.test.json \"tsx --test --test-concurrency=1 tests/watch.integration.test.ts tests/watch-play.integration.test.ts tests/watch-payout.integration.test.ts\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
@@ -20,12 +22,15 @@
     "@stripe/stripe-js": "^3.5.0",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
+    "@vidstack/react": "1.15.6",
     "clsx": "^2.1.1",
     "embla-carousel": "8.6.0",
     "embla-carousel-wheel-gestures": "8.1.0",
     "fast-average-color": "9.5.0",
     "firebase": "^10.12.0",
     "firebase-admin": "^14.0.0",
+    "google-auth-library": "11.1.0",
+    "hls.js": "1.7.3",
     "htmlparser2": "8.0.2",
     "libphonenumber-js": "1.13.14",
     "lucide-react": "^0.378.0",
@@ -43,6 +48,7 @@
     "tailwind-merge": "^2.3.0",
     "tesseract.js": "7.0.0",
     "tslib": "^2.8.1",
+    "tus-js-client": "4.3.1",
     "zod": "^3.23.8",
     "zustand": "^4.5.2"
   },

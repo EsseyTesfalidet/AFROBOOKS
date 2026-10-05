@@ -8,9 +8,16 @@ The owner also confirmed that the app is **not enrolled** in Google Play
 alternative billing yet. Enrollment is an outstanding owner action, not an
 unknown configuration state.
 
-The current version-2 bundle opens the live website in a Trusted Web Activity.
-Its Stripe checkout is not, by itself, a Google Play alternative-billing
-integration. No new billing-enabled AAB or Play publication is claimed.
+October 4 update: the owner selected standard Google Play Billing for one-time
+**video** purchases. Version 3 (`1.0.2`) now includes the native video payment
+bridge. The server supports live and license-test purchases with per-title
+activation and creator earnings accounting. See [Video Play Billing setup](video-play-billing.md).
+The bundle has not been uploaded by this work or tested with a real Play purchase.
+
+The ebook checkout still uses Stripe inside the Trusted Web Activity. That
+checkout alone is not a Google Play alternative-billing integration. The remaining
+items below concern **ebooks if Stripe is retained inside the Play app**;
+standard Play video purchases do not require alternative-billing enrollment.
 
 ## Available path and costs
 
@@ -31,11 +38,15 @@ eligibility. [Google's EEA program](https://support.google.com/googleplay/androi
 
 1. Confirm and enroll the app in the selected Google Play alternative-billing
    program, including the owner's acceptance of its terms and service fees.
-2. Supply the public **App signing key certificate SHA-256** from Play Console
-   so `assetlinks.json` trusts the Play-signed app. Do not share private keys.
-3. Enable the Google Play Android Developer API and configure least-privilege
-   server access in Play Console. A read-only product-list request currently
-   returns `403 accessNotConfigured` for project `252688487437`.
+2. Deploy the owner-provided **App signing key certificate SHA-256**, now added
+   to `assetlinks.json`, and verify association on the Play-installed app.
+3. The Google Play Android Developer API is now enabled for project
+   `252688487437` (`campusconnect-fecb1`). The owner has created and granted Play
+   access to `afrobooks-play-billing@campusconnect-fecb1.iam.gserviceaccount.com`.
+   Local application code successfully reads the empty product catalog using
+   temporary credentials; the account setting is saved in Vercel Production.
+   Deploy and verify the runtime; any alternative-billing-specific access still
+   requires its separate program setup.
 4. Implement the native Play eligibility/disclosure/token flow and a secure
    bridge to the TWA checkout; validate the supported integration against the
    enrolled program. A user-agent or URL flag alone is not sufficient.

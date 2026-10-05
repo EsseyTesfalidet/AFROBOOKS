@@ -35,7 +35,7 @@ test('author website return clears website presentation and retains reader mode 
 
 test('author and reader Android links use fixed packages and matching safe HTTPS fallbacks', () => {
   const manifest = JSON.parse(readFileSync('android/twa-manifest.json', 'utf8'));
-  for (const [href, packageId, path] of [[authorWebsiteHref(true), 'com.android.chrome', '/author/start?view=web'], [readerAppHref(true), manifest.packageId, READER_APP_RETURN]]) {
+  for (const [href, packageId, path] of [[authorWebsiteHref(true), 'com.android.chrome', '/author/start?view=web'], [authorWebsiteHref(true, 'video'), 'com.android.chrome', '/author/start?view=web&studio=video'], [readerAppHref(true), manifest.packageId, READER_APP_RETURN]]) {
     const [destination, options] = href.split('#Intent;');
     assert.equal(destination, `intent://${manifest.host}${path}`);
     assert.ok(options.includes(`package=${packageId};`));
@@ -44,6 +44,7 @@ test('author and reader Android links use fixed packages and matching safe HTTPS
     assert.equal(decodeURIComponent(fallback), `https://${manifest.host}${path}`);
   }
   assert.equal(authorWebsiteHref(false), '/author/start?view=web');
+  assert.equal(authorWebsiteHref(false, 'video'), '/author/start?view=web&studio=video');
   assert.equal(readerAppHref(false), '/browse?view=app');
 });
 
@@ -70,7 +71,7 @@ test('author website handoff stays in its own tab through authentication and lea
 
 test('author sign-in returns only to the author entry; installed author accounts default to their library', () => {
   const author = { role: 'both', activeRole: 'seller' };
-  for (const path of ['/author/start', '/author/start?view=web']) {
+  for (const path of ['/author/start', '/author/start?view=web', '/author/start?view=web&studio=video']) {
     assert.equal(authorReturnPath(path), path);
     assert.equal(loginDestination(author, path), path);
     assert.equal(mobileSignInDestination(author, '?redirect=' + encodeURIComponent(path)), path);

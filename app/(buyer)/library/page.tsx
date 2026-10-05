@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, PlayCircle } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
+import { LibraryFormatTabs } from '@/components/watch/WatchUI';
 import BookCover from '@/components/shared/BookCover';
 import SwipeShelf from '@/components/shared/SwipeShelf';
 import ProgressBar from '@/components/shared/ProgressBar';
@@ -88,6 +89,7 @@ export default function LibraryPage() {
     <div className="app-canvas min-h-screen bg-[#0e0e0e]">
       <BuyerHeader />
       <main className="app-page app-library max-w-4xl mx-auto px-4 py-8">
+        <LibraryFormatTabs active="books" />
         <div className="flex items-center justify-between gap-4 mb-6">
           <h1 className="font-display text-display-lg text-white">My Library</h1>
           <Link href="/gifts" className="text-sm text-[#f5b800] underline">My gifts</Link>

@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { BookOpen, PenLine, Wallet } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { BookOpen, Clapperboard, PenLine, Wallet } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import { useAuthStore } from '@/store/authStore';
 import { getUserProfile, updateUserProfile } from '@/lib/firebase/auth';
 import { beginAuthFlow } from '@/lib/auth/flow';
 import { appFetch } from '@/lib/network';
-
-const returnTo = encodeURIComponent('/author/start?view=web');
+import { AUTHOR_WEB_START, VIDEO_WEB_START } from '@/lib/app/authorWebsite';
 
 export default function AuthorWebStart() {
   const router = useRouter();
+  const videoStudio = useSearchParams().get('studio') === 'video';
+  const returnTo = encodeURIComponent(videoStudio ? VIDEO_WEB_START : AUTHOR_WEB_START);
   const { firebaseUser, userProfile, loading } = useAuthStore();
   const [open, setOpen] = useState<boolean | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -46,7 +47,7 @@ export default function AuthorWebStart() {
       if (!profile || !['seller', 'both', 'admin'].includes(profile.role)) throw new Error('profile');
       if (useAuthStore.getState().firebaseUser?.uid !== firebaseUser.uid) return;
       useAuthStore.getState().setUserProfile(profile);
-      router.push('/dashboard');
+      router.push(videoStudio ? '/video-studio' : '/dashboard');
     } catch { setError('Author setup could not finish. Please try again. Your reader account is still available.'); }
     finally { finish(); locked.current = false; setBusy(false); }
   }
@@ -54,16 +55,17 @@ export default function AuthorWebStart() {
   return <main className="min-h-screen bg-[#0e0e0e] px-5 py-10 text-[#f5f2eb]">
     <div className="mx-auto max-w-xl space-y-8">
       <Logo href="/browse" size="md" />
-      <header className="space-y-3"><p className="text-sm text-[#f5b800]">AfroBooks Author Studio</p><h1 className="font-display text-4xl">{author ? 'Your publishing home' : 'Share your stories'}</h1><p className="leading-relaxed text-[#b5b5bd]">Set up your author profile, publish your work and manage your earnings on the website. Keep reading in the app with the same account.</p></header>
+      <header className="space-y-3"><p className="text-sm text-[#f5b800]">{videoStudio ? 'AfroBooks Creator Studio' : 'AfroBooks Author Studio'}</p><h1 className="font-display text-4xl">{videoStudio ? 'Your home for video' : author ? 'Your publishing home' : 'Share your stories'}</h1><p className="leading-relaxed text-[#b5b5bd]">{videoStudio ? 'Apply for creator access, upload films and manage your releases and earnings on the website. Use the same account as your app.' : 'Set up your author profile, publish your work and manage your earnings on the website. Keep reading in the app with the same account.'}</p></header>
       <ul className="space-y-4 rounded-2xl border border-white/10 bg-white/[.03] p-5 text-sm">
         <li className="flex gap-3"><PenLine size={19} className="shrink-0 text-[#f5b800]" />Publish books, short stories and magazine issues.</li>
+        {videoStudio && <li className="flex gap-3"><Clapperboard size={19} className="shrink-0 text-[#f5b800]" />Create video drafts, add trailers and subtitles, and submit releases for review.</li>}
         <li className="flex gap-3"><Wallet size={19} className="shrink-0 text-[#f5b800]" />Complete author verification and connect your payout account.</li>
         <li className="flex gap-3"><BookOpen size={19} className="shrink-0 text-[#f5b800]" />Your existing library and reading progress stay with you.</li>
       </ul>
       {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
       {loading ? <p role="status">Checking your account…</p> : signedIn ? <section className="space-y-3">
         <p className="text-sm text-[#b5b5bd]">Continue as {userProfile.firstName || userProfile.username || 'your current account'}.</p>
-        {author || open ? <button type="button" onClick={start} disabled={busy} className="button-primary min-h-12 rounded-xl px-6 py-3 disabled:opacity-60">{busy ? 'Opening Author Studio…' : author ? 'Open Author Studio' : 'Enable author tools'}</button> : settingsError ? <p role="alert">Unable to check author availability. <button type="button" onClick={() => setAttempt(value => value + 1)} className="min-h-11 underline">Retry</button></p> : open === null ? <p role="status">Checking author availability…</p> : <p role="status">New author setup is currently closed. You can keep using your reader account.</p>}
+        {author || open ? <button type="button" onClick={start} disabled={busy} className="button-primary min-h-12 rounded-xl px-6 py-3 disabled:opacity-60">{busy ? 'Opening studio…' : author ? videoStudio ? 'Open Creator Studio' : 'Open Author Studio' : 'Enable author tools'}</button> : settingsError ? <p role="alert">Unable to check author availability. <button type="button" onClick={() => setAttempt(value => value + 1)} className="min-h-11 underline">Retry</button></p> : open === null ? <p role="status">Checking author availability…</p> : <p role="status">New author setup is currently closed. You can keep using your reader account.</p>}
       </section> : <section className="space-y-4">
         <p className="text-sm leading-relaxed text-[#b5b5bd]">Already use the app? Sign in with the same method to keep your library. Your browser may ask you to sign in again.</p>
         <Link href={`/login?redirect=${returnTo}`} className="button-primary inline-flex min-h-12 items-center rounded-xl px-6 py-3">Sign in to your account</Link>

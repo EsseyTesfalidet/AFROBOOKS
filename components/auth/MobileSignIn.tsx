@@ -209,7 +209,7 @@ export default function MobileSignIn() {
                 <div className="signin-phone-row"><label className="signin-country"><span className="sr-only">Country code</span><span aria-hidden="true">{country} +{getCountryCallingCode(country)} ▾</span><select aria-label="Country code" value={country} disabled={!!busy} onChange={e => setCountry(e.target.value as CountryCode)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name} (+{c.dial})</option>)}</select></label><div className="signin-field"><input id="phone" type="tel" placeholder=" " autoComplete="tel-national" value={phone} disabled={!!busy} aria-invalid={!!fieldErrors.phone} aria-describedby="signin-phone-help" onChange={e => setPhone(e.target.value)}/><label htmlFor="phone">Phone number</label></div></div>
                 {fieldErrors.phone && <p className="signin-error" role="alert">{fieldErrors.phone}</p>}
                 <p id="signin-phone-help" className="signin-phone-help">{mobileProviders.phone ? 'By continuing, you agree to receive a verification text and let Google process your number for abuse prevention. Message rates may apply.' : 'Phone sign-in is coming soon. Use email or Google for now.'}</p>
-                <p className="signin-phone-help">Already have a library? Use the method you signed up with.</p>
+                <p className="signin-phone-help">Use your linked number to recover your library. Unlinked numbers create new accounts.</p>
               </div>}
             </div>
             {error && <p id="signin-error" className="signin-error" role="alert">{error}</p>}

@@ -20,7 +20,7 @@ export default function BuyerChrome() {
     <>
       <CatalogSync />
       <Suspense><ProfileLinkHandler /></Suspense>
-      <ReaderResumeBar />
+      {!pathname.startsWith('/watch') && pathname !== '/library/videos' && <ReaderResumeBar />}
       {routeState.showFooter && !installed ? <BuyerFooter /> : null}
       {routeState.showBottomNav ? (
         <div className="buyer-nav-space h-[92px] sm:hidden" aria-hidden="true" />

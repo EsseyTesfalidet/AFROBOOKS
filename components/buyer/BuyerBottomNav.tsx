@@ -30,7 +30,7 @@ export default function BuyerBottomNav() {
       <div
         className="buyer-bottom-nav-shell mx-auto max-w-md rounded-[24px] p-2"
       >
-        <div className={`grid ${installed ? 'grid-cols-3' : 'grid-cols-5'} gap-1`}>
+        <div className={`grid ${installed ? 'grid-cols-4' : 'grid-cols-5'} gap-1`}>
           {(installed ? BUYER_APP_TABS : BUYER_MOBILE_TABS).map((item) => {
             const { label, href, icon: Icon, drawerSection } = item;
             const active =

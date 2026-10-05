@@ -78,6 +78,20 @@ export async function reconcileAuthor(db: Firestore, sellerId: string, gateway: 
     }
   }
   for (const transfer of received) {
+    if (transfer.metadata.integration === 'afrobooks-video' && /^[a-f0-9]{64}$/.test(transfer.metadata.videoPayoutId || '')) {
+      const [receipt, videoPayout] = await Promise.all([
+        db.doc(`watchTransferReceipts/${transfer.id}`).get(),
+        db.doc(`watchPayouts/${transfer.metadata.videoPayoutId}`).get(),
+      ]);
+      const v = videoPayout.data(); const r = receipt.data();
+      const matches = v?.creatorId === sellerId && v?.destination === account.id && v?.amountMinor === transfer.amount &&
+        v?.currency?.toLowerCase() === transfer.currency && !transfer.source_transaction;
+      const receiptState = transfer.amount_reversed > 0 ? r?.status === 'reversed' && v?.status === 'needs_review' && r.reversedMinor === transfer.amount_reversed : r?.status === 'paid' && v?.status === 'paid';
+      if (matches && receiptState && r && v?.transferId === transfer.id &&
+          r.payoutId === videoPayout.id && r.creatorId === sellerId && r.destination === account.id && r.amount === transfer.amount && r.currency === transfer.currency) continue;
+      // The verified video transfer can arrive before its receipt commits.
+      if (matches && ['reserved', 'processing'].includes(v?.status)) return false;
+    }
     const payout = byTransfer.get(transfer.id) ?? payouts.docs.find(p => p.id === transfer.metadata.payoutId);
     if (!payout) {
       // Stripe's automatic transfer can arrive before fulfillment commits. Defer

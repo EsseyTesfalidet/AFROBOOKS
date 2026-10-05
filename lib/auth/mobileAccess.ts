@@ -19,7 +19,7 @@ export function hasMobileAccount(state: {
 export function mobileReturnPath(value: string | null): string | null {
   if (!value || value.length > 2048 || /[\\\u0000-\u0020\u007f#]/.test(value)) return null;
   const path = value.split('?')[0];
-  if (!/^\/(?:browse|discover|search|cart|checkout|library|book|read|sample|author|profile|notifications|community|subscription|gift|gifts|about-help|dashboard|publish|listings|analytics|earnings|seller|promotions|admin)(?:\/[A-Za-z0-9_-]+)*$/.test(path)) return null;
+  if (!/^\/(?:browse|discover|search|cart|checkout|library|watch|book|read|sample|author|profile|notifications|community|subscription|gift|gifts|about-help|dashboard|publish|listings|analytics|earnings|seller|promotions|video-studio|admin)(?:\/[A-Za-z0-9_-]+)*$/.test(path)) return null;
   return value;
 }
 

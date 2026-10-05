@@ -12,6 +12,7 @@ import { reviewGiftPayment } from '@/lib/server/bookGifts';
 import { deliverBookGift } from '@/lib/server/giftEmail';
 import { currentBookPayment } from '@/lib/server/currentBookPayment';
 import { reconcileBookRefunds } from '@/lib/server/bookRefunds';
+import { reviewVideoTransferReversal } from '@/lib/server/watchPayouts';
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get('stripe-signature');
@@ -88,6 +89,10 @@ export async function POST(req: NextRequest) {
     try {
       if (event.type === 'transfer.reversed') {
         const transfer = event.data.object as Stripe.Transfer;
+        if (transfer.metadata?.integration === 'afrobooks-video') {
+          await reviewVideoTransferReversal(adminDb, transfer.id);
+          return NextResponse.json({ received: true });
+        }
         const sourceId = typeof transfer.source_transaction === 'string' ? transfer.source_transaction : transfer.source_transaction?.id;
         if (sourceId) {
           const charge = await stripe.charges.retrieve(sourceId);

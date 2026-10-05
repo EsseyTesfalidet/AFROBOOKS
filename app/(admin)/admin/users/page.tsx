@@ -11,6 +11,7 @@ import {
 } from '@/components/admin/AdminUI';
 import { useAdminCollection } from '@/lib/admin/useAdminCollection';
 import { dateValue } from '@/lib/admin/metrics';
+import { adminPersonName, matchesAdminPerson } from '@/lib/admin/people';
 import { authenticatedPost } from '@/lib/firebase/request';
 import type { User } from '@/types/user';
 
@@ -31,15 +32,12 @@ export default function AdminUsersPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
-  const needle = search.trim().toLowerCase();
   const filtered = users
     .filter(
       (user) =>
         (role === 'all' || user.role === role) &&
         (status === 'all' || user.status === status) &&
-        [user.firstName + ' ' + user.lastName, user.email, user.id].some((value) =>
-          value?.toLowerCase().includes(needle),
-        ),
+        matchesAdminPerson(user, search),
     )
     .sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt));
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 15)));
@@ -50,9 +48,7 @@ export default function AdminUsersPage() {
       action === 'delete' &&
       !window.confirm(
         'Permanently delete ' +
-          user.firstName +
-          ' ' +
-          user.lastName +
+          adminPersonName(user) + ' (' + (user.phone || user.email || user.id) + ')' +
           "'s account and any published books? This cannot be undone.",
       )
     )
@@ -89,7 +85,7 @@ export default function AdminUsersPage() {
       )}
       <div className="admin-toolbar">
         <AdminSearch
-          label="Search name, email, or account ID"
+          label="Search name, email, phone, or account ID"
           value={search}
           onChange={(value) => {
             setSearch(value);
@@ -149,7 +145,7 @@ export default function AdminUsersPage() {
                     <tr key={person.id}>
                       <td>
                         <div className="flex gap-3 items-center">
-                          <span className="admin-avatar">{person.firstName?.[0] || '?'}</span>
+                          <span className="admin-avatar">{adminPersonName(person)[0]}</span>
                           <div>
                             <button
                               type="button"
@@ -160,9 +156,11 @@ export default function AdminUsersPage() {
                                 setNotice('');
                               }}
                             >
-                              {person.firstName} {person.lastName}
+                              {adminPersonName(person)}
                             </button>
-                            <small>{person.email}</small>
+                            {person.email && <small>{person.email}</small>}
+                            {person.phone && <small>{person.phone}</small>}
+                            {!person.email && !person.phone && <small>Account ID: {person.id}</small>}
                           </div>
                         </div>
                       </td>
@@ -196,10 +194,17 @@ export default function AdminUsersPage() {
       {user && (
         <AdminDrawer busy={busy} title="Account details" onClose={() => setSelected(null)}>
           <h3 className="text-xl font-semibold">
-            {user.firstName} {user.lastName}
+            {adminPersonName(user)}
           </h3>
-          <p className="mt-2 text-[#a6afa3]">{user.email}</p>
           <dl>
+            <div>
+              <dt>Email</dt>
+              <dd>{user.email || 'Not provided'}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{user.phone || 'Not provided'}</dd>
+            </div>
             <div>
               <dt>Role</dt>
               <dd>{roleLabel[user.role] ?? user.role}</dd>

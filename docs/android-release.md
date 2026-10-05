@@ -1,17 +1,17 @@
 # AfroBooks Android release
 
-The Android app opens the live AfroBooks website at `https://afrobs.com/browse` using a Trusted Web Activity, generated with Bubblewrap 1.25.0. This build increments the version code to 2 for closed testing because version code 1 has already been used. Website updates appear without rebuilding the wrapper; a network connection and a compatible browser are required.
+The Android app opens the live AfroBooks website at `https://afrobs.com/browse` using a Trusted Web Activity, originally generated with Bubblewrap 1.25.0. Version 3 adds the native bridge for one-time video purchases through Google Play. Website updates appear without rebuilding the wrapper; a network connection and a compatible browser are required. The website payment code was deployed on October 4, 2026; Console setup and a Play-installed device test remain required.
 
 | Setting | Value |
 | --- | --- |
 | Application ID | `com.afrobs.app` |
-| Version | `1.0.1` |
-| Version code | `2` |
-| Minimum Android API | `23` |
+| Version | `1.0.2` |
+| Version code | `3` |
+| Minimum Android API | `24` (Android 7; required by the updated browser helper) |
 | Target and compile API | `36` (Android 16) |
 | Orientation | Any; portrait and landscape |
-| Signed Play upload | `dist/android/afrobooks-1.0.1.aab` |
-| Signed device-test install | `dist/android/afrobooks-1.0.1.apk` |
+| Signed Play upload | `dist/android/afrobooks-1.0.2.aab` |
+| Signed device-test install | `dist/android/afrobooks-1.0.2.apk` |
 | Public upload certificate | `dist/android/afrobooks-upload-certificate.pem` |
 | File hashes and certificate fingerprint | `dist/android/release-info.json` |
 
@@ -19,24 +19,32 @@ The bundle is signed and passes Google's bundletool validation. The APK signatur
 
 ## Upload to Google Play
 
-1. Open the existing AfroBooks listing in Play Console, then upload `afrobooks-1.0.1.aab` to the closed testing release. The `.apk` is for direct installation on a test device; it is not the Play upload artifact.
+1. Open the existing AfroBooks listing in Play Console, then upload `afrobooks-1.0.2.aab` to an internal or closed testing release. The `.apk` is for direct installation on a test device; it is not the Play upload artifact. If version code 3 has been used outside this workspace, increase it and rebuild first.
 2. Enroll in Play App Signing. The generated local key signs uploads. If Google generates the app-signing key, Play-installed copies will have a different certificate from this local upload key.
-3. In Play Console's app-signing section, copy the **app signing key certificate SHA-256 fingerprint**. Add it alongside the existing fingerprint in `public/.well-known/assetlinks.json`, then deploy the website. The current entry identifies the locally signed APK, not an as-yet-unknown Google-generated certificate. The fingerprint is public; never share the private key or passwords.
-4. Verify `https://afrobs.com/.well-known/assetlinks.json` returns the JSON directly over HTTPS. Test the Play-installed app to confirm the website opens as a Trusted Web Activity. Until the Play certificate is added, it can fall back to a browser tab with visible browser controls.
+3. The owner-provided **app signing key certificate SHA-256 fingerprint** beginning `51:C3:69:60` is now in `public/.well-known/assetlinks.json`, alongside the existing upload fingerprint. The website now serves both fingerprints; the HTTPS response was verified after deployment. The fingerprint is public; never share the private key or passwords.
+4. Verify `https://afrobs.com/.well-known/assetlinks.json` returns both fingerprints directly over HTTPS. Test the Play-installed app to confirm the website opens as a Trusted Web Activity. Until the Play certificate is served by the website, it can fall back to a browser tab with visible browser controls.
 5. Complete the store listing, data safety, content rating and any account-specific testing requirements. Review the payment setup before requesting public publication.
 
 Store artwork: `public/pwa-512x512.png` and `public/brand/afrobooks-feature-graphic.png` (1024 × 500 RGB PNG).
 
 ## Payment release prerequisite
 
-October 1 audit: the owner wants purchases inside Android using Stripe. The
-Play-specific integration is still unfinished; see [Android Stripe payments](android-stripe-payments.md)
-for verified prerequisites and the required work. The Google Play Android Developer
-API currently returns `403 accessNotConfigured`; Google's app-signing certificate
-fingerprint has been requested. Version 2 remains the existing wrapper, not a
-new billing-enabled release.
+October 4 update: version 3 includes the Google Play video payment bridge.
+The server supports live and license-test purchases, permanent library ownership
+while the purchase is active, restore, refunds and 80/20 net revenue accounting.
+See [Video Play Billing setup](video-play-billing.md) for Console and per-title
+activation steps. A successful notification test and an active product are required.
+The API accepted the version-3 bundle upload in an edit, but denied both the
+closed-track update and edit commit (HTTP 403). The existing alpha release remains
+version 2. The billing service account needs the app-scoped testing-release
+permission, or the owner can upload the AAB to the existing closed track.
+The upload is not a committed or available testing release. No physical-device
+purchase has been completed. Updating the same track preserves tester enrollment.
 
-The current site uses Stripe for ebook purchases. This wrapper does **not** add Google Play Billing or enroll the app in an alternative-billing program. Google Play's digital-content payment rules apply to the app and its website experience. Determine and implement the applicable billing approach for the intended distribution regions before public release; producing a valid bundle does not establish payment-policy approval.
+The website's ebook checkout still uses Stripe. This video integration does not
+implement Play Billing for books or enroll the app in alternative billing.
+Resolve the [Android ebook payment gap](android-stripe-payments.md) before public
+release. A validated bundle does not establish payment-policy approval.
 
 ## Preserve the signing material
 
@@ -52,6 +60,13 @@ The certificate PEM, fingerprints, `.aab`, and `.apk` do not contain the private
 ## Rebuild
 
 The generated native source is in `android/`. JDK 17, Android SDK API 36 and build-tools 36.0.0 are installed under `C:\AfroBooksBuild`. The Gradle wrapper pins Gradle 8.11.1; the generated Android plugin is 8.9.1. Bubblewrap is only needed to regenerate the project, not for normal builds.
+
+The native source now has manual billing changes: `VideoPaymentActivity`, its
+manifest registration and the Digital Goods handler in `DelegationService`.
+Do not overwrite these with an unreviewed Bubblewrap regeneration. The custom
+activity forwards an obfuscated AfroBooks account ID; the server requires that
+binding when accepting a purchase. Browser helper 2.7.3, its billing bridge 1.2.0
+and Play Billing Client 8.3.0 are pinned in Gradle.
 
 ```powershell
 ./scripts/build-android.ps1

@@ -20,8 +20,8 @@
     "path": "../../.android/afrobooks/afrobooks-upload.jks",
     "alias": "afrobooks-upload"
   },
-  "appVersionName": "1.0.1",
-  "appVersionCode": 2,
+  "appVersionName": "1.0.2",
+  "appVersionCode": 3,
   "shortcuts": [
     {
       "name": "Browse books",
@@ -39,7 +39,7 @@
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://afrobs.com/manifest.json",
   "fallbackType": "customtabs",
-  "features": {},
+  "features": { "playBilling": { "enabled": true } },
   "alphaDependencies": {
     "enabled": false
   },
@@ -47,7 +47,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://afrobs.com/",
-  "minSdkVersion": 23,
+  "minSdkVersion": 24,
   "orientation": "any",
   "fingerprints": [
     {
@@ -58,5 +58,5 @@
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
   "displayOverride": [],
-  "appVersion": "1.0.1"
+  "appVersion": "1.0.2"
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpRight, BookOpen, PenLine, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BookOpen, Clapperboard, PenLine, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAndroidDevice } from '@/hooks/useAndroidDevice';
 import { authorWebsiteHref } from '@/lib/app/authorWebsite';
@@ -18,9 +18,11 @@ export default function MobileAuthorStart() {
       <section className="space-y-4 rounded-2xl border p-5" style={{ borderColor: 'var(--app-line)', background: 'var(--app-surface)' }}>
         <h2 className="text-lg font-semibold">Author tools on the website</h2>
         <p className="flex items-center gap-3 text-sm"><BookOpen size={19} />Publish books, stories and magazines</p>
+        <p className="flex items-center gap-3 text-sm"><Clapperboard size={19} />Apply to publish videos on Screen</p>
         <p className="flex items-center gap-3 text-sm"><Wallet size={19} />Manage sales and author payouts</p>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--app-muted)' }}>Use your usual sign-in method on the website. Choose “Back to app” there when you finish.</p>
         <a href={authorWebsiteHref(android)} {...(!android ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className="button-primary flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-center text-sm font-semibold">{android ? 'Open author tools in Chrome' : 'Open author tools on the website'}<ArrowUpRight size={17} /></a>
+        <a href={authorWebsiteHref(android, 'video')} {...(!android ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-center text-sm font-semibold" style={{ borderColor: 'var(--app-line)' }}><Clapperboard size={18} />Open Creator Studio<ArrowUpRight size={17} /></a>
       </section>
       <Link href="/library" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium" style={{ borderColor: 'var(--app-line)' }}><BookOpen size={18} />Return to my library</Link>
     </div>
