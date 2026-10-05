@@ -3,6 +3,15 @@ import type { WatchAsset } from '@/types/video';
 
 export class StreamUploadRejectedError extends WatchError {}
 
+export function validStreamUploadUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port && !url.hash
+      && /^(?:[a-z0-9-]+\.)*upload\.(?:videodelivery\.net|cloudflarestream\.com)$/i.test(url.hostname)
+      && url.pathname !== '/';
+  } catch { return false; }
+}
+
 export function streamConfigured() {
   return /^[a-f0-9]{32}$/i.test(process.env.CLOUDFLARE_STREAM_ACCOUNT_ID ?? '') && !!process.env.CLOUDFLARE_STREAM_API_TOKEN;
 }
@@ -46,10 +55,36 @@ export async function createStreamUpload(creatorId: string, size: number, maximu
   });
   const uid = response.headers.get('stream-media-id') ?? '';
   const uploadUrl = response.headers.get('location') ?? '';
-  if (!/^[a-f0-9]{32}$/i.test(uid) || !/^https:\/\/(?:[a-z0-9-]+\.)?upload\.videodelivery\.net\//i.test(uploadUrl)) {
-    throw new WatchError(502, 'Upload could not be verified. Ask support to check the reserved upload before trying again.');
+  if (!/^[a-f0-9]{32}$/i.test(uid) || !validStreamUploadUrl(uploadUrl)) {
+    // The returned URL is a bearer credential: never log it or include it in an error.
+    let host = 'missing';
+    try { host = new URL(uploadUrl).hostname.replace(/[^a-z0-9.-]/gi, '').slice(0, 100); } catch { /* Invalid URL. */ }
+    const message = `Cloudflare returned an unsupported upload response (host: ${host}; video ID: ${/^[a-f0-9]{32}$/i.test(uid) ? 'valid' : 'missing or invalid'}).`;
+    if (/^[a-f0-9]{32}$/i.test(uid)) {
+      // This allocation was just created by this request and its URL has never
+      // reached the browser. Release quota only after provider deletion succeeds.
+      await streamFetch(`/${uid}`, { method: 'DELETE' });
+      throw new StreamUploadRejectedError(502, message);
+    }
+    throw new WatchError(502, message);
   }
   return { uid, uploadUrl, expiresAt, size, maximumSeconds, ready: false, duration: 0, captions: [] };
+}
+
+export async function inspectStreamUpload(uid: string) {
+  if (!/^[a-f0-9]{32}$/i.test(uid)) throw new WatchError(400, 'Invalid upload ID.');
+  return streamJson<{ creator?: string; created?: string; readyToStream?: boolean; duration?: number; maxDurationSeconds?: number; status?: { state?: string } }>(`/${uid}`);
+}
+
+export async function deleteUnfinishedStreamUpload(uid: string) {
+  if (!/^[a-f0-9]{32}$/i.test(uid)) throw new WatchError(400, 'Invalid upload ID.');
+  // Only the verified, recorded recovery workflow can tolerate an already
+  // deleted allocation after a lost response. Never expose this to creators.
+  const response = await fetch(endpoint(`/${uid}`), {
+    method: 'DELETE', cache: 'no-store', signal: AbortSignal.timeout(20000),
+    headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_STREAM_API_TOKEN}` },
+  });
+  if (!response.ok && response.status !== 404) throw new WatchError(502, 'Cloudflare could not release this unused upload. The reservation has been kept; retry recovery.');
 }
 export async function streamAssetStatus(uid: string) {
   const data = await streamJson<{ readyToStream: boolean; requireSignedURLs: boolean; duration: number; status: { state: string; pctComplete?: string } }>(`/${uid}`);
@@ -70,7 +105,10 @@ export async function testStreamUploadAccess() {
   // Test provisioning only: no video bytes are uploaded or published. Remove
   // the test allocation immediately so it does not consume hosting capacity.
   const asset = await createStreamUpload('afrobooks-hosting-check', 1, 60);
-  await streamFetch(`/${asset.uid}`, { method: 'DELETE' });
+  try {
+    const response = await fetch(asset.uploadUrl, { method: 'HEAD', headers: { 'Tus-Resumable': '1.0.0' }, redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(20000) });
+    if (!response.ok || response.headers.get('upload-offset') !== '0') throw new WatchError(502, 'Cloudflare created the upload but its resumable endpoint is not responding.');
+  } finally { await streamFetch(`/${asset.uid}`, { method: 'DELETE' }); }
   return { ok: true };
 }
 export async function streamPlaybackToken(uid: string, duration: number) {

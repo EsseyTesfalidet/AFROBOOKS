@@ -11,6 +11,7 @@ import { getVideoEarnings } from './watchEarnings';
 import { getVideoPayoutOverview, payVideoCreator, registerVideoFunding, runVideoPayouts } from './watchPayouts';
 import { videoPayoutGateway } from './watchPayoutGateway';
 import { removeWatchVideo, requestWatchRevision, reviewWatchRevision, withdrawWatchRevision } from './watchManagement';
+import { recoverWatchUpload } from './watchUploadRecovery';
 import type { WatchCreator, WatchPrivate, WatchState, WatchVideo } from '@/types/video';
 
 type Actor = AuthenticatedRequestUser;
@@ -314,6 +315,7 @@ export async function watchAction(actor: Actor, raw: unknown) {
       return saveWatchDraft(actor, data.draft, data.id);
     }
     case 'upload': return createWatchUpload(actor, envelope.data);
+    case 'admin_recover_upload': return recoverWatchUpload(actor, envelope.data);
     case 'captions': return setWatchCaptions(actor, envelope.data);
     case 'refresh': return refreshWatchAssets(actor, z.object({ id: watchId }).strict().parse(envelope.data).id);
     case 'submit': {

@@ -1,5 +1,23 @@
 # AfroBooks Screen: prepared integration
 
+## Upload recovery (October 5, 2026)
+
+Upload handoffs validate both Cloudflare upload domains and never expose signed
+upload URLs in diagnostics. If a newly allocated URL fails validation, the
+allocation is deleted before its local allowance can be released. Ambiguous
+provider failures continue to retain their reservation.
+
+The admin-only `admin_recover_upload` action accepts `{ id, uid, kind }` for an
+orphaned upload. It requires a draft with no attached file, matching provider
+creator, `pendingupload` state older than two minutes, no completed media, no
+other references, exactly one pending creator reservation and an exact allowance
+reconciliation. Provider deletion precedes allowance release; a durable record
+and audit entry make retries idempotent. This is a support operation, not a way
+to remove published videos. The hosting access check also verifies the resumable
+upload endpoint with HEAD and deletes its temporary allocation.
+
+Reference: [Cloudflare direct creator uploads](https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/).
+
 This adds the approved Screen design to the installed app's existing shell. It
 uses the same navigation, themes, fonts, scrolling, touch feedback and account.
 The ordinary mobile website keeps its existing reader navigation.

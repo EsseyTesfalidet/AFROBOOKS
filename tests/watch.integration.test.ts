@@ -22,12 +22,42 @@ let sequence = 0; let providerFailure = false; let signed = true;
 let thumbnailReady = false;
 let processingReady = true;
 let rejectionStatus = 0;
+let orphan: Record<string, unknown> | null = null;
+let deleteFails = false;
 const thumbnail = Buffer.from('89504e470d0a1a0a', 'hex');
 const actor = (uid: string, role: AuthenticatedRequestUser['role'] = 'buyer'): AuthenticatedRequestUser => ({ uid, role, status: 'active', email: `${uid}@example.test` });
 const creator = actor('creator', 'seller'); const staff = actor('staff', 'admin'); const reader = actor('reader');
 const draft = { title: 'Music across generations', description: 'An original film about music and memories in Eritrea.', category: 'Documentaries', language: 'Tigrinya', priceCents: 249, newsDate: '', rightsStatement: 'Our studio owns the film and all music is licensed for distribution.', rightsAccepted: true };
 const action = (who: AuthenticatedRequestUser, name: string, data: unknown) => watchAction(who, { action: name, data });
 async function newVideo(priceCents = 249) { return (await saveWatchDraft(creator, { ...draft, priceCents })).id; }
+test('orphan recovery protects completed and unrelated files and releases quota exactly once after deletion', async () => {
+  const id = await newVideo(); const uid = 'f'.repeat(32); const data = { id, uid, kind: 'full' };
+  await db.doc(`watchPrivate/${id}`).update({ fullPending: true });
+  await db.doc('watchCreators/creator').update({ reservedSeconds: 360 });
+  orphan = { creator: creator.uid, created: new Date(Date.now() - 600000).toISOString(), readyToStream: false, duration: 0, maxDurationSeconds: 360, status: { state: 'pendingupload' } };
+  await assert.rejects(action(creator, 'admin_recover_upload', data), /Administrator/);
+  orphan.readyToStream = true;
+  await assert.rejects(action(staff, 'admin_recover_upload', data), /unused upload/);
+  orphan.readyToStream = false; orphan.creator = 'other';
+  await assert.rejects(action(staff, 'admin_recover_upload', data), /not an orphaned/);
+  orphan.creator = creator.uid;
+  await db.doc('watchPrivate/another').set({ full: { uid } });
+  await assert.rejects(action(staff, 'admin_recover_upload', data), /attached/);
+  await db.doc('watchPrivate/another').delete();
+  await db.doc('watchCreators/creator').update({ reservedSeconds: 720 });
+  await assert.rejects(action(staff, 'admin_recover_upload', data), /reconciliation/);
+  await db.doc('watchCreators/creator').update({ reservedSeconds: 360 });
+  deleteFails = true;
+  await assert.rejects(action(staff, 'admin_recover_upload', data), /reservation has been kept/);
+  assert.equal((await db.doc(`watchPrivate/${id}`).get()).data()?.fullPending, true);
+  assert.equal((await db.doc('watchCreators/creator').get()).data()?.reservedSeconds, 360);
+  deleteFails = false;
+  await action(staff, 'admin_recover_upload', data);
+  await action(staff, 'admin_recover_upload', data);
+  assert.equal((await db.doc(`watchPrivate/${id}`).get()).data()?.fullPending, false);
+  assert.equal((await db.doc('watchCreators/creator').get()).data()?.reservedSeconds, 0);
+  assert.equal((await db.collection('watchAudit').where('action', '==', 'admin_recover_upload').get()).size, 1);
+});
 async function readyVideo(priceCents = 249) {
   const id = await newVideo(priceCents);
   await createWatchUpload(creator, { id, kind: 'full', size: 1000000, maximumSeconds: 600 });
@@ -42,9 +72,14 @@ before(async () => {
   process.env.CLOUDFLARE_STREAM_API_TOKEN = 'TEST-ONLY-FAKE-TOKEN';
   globalThis.fetch = async (input, init) => {
     const url = String(input);
+    if (url.startsWith('https://upload.videodelivery.net/') && init?.method === 'HEAD') return new Response(null, { headers: { 'upload-offset': '0' } });
     if (url.startsWith('https://videodelivery.net/')) return thumbnailReady ? new Response(thumbnail) : new Response(null, { status: 503 });
     if (!url.startsWith('https://api.cloudflare.com/')) return realFetch(input, init);
     providerCalls.push({ url, init });
+    if (orphan && !url.includes('?') && !url.endsWith('/storage-usage')) {
+      if (init?.method === 'DELETE') return new Response(null, { status: deleteFails ? 503 : 200 });
+      return Response.json({ success: true, result: orphan });
+    }
     if (providerFailure) throw new Error('Simulated ambiguous timeout');
     if (rejectionStatus) return Response.json({ errors: [{ code: 10000, message: 'PRIVATE-PROVIDER-DETAILS' }] }, { status: rejectionStatus });
     if (url.endsWith('?limit=20')) return Response.json({ success: true, result: [] });
@@ -59,7 +94,7 @@ before(async () => {
   };
 });
 beforeEach(async () => {
-  await env.clearFirestore(); providerCalls = []; sequence = 0; providerFailure = false; rejectionStatus = 0; signed = true; thumbnailReady = false; processingReady = true;
+  await env.clearFirestore(); providerCalls = []; sequence = 0; providerFailure = false; rejectionStatus = 0; signed = true; thumbnailReady = false; processingReady = true; orphan = null; deleteFails = false;
   for (const person of [creator, staff, reader, actor('other', 'seller')]) await db.doc(`users/${person.uid}`).set(person);
   await action(creator, 'apply', { name: 'Original Studio' });
   await action(staff, 'admin_creator', { uid: creator.uid, status: 'approved', allowanceSeconds: 1800 });
