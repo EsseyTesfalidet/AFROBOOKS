@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
 import { useInstalledApp } from '@/hooks/useInstalledApp';
+import { appHaptic } from '@/lib/app/haptics';
 import './buyer-chrome.css';
 import {
   BUYER_MOBILE_TABS,
@@ -33,10 +34,11 @@ export default function BuyerBottomNav() {
         <div className={`grid ${installed ? 'grid-cols-4' : 'grid-cols-5'} gap-1`}>
           {(installed ? BUYER_APP_TABS : BUYER_MOBILE_TABS).map((item) => {
             const { label, href, icon: Icon, drawerSection } = item;
-            const active =
+            const routeActive =
               label === 'Profile'
                 ? pathname.startsWith('/profile')
                 : isBuyerNavActive(pathname, item);
+            const active = installed && drawerOpen ? label === 'Account' : routeActive;
 
             const content = (
               <>
@@ -65,8 +67,9 @@ export default function BuyerBottomNav() {
                 <Link
                   key={label}
                   href={href}
-                  aria-current={active ? 'page' : undefined}
+                  aria-current={routeActive ? 'page' : undefined}
                   data-active={active}
+                  onClick={() => { if (installed) appHaptic(); }}
                   className="buyer-nav-item flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-2xl"
                 >
                   {content}
@@ -81,7 +84,7 @@ export default function BuyerBottomNav() {
                 data-active={active}
                 aria-haspopup="dialog"
                 aria-expanded={drawerOpen}
-                onClick={() => openDrawer(drawerSection)}
+                onClick={() => { if (installed) appHaptic(); openDrawer(drawerSection); }}
                 className="buyer-nav-item flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-2xl"
               >
                 {content}

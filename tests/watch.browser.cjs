@@ -74,12 +74,20 @@ async function main() {
         assert.equal(calls.length, 0); assert.equal(await page.getByRole('link', { name: 'Screen', exact: true }).count(), 0);
         console.log('PASS mobile website keeps existing navigation and does not fetch the video catalog'); await context.close(); continue;
       }
-      await page.getByRole('heading', { name: 'Stories worth watching.' }).waitFor();
+      await page.getByRole('heading', { name: 'Screen', exact: true }).waitFor();
       assert.equal(await page.getByRole('link', { name: /Creator studio/i }).count(), 0);
       await page.locator('[data-preview-id="free-film"]').evaluate(el=>el.scrollIntoView({block:'center'}));
       await page.waitForFunction(()=>{const img=document.querySelector('[data-preview-id="free-film"] img');return img?.complete&&img.naturalWidth>0;});
       await page.waitForFunction(()=>document.querySelectorAll('.watch-feed-preview video').length===1);
       assert.equal(await page.locator('.watch-feed-preview video').evaluate(el=>el.muted&&el.playsInline),true);
+      await page.getByRole('button',{name:'Options for Stories of home'}).click();
+      await page.getByRole('dialog').waitFor();
+      await page.waitForFunction(()=>!document.querySelector('.watch-feed-preview video'));
+      await page.getByRole('button',{name:'Save to video library'}).click();
+      await page.getByRole('button',{name:'Saved in your library'}).waitFor();
+      assert.equal(saved,true); saved=false;
+      assert.equal(await page.getByRole('link',{name:'Visit creator channel'}).getAttribute('href'),'/watch/creator/studio');
+      await page.keyboard.press('Escape');
       await page.locator('[data-preview-id="short-film"]').evaluate(el=>el.scrollIntoView({block:'center'}));
       await page.waitForFunction(()=>document.querySelector('[data-preview-id="short-film"] video'));
       assert.equal(await page.locator('.watch-feed-preview video').count(),1);
@@ -103,12 +111,19 @@ async function main() {
         const colors = await page.locator('.watch-surface').evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, text: getComputedStyle(el).color }));
         assert.equal(colors.bg, theme === 'light' ? 'rgb(247, 245, 241)' : 'rgb(16, 17, 20)');
         assert.equal(colors.text, theme === 'light' ? 'rgb(37, 39, 44)' : 'rgb(245, 243, 239)');
+        const raised = await page.locator('.buyer-nav-item[data-active="true"] .buyer-nav-icon').boundingBox();
+        const dock = await page.locator('.buyer-bottom-nav-shell').boundingBox();
+        assert.ok(raised.y < dock.y,'The selected Screen icon rises above the floating dock');
+        assert.equal(await page.locator('.buyer-nav-item[data-active="true"] .buyer-nav-icon').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');
         await page.getByRole('searchbox').focus();
         await page.screenshot({ path: `.vercel/watch-${theme}-integrated.png` });
       }
       await page.getByRole('button', { name: 'Music', exact: true }).click(); assert.equal(await page.locator('.watch-card').count(), 1);
       await page.getByRole('button', { name: 'All', exact: true }).click();
       await page.getByRole('searchbox').fill('ሙዚቃ'); assert.equal(await page.locator('.watch-card').count(), 1);
+      await page.getByRole('button',{name:'Clear video search'}).click();
+      assert.equal(await page.locator('.watch-card').count(),3);
+      await page.getByRole('searchbox').fill('ሙዚቃ');
       await page.getByRole('heading', { name: 'ሙዚቃ ሃገረይ' }).click();
       await page.getByRole('button', { name: /Buy.*coming soon/ }).waitFor(); assert.equal(await page.getByRole('button', { name: /Buy.*coming soon/ }).isDisabled(), true);
       await page.getByText('Provider playback fixture').waitFor();

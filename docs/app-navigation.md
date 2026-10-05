@@ -1,6 +1,8 @@
 # Installed app navigation
 
-The installed AfroBooks experience uses three bottom tabs: Browse, Library and Account. Account opens the existing drawer, with Discover, Community, Cart, Book gifts and About & Help available alongside the reader's existing account controls. Guests can open Account to find support and sign-in links. About & Help is also linked from reader/author account settings.
+The installed AfroBooks experience uses four bottom tabs: Browse, Screen, Library and Account. The floating dock stays in place while the selected icon lifts above it with a short transition and optional haptic feedback. Account highlights while its drawer is open, then restores the current page's highlight on dismissal. Landscape uses a smaller lift; reduced motion disables the transition. Website navigation keeps its existing appearance.
+
+Account opens the existing drawer, with Discover, Community, Cart, Book gifts and About & Help available alongside the reader's existing account controls. Guests can open Account to find support and sign-in links. About & Help is also linked from reader/author account settings.
 
 `/about-help` is public and contains a short introduction, the shared support contact (`LEGAL_CONTACT`), Privacy, Terms, and the web app version from `package.json`. A short source commit is displayed when Vercel supplies it. This is explicitly the **web app version**, not a claim about which Android wrapper version is installed. No Android package or billing changes are included.
 

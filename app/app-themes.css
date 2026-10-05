@@ -58,6 +58,26 @@ html[data-app-mode='installed'] .buyer-bottom-nav-shell { background: var(--app-
 html[data-app-mode='installed'] :is(.buyer-bottom-nav .buyer-nav-item, .seller-bottom-nav a) { color: var(--app-muted); }
 html[data-app-mode='installed'] .seller-bottom-nav { background: var(--app-nav); }
 html[data-app-mode='installed'] .buyer-account-button { box-shadow: none; border-color: var(--app-line); }
+/* Preserve the floating dock; the selected icon rises beyond its top edge. */
+html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-icon {
+  width:44px; height:38px; border-radius:16px;
+  transition:transform .24s cubic-bezier(.2,.8,.3,1.35), background-color .18s, color .18s, box-shadow .18s;
+}
+html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] .buyer-nav-icon {
+  transform:translateY(-15px) scale(1.08); background:var(--app-action); color:#fff;
+  box-shadow:0 0 0 4px var(--app-nav), 0 8px 20px color-mix(in srgb,var(--app-action) 30%,transparent);
+}
+html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] > span { color:var(--app-accent); font-weight:750; }
+html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item:active .buyer-nav-icon { transform:translateY(-8px) scale(.96); }
+@media (orientation:landscape) and (max-height:500px) and (max-width:1024px) {
+  html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-icon { width:34px; height:30px; border-radius:12px; }
+  html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] .buyer-nav-icon { transform:translateY(-6px); }
+}
+@media (prefers-reduced-motion:reduce) {
+  html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-icon { transition:none; }
+  html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item:active .buyer-nav-icon { transform:none; }
+  html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] .buyer-nav-icon { transform:translateY(-6px); }
+}
 html[data-app-mode='installed'] .app-book-card { background: var(--app-surface); border-color: var(--app-line); }
 html[data-app-mode='installed'] .app-book-price { color: var(--app-price); background: var(--app-soft); }
 html[data-app-mode='installed'] :is(.app-section-heading > a, .app-continue-shelf > div:first-child > a) { color: var(--app-muted) !important; }

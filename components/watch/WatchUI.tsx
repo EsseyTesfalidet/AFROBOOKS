@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Bookmark, Film, Play, X } from 'lucide-react';
+import { Bookmark, Check, Film, MoreHorizontal, Play, Share2, UserRound, X } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { useInstalledApp } from '@/hooks/useInstalledApp';
 import { useAuthStore } from '@/store/authStore';
 import { authenticatedGet, authenticatedPost } from '@/lib/firebase/request';
 import { videoDuration, videoPrice } from '@/lib/watch/policy';
+import { appHaptic } from '@/lib/app/haptics';
 import type { WatchState, WatchVideo } from '@/types/video';
 import WatchPoster from './WatchPoster';
 import './watch.css';
@@ -42,13 +43,35 @@ export function WatchEmpty({ title, text, action }: { title: string; text: strin
   return <section className="watch-empty"><Film size={34} aria-hidden="true" /><h2>{title}</h2><p>{text}</p>{action && <div className="watch-empty-action">{action}</div>}</section>;
 }
 export function WatchCard({ video, state, preview }: { video: WatchVideo; state?: WatchState; preview?: ReactNode }) {
+  const [menu, setMenu] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+  async function save() {
+    if (busy) return;
+    setBusy(true); setError('');
+    try { await watchActionRequest('save', { id: video.id, saved: true }); setSaved(true); setNotice('Saved to Library → Videos.'); appHaptic(); }
+    catch (failure) { setError((failure as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function share() {
+    setError('');
+    try {
+      const url = `${window.location.origin}/watch/${encodeURIComponent(video.id)}`;
+      if (navigator.share) await navigator.share({ title: video.title, url });
+      else { await navigator.clipboard.writeText(url); setNotice('Video link copied.'); }
+    } catch (failure) { if ((failure as Error).name !== 'AbortError') setError('The link could not be shared. Please try again.'); }
+  }
   return <article className="watch-card"><Link href={`/watch/${video.id}`} className="watch-card-link">
     <div className="watch-art" data-preview-id={video.id}><WatchPoster video={video} />{preview}
       <span className="watch-duration">{videoDuration(video.durationSeconds)}</span>
       <span className="watch-play"><Play size={18} fill="currentColor" aria-hidden="true" /></span>
       {state && state.seconds > 0 && <span className="watch-progress" role="progressbar" aria-label="Watch progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(1, state.seconds / Math.max(1, video.durationSeconds)) * 100)}><i style={{ width: `${Math.min(1, state.seconds / Math.max(1, video.durationSeconds)) * 100}%` }} /></span>}
-    </div><div className="watch-card-meta"><span className="watch-avatar" aria-hidden="true">{video.creatorName.slice(0, 1)}</span><div><h2 dir="auto">{video.title}</h2><p dir="auto">{video.creatorName} · {video.language}</p><div className="watch-card-tags"><span>{video.category}</span><strong>{state?.owned ? 'Purchased' : videoPrice(video.priceCents)}</strong>{state?.saved && <Bookmark size={14} aria-label="Saved" fill="currentColor" />}</div></div></div>
-  </Link></article>;
+    </div><div className="watch-card-meta"><span className="watch-avatar" aria-hidden="true">{video.creatorName.slice(0, 1)}</span><div><h2 dir="auto">{video.title}</h2><p dir="auto">{video.creatorName}</p><div className="watch-card-tags"><span>{video.category === 'Documentaries' ? 'Doc' : video.category} · {video.language}</span><strong>{state?.owned ? 'Purchased' : videoPrice(video.priceCents)}</strong>{(state?.saved || saved) && <Bookmark size={14} aria-label="Saved" fill="currentColor" />}</div></div></div>
+  </Link><button type="button" className="watch-card-options" aria-label={`Options for ${video.title}`} aria-haspopup="dialog" aria-expanded={menu} onClick={() => { setMenu(true); setError(''); setNotice(''); appHaptic(); }}><MoreHorizontal size={22} aria-hidden="true" /></button>
+    {menu && <WatchSheet title={video.title} close={() => setMenu(false)}><div className="watch-card-menu"><button disabled={busy || saved || state?.saved} onClick={() => void save()}>{saved || state?.saved ? <Check size={20} /> : <Bookmark size={20} />}<span>{saved || state?.saved ? 'Saved in your library' : busy ? 'Saving…' : 'Save to video library'}</span></button><button onClick={() => void share()}><Share2 size={20} /><span>Share video</span></button><Link href={`/watch/creator/${video.creatorId}`} onClick={() => setMenu(false)}><UserRound size={20} /><span>Visit creator channel</span></Link></div><WatchFeedback error={error} />{notice && <p role="status" className="watch-muted">{notice}</p>}</WatchSheet>}
+  </article>;
 }
 export function LibraryFormatTabs({ active }: { active: 'books' | 'videos' }) {
   const installed = useInstalledApp();

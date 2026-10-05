@@ -118,8 +118,10 @@ createRoot(document.getElementById('root')).render(<App/>);
         }
         await page.setViewportSize({ width: 390, height: 844 });
         await page.getByRole('button', { name: 'Account', exact: true }).click(); await page.getByRole('dialog').waitFor();
+        assert.equal(await page.locator('.buyer-nav-item[data-active="true"]').innerText(),'Account');
         assert.ok(await shell.evaluate(el => Boolean(el.closest('[inert]'))));
         await page.keyboard.press('Escape'); assert.equal(await page.getByRole('dialog').count(), 0);
+        assert.equal(await page.locator('.buyer-nav-item[data-active="true"]').innerText(),'Browse');
         await page.getByLabel('Reading note').fill('My next read');
         await page.evaluate(() => {
           Object.defineProperty(visualViewport, 'height', { configurable: true, value: 480 });

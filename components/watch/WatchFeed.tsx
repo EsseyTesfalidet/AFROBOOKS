@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { VolumeX } from 'lucide-react';
+import { VolumeX, Play } from 'lucide-react';
 import type Hls from 'hls.js';
 import { useAuthStore } from '@/store/authStore';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
 import { authenticatedPost } from '@/lib/firebase/request';
 import { streamPlaybackSource } from '@/lib/watch/playback';
+import { appHaptic } from '@/lib/app/haptics';
 import type { WatchVideo } from '@/types/video';
 import type { WatchPlayback } from './WatchPlayer';
 import { WatchCard } from './WatchUI';
@@ -71,12 +72,15 @@ function FeedSession({ videos }: { videos: WatchVideo[] }) {
     let selected: string | null = null; let frame = 0; let timer: ReturnType<typeof setTimeout> | undefined;
     function select() {
       frame = 0;
-      const allowed = document.visibilityState === 'visible' && navigator.onLine && !motion.matches && !connection?.saveData && !['slow-2g', '2g'].includes(connection?.effectiveType || '') && !root!.closest('[inert]');
+      const allowed = document.visibilityState === 'visible' && navigator.onLine && !motion.matches && !connection?.saveData && !['slow-2g', '2g'].includes(connection?.effectiveType || '') && !root!.closest('[inert]') && !document.querySelector('dialog[open]');
+      const controls = root!.closest('.watch-page')?.querySelector('.watch-discovery-controls');
+      const top = Math.max(70, controls?.getBoundingClientRect().bottom || 0);
       let best: string | null = null; let distance = Infinity;
       if (allowed) for (const item of visible) {
         const box = item.getBoundingClientRect(); const center = box.top + box.height / 2;
         const delta = Math.abs(center - window.innerHeight / 2);
-        if (center > 70 && center < window.innerHeight - 80 && delta < distance) { best = item.getAttribute('data-preview-id'); distance = delta; }
+        const visibleHeight = Math.max(0, Math.min(box.bottom, window.innerHeight - 80) - Math.max(box.top, top));
+        if (visibleHeight / box.height >= .65 && center > top && center < window.innerHeight - 80 && delta < distance) { best = item.getAttribute('data-preview-id'); distance = delta; }
       }
       if (selected === best) return;
       selected = best; clearTimeout(timer); setActiveId(null);
@@ -92,11 +96,13 @@ function FeedSession({ videos }: { videos: WatchVideo[] }) {
     document.addEventListener('scroll', schedule, true); window.addEventListener('resize', schedule);
     // requestAnimationFrame is suspended in hidden tabs; stop immediately there.
     const environmentChanged = () => { cancelAnimationFrame(frame); select(); };
+    const dialogs = new MutationObserver(schedule);
+    dialogs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
     document.addEventListener('visibilitychange', environmentChanged); window.addEventListener('online', environmentChanged); window.addEventListener('offline', environmentChanged);
     motion.addEventListener('change', environmentChanged); connection?.addEventListener('change', environmentChanged);
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); clearTimeout(timer); setActiveId(null); document.removeEventListener('scroll', schedule, true); window.removeEventListener('resize', schedule); document.removeEventListener('visibilitychange', environmentChanged); window.removeEventListener('online', environmentChanged); window.removeEventListener('offline', environmentChanged); motion.removeEventListener('change', environmentChanged); connection?.removeEventListener('change', environmentChanged); };
+    return () => { observer.disconnect(); dialogs.disconnect(); cancelAnimationFrame(frame); clearTimeout(timer); setActiveId(null); document.removeEventListener('scroll', schedule, true); window.removeEventListener('resize', schedule); document.removeEventListener('visibilitychange', environmentChanged); window.removeEventListener('online', environmentChanged); window.removeEventListener('offline', environmentChanged); motion.removeEventListener('change', environmentChanged); connection?.removeEventListener('change', environmentChanged); };
   }, [ids, enabled, profileOpen]);
-  return <><div className="watch-feed-options"><button className="watch-button" aria-pressed={enabled} onClick={() => setEnabled(value => !value)}>Video previews: {enabled ? 'On' : 'Off'}</button><span className="watch-muted">Muted while you browse</span></div>
+  return <><div className="watch-feed-options"><div className="watch-feed-heading"><h2>Explore videos</h2><p>Films, music &amp; original voices</p></div><button className="watch-preview-toggle" aria-label={`Video previews: ${enabled ? 'On' : 'Off'}`} aria-pressed={enabled} title="Muted previews while you browse" onClick={() => { setEnabled(value => !value); appHaptic(); }}><Play size={12} fill="currentColor" aria-hidden="true" /><span>Previews</span><span className="watch-toggle-track" aria-hidden="true"><i /></span></button></div>
     <div className="watch-grid" ref={grid}>{videos.map(video => <WatchCard key={video.id} video={video} preview={enabled && !profileOpen && activeId === video.id ? <FeedPreview key={video.id} id={video.id} cache={cache} /> : undefined} />)}</div></>;
 }
 export default function WatchFeed({ videos }: { videos: WatchVideo[] }) {

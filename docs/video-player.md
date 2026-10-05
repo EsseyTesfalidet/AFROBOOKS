@@ -38,6 +38,8 @@ Playback still requires the existing server authorization. Retry requests a fres
 
 Admins have a full-width Video preview panel above each submission's review controls. Creators have the same panel near the top of their editor, including for unpublished videos. Both use the shared player with the title, cover and a separate optional trailer preview. Unready media shows a preparation message. Preview sessions start at the beginning and do not save viewing progress. Closing a preview or its containing review/trailer section stops playback. Existing server authorization allows only the creator and admins to preview unpublished media; adding these panels does not make it public.
 
+Screen discovery uses a compact heading, wide video artwork and search/category controls that stick below the measured header height. Landscape leaves those controls in the scroll flow to preserve viewing space. The video menu saves to the existing library, shares the video link or opens the creator channel. Opening a menu stops feed previews; preview visibility also accounts for the sticky controls. No view counts or popularity claims are fabricated. The light/dark theme tokens are shared with the rest of the installed app.
+
 ## Creator uploads
 
 - Select or drag in a video, preview it locally, fill in the details and press **Submit**. Duration is detected from local metadata and rounded up for the existing upload allowance. A manual duration fallback lives under Upload options. Music uses the same flow.
