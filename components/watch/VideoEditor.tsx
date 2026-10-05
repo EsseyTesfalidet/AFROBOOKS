@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, UploadCloud } from 'lucide-react';
 import type { Upload as TusUpload } from 'tus-js-client';
-import { useAuthStore } from '@/store/authStore';
+import VideoCoverInput, { uploadVideoCover } from './VideoCoverInput';
 import { readVideoDuration, uploadReservation } from '@/lib/watch/upload';
 import { VIDEO_CATEGORIES } from '@/types/video';
 import { watchActionRequest, WatchFeedback } from './WatchUI';
@@ -31,6 +31,7 @@ function DraftVideoEditor({ entry, hosting, approved, onSaved, onRemoved, close 
   const [category, setCategory] = useState(video?.category || VIDEO_CATEGORIES[0]); const [language, setLanguage] = useState(video?.language || 'English');
   const [price, setPrice] = useState(String((video?.priceCents || 0) / 100)); const [newsDate, setNewsDate] = useState(video?.newsDate || '');
   const [rights, setRights] = useState(entry?.private?.rightsStatement || ''); const [accepted, setAccepted] = useState(false);
+  const [coverFile, setCoverFile] = useState<File>();
   const [file, setFile] = useState<File>(); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
   const [submissionPending, setSubmissionPending] = useState(false);
@@ -39,7 +40,7 @@ function DraftVideoEditor({ entry, hosting, approved, onSaved, onRemoved, close 
   const draftId = useRef(id); const running = useRef(false); const uploaded = useRef(false);
   const upload = useRef<TusUpload | null>(null); const cancelUpload = useRef<(() => void) | null>(null);
   const editable = approved && (!video || video.status === 'draft');
-  const unsaved = !!file || title !== (video?.title || '') || description !== (video?.description || '') || category !== (video?.category || VIDEO_CATEGORIES[0]) || language !== (video?.language || 'English') || Math.round(Number(price) * 100) !== (video?.priceCents || 0) || newsDate !== (video?.newsDate || '') || rights !== (entry?.private?.rightsStatement || '');
+  const unsaved = !!coverFile || !!file || title !== (video?.title || '') || description !== (video?.description || '') || category !== (video?.category || VIDEO_CATEGORIES[0]) || language !== (video?.language || 'English') || Math.round(Number(price) * 100) !== (video?.priceCents || 0) || newsDate !== (video?.newsDate || '') || rights !== (entry?.private?.rightsStatement || '');
   const preparing = video?.status === 'processing';
   const stage = progress !== null ? 'Uploading' : preparing ? 'Preparing' : video?.status === 'in_review' ? 'Awaiting review' : video?.status === 'removed' ? 'Removed' : 'Draft';
   function chooseFile(selected?: File) {
@@ -97,23 +98,13 @@ function DraftVideoEditor({ entry, hosting, approved, onSaved, onRemoved, close 
       draftId.current ??= crypto.randomUUID();
       setPhase('Saving details…');
       await watchActionRequest('draft', { id: draftId.current, draft: { title, description, category, language, priceCents: Math.round(Number(price) * 100), newsDate, rightsStatement: rights, rightsAccepted: accepted } });
+      if (coverFile) { setPhase('Saving cover photo…'); await uploadVideoCover(draftId.current, coverFile); setCoverFile(undefined); }
       if (file && !uploaded.current) { await transfer(draftId.current, file, 'full'); uploaded.current = true; }
       if (submit) {
         await finishSubmission(draftId.current);
       } else {
         setFile(undefined); onSaved(draftId.current, 'Draft saved. You can return to it from Your videos.');
       }
-    });
-  }
-  function uploadPoster(media?: File) {
-    if (!media || !id) return;
-    void run(async () => {
-      if (media.size > 3_000_000) throw new Error('Choose a cover smaller than 3 MB.');
-      const user = useAuthStore.getState().firebaseUser; if (!user) throw new Error('Sign in to continue.');
-      const body = new FormData(); body.set('id', id); body.set('file', media);
-      const response = await fetch('/api/watch/poster', { method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}` }, body });
-      const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Cover upload failed.');
-      onSaved(id, 'Cover image saved.');
     });
   }
   return <section className="watch-editor">
@@ -136,24 +127,23 @@ function DraftVideoEditor({ entry, hosting, approved, onSaved, onRemoved, close 
       {!hosting && <p className="watch-notice">You can save a draft. Uploads will become available when hosting is configured.</p>}
       <div hidden={!file && !id && hosting}>
       <label>Title<input value={title} onChange={event => setTitle(event.target.value)} required minLength={2} maxLength={160} dir="auto" /></label>
+      <VideoCoverInput file={coverFile} current={video?.posterUrl} onChange={setCoverFile} />
+      <p className="watch-muted">Your selected cover is saved with your draft or submission.</p>
       <label>Description<textarea value={description} onChange={event => setDescription(event.target.value)} required minLength={20} maxLength={5000} rows={3} dir="auto" /></label>
       <div className="watch-fields"><label>Category<select value={category} onChange={event => setCategory(event.target.value as typeof category)}>{VIDEO_CATEGORIES.map(value => <option key={value}>{value}</option>)}</select></label><label>Spoken language<input value={language} onChange={event => setLanguage(event.target.value)} required minLength={2} maxLength={60} /></label></div>
       <div className="watch-fields"><label>Price in USD (0 = free)<input type="number" min="0" max="49.99" step="0.01" value={price} onChange={event => setPrice(event.target.value)} required /></label>{category === 'News & interviews' && <label>News publication date<input type="date" value={newsDate} onChange={event => setNewsDate(event.target.value)} required /></label>}</div>
       <p className="watch-muted">Paid access starts at $0.99. You receive 80% of Google’s confirmed revenue after fees, taxes and refunds; AfroBooks keeps 20%.</p>
       <label>Rights declaration<textarea value={rights} onChange={event => setRights(event.target.value)} required minLength={30} maxLength={3000} rows={2} placeholder="Who owns the video and music, and what permission do you have to distribute them?" /></label>
       <label className="watch-check"><input type="checkbox" checked={accepted} onChange={event => setAccepted(event.target.checked)} required />I own or have permission to distribute the video, music, images and performances.</label>
-      <details className="watch-upload-options"><summary>Upload options</summary><label>Video length in minutes (only if automatic detection fails)<input type="number" min="1" max="180" value={manualMinutes} onChange={event => setManualMinutes(event.target.value)} /></label><p className="watch-muted">Cover and trailer are optional. Save a draft first if you want to add your own artwork, trailer or subtitles before submitting.</p></details>
+      <details className="watch-upload-options"><summary>Upload options</summary><label>Video length in minutes (only if automatic detection fails)<input type="number" min="1" max="180" value={manualMinutes} onChange={event => setManualMinutes(event.target.value)} /></label><p className="watch-muted">The cover photo is optional. Save a draft first if you want to add a trailer or subtitles before submitting.</p></details>
       {editable && <div className="watch-actions"><button className="watch-button watch-primary" type="submit" value="submit" disabled={(!file && !entry?.private?.full) || !!entry?.private?.fullPending || !!entry?.private?.trailerPending || !!entry?.private?.captionsPending}>{busy ? phase || 'Working…' : 'Submit'}</button><button className="watch-button" type="submit" value="draft">Save draft</button></div>}
       </div>
     </fieldset></form>
     {submissionPending && !busy && <div className="watch-notice"><p>Your submission may already be saved. Check it here without uploading again.</p><button className="watch-button" onClick={() => void run(() => finishSubmission(draftId.current!))}>Check submission</button></div>}
     {progress !== null && <div role="status"><progress aria-label="Video upload progress" value={progress} max={100} /><p>{progress}% uploaded · keep this page open until uploading finishes.</p><button className="watch-button" onClick={async () => { await upload.current?.abort(); cancelUpload.current?.(); }}>Pause upload</button></div>}
-    {id && editable && <details className="watch-upload-options"><summary>Optional cover, trailer and subtitles</summary>
-      {video?.posterUrl && <img className="watch-editor-poster" src={video.posterUrl} alt="Current video cover" />}
-      <p className="watch-muted">We try to create a cover from your video. You can upload your own public cover here.</p>
+    {id && editable && <details className="watch-upload-options"><summary>Optional trailer and subtitles</summary>
       {unsaved && <p className="watch-notice">Save your draft changes before adding optional files.</p>}
       <fieldset disabled={busy || unsaved}>
-        <label>Cover image (optional) · PNG, JPG or WebP · up to 3 MB<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => { uploadPoster(event.target.files?.[0]); event.target.value = ''; }} /></label>
         <label>Optional trailer file<input type="file" accept=".mp4,.mov,.mkv,.m4v,.webm" disabled={!hosting || !!entry?.private?.trailer?.ready} onChange={event => { const media = event.target.files?.[0]; event.target.value = ''; if (media) void run(async () => { await transfer(id, media, 'trailer'); onSaved(id, 'Trailer received. Preparation is checked automatically.'); }); }} /></label>
         {entry?.private?.full?.ready && <><label>Subtitle language code<input value={captionLanguage} onChange={event => setCaptionLanguage(event.target.value)} minLength={2} maxLength={2} pattern="[a-z]{2}" /></label><p className="watch-muted">Use UTF-8 WebVTT (.vtt); ti for Tigrinya, en for English.</p>{(['full', 'trailer'] as const).filter(kind => entry.private[kind]?.ready).map(kind => <label key={kind}>Subtitles for {kind === 'full' ? 'main video or clip' : 'trailer'}<input type="file" accept=".vtt,text/vtt" onChange={event => { const media = event.target.files?.[0]; event.target.value = ''; if (media) void run(async () => { if (media.size > 500_000) throw new Error('Use a subtitle file smaller than 500 KB.'); await watchActionRequest('captions', { id, kind, language: captionLanguage, text: await media.text() }); onSaved(id, 'Subtitles saved. Preview the video to check their timing.'); }); }} /></label>)}</>}
       </fieldset>

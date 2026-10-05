@@ -52,6 +52,7 @@ export interface WatchAsset {
   captions: string[];
 }
 export interface WatchPrivate {
+  stagedCover?: { id: string; url: string };
   pendingRevision?: WatchRevision | null;
   revisionReviewNote?: string;
   creatorRemovedAt?: number;
@@ -70,6 +71,7 @@ export interface WatchPrivate {
 }
 
 export interface WatchRevision {
+  cover?: { id: string; url: string };
   id: string;
   requestedAt: number;
   draft: Pick<WatchVideo, 'title' | 'description' | 'category' | 'language' | 'priceCents' | 'newsDate'> & { rightsStatement: string; rightsAccepted: true };

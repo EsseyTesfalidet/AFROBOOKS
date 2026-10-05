@@ -239,25 +239,37 @@ export async function refreshWatchAssets(actor: Actor, id: string) {
   return { ready: patch['full.ready'] === true, ...(coverWarning ? { coverWarning } : {}) };
 }
 export async function setWatchPoster(actor: Actor, id: string, bytes: Buffer, onlyIfMissing = false) {
-  await assertEditable(actor, id, onlyIfMissing);
+  const record = await videoRecord(id);
+  const revision = !onlyIfMissing && ['published', 'unlisted'].includes(record.status);
+  if (revision) {
+    author(actor);
+    if (record.creatorId !== actor.uid) throw new WatchError(403, 'This video belongs to another creator.');
+    const db = await getAdminDb();
+    const [creator, media] = await db.getAll(db.doc(`watchCreators/${actor.uid}`), db.doc(`watchPrivate/${id}`));
+    if (creator.data()?.status !== 'approved' || media.data()?.pendingRevision) throw new WatchError(409, 'Creator access must be approved and previous changes reviewed before changing the cover.');
+  } else await assertEditable(actor, id, onlyIfMissing);
   const contentType = posterMime(bytes);
   if (!contentType || bytes.length > 5 * 1024 * 1024) throw new WatchError(400, 'Choose a PNG, JPEG or WebP image smaller than 5 MB.');
   // Never overwrite artwork already referenced by an approved video if a
   // submission races this upload. Unattached objects can be cleaned up later.
-  const bucket = await getAdminBucket(); const path = `watch-posters/${id}/${randomUUID()}`;
+  const coverId = randomUUID();
+  const bucket = await getAdminBucket(); const path = `watch-posters/${id}/${coverId}`;
   const token = randomUUID();
   await bucket.file(path).save(bytes, { resumable: false, contentType, metadata: { metadata: { firebaseStorageDownloadTokens: token } } });
   const posterUrl = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket.name)}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
   const db = await getAdminDb();
   await db.runTransaction(async tx => {
     const ref = db.doc(`watchVideos/${id}`);
-    const [video, creator] = await Promise.all([tx.get(ref), tx.get(db.doc(`watchCreators/${actor.uid}`))]);
-    if (video.data()?.creatorId !== actor.uid || (video.data()?.status !== 'draft' && !(onlyIfMissing && video.data()?.status === 'processing')) || creator.data()?.status !== 'approved') throw new WatchError(409, 'This video is no longer editable.');
+    const [video, creator, media] = await tx.getAll(ref, db.doc(`watchCreators/${actor.uid}`), db.doc(`watchPrivate/${id}`));
+    const validStatus = revision ? ['published', 'unlisted'].includes(video.data()?.status) && !media.data()?.pendingRevision
+      : video.data()?.status === 'draft' || (onlyIfMissing && video.data()?.status === 'processing');
+    if (video.data()?.creatorId !== actor.uid || !validStatus || creator.data()?.status !== 'approved') throw new WatchError(409, 'This video is no longer editable.');
+    if (revision) { tx.update(media.ref, { stagedCover: { id: coverId, url: posterUrl } }); return; }
     // A custom cover selected while the frame was generated always wins.
     if (onlyIfMissing && video.data()?.posterUrl) return;
     tx.update(ref, { posterUrl, updatedAt: Date.now() });
   });
-  return { posterUrl };
+  return { posterUrl, ...(revision ? { coverId } : {}) };
 }
 export async function setWatchCaptions(actor: Actor, input: unknown) {
   const data = captionSchema.parse(input); await assertEditable(actor, data.id);

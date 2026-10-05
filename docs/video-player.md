@@ -1,5 +1,18 @@
 # Screen player and clip uploads
 
+## Optional cover photos
+
+The main upload form accepts an optional PNG, JPG or WebP cover up to 3 MB,
+including before the first draft save. It previews the selected file and lets
+creators discard that selection. The cover uploads with Save draft or Submit;
+skipping it retains existing artwork or allows automatic frame generation.
+
+Published/unlisted videos can submit a replacement cover with Edit details.
+The server stages uploaded artwork under the video and accepts its generated ID
+with a revision, never a client-supplied URL. Reviewers see current and requested
+images. Only approval replaces the public cover; rejection keeps the current
+artwork and all existing video access intact.
+
 ## Screen discovery
 
 The installed app feed previews one centered, mostly visible card after a short

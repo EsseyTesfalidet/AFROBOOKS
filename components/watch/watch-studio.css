@@ -46,6 +46,8 @@
 .watch-readiness li[data-ready=true] svg { color:var(--app-success,#4ade80); }
 .watch-readiness small { margin-left:auto; color:var(--app-muted,#a8abb5); }
 .watch-editor-poster { width:280px; max-width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:12px; margin-top:16px; }
+.watch-cover-picker { padding:0 16px 16px; margin:20px 0; border:1px solid var(--app-line,#ffffff20); border-radius:14px; background:var(--app-field,#101114); }
+.watch-cover-picker .watch-editor-poster { object-fit:contain; background:#111; }
 .watch-studio-list { display:grid; gap:12px; margin-top:24px; }
 .watch-studio-list>button { display:flex; align-items:center; justify-content:space-between; gap:20px; width:100%; text-align:left; border-bottom:1px solid var(--app-line,#ffffff20); padding:20px 0; }
 .watch-studio-list small { display:block; margin-top:8px; color:var(--app-muted,#a8abb5); }

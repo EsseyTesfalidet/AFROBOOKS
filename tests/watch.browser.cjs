@@ -50,7 +50,7 @@ async function main() {
   const fixture = (id, title, category, priceCents) => ({ id, title, category, priceCents, creatorId: 'studio', creatorName: 'Original Studio', language: 'Tigrinya', description: 'An original African story, told through music and memories. This is a test fixture, never a live catalog entry.', currency: 'usd', posterUrl: poster, durationSeconds: 180, hasTrailer: true, status: 'published', publishedAt: 10, newsDate: '', updatedAt: 10 });
   const videos = [fixture('free-film', 'Stories of home', 'Documentaries', 0), fixture('paid-film', 'ሙዚቃ ሃገረይ', 'Music', 249), fixture('short-film', 'A journey together', 'Short films', 99)];
   try {
-    for (const installed of [false, true]) {
+    for (const installed of (process.env.STUDIO_ONLY ? [] : [false, true])) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
       await context.addInitScript(installed => { if (installed) { const mm = window.matchMedia.bind(window); window.matchMedia = q => q.includes('display-mode') ? { matches: true, addEventListener() {}, removeEventListener() {} } : mm(q); } }, installed);
       const page = await context.newPage(); const errors = []; let calls = []; let saved = false, following = false, seconds = 0; let outage = false;
@@ -144,6 +144,7 @@ async function main() {
       await context.close();
     }
 
+    if (!process.env.STUDIO_ONLY) {
     const billingContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     await billingContext.addInitScript(() => {
       const mm = window.matchMedia.bind(window); window.matchMedia = q => q.includes('display-mode') ? { matches: true, addEventListener() {}, removeEventListener() {} } : mm(q);
@@ -202,6 +203,7 @@ async function main() {
     console.log('PASS test and live Play checkout use store price and account binding; pending payments stay locked; restore recovers interrupted verification, saves library access and removes refunded ownership');
     await billingContext.close();
 
+    }
     const studioContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const studioPage = await studioContext.newPage(); const studioErrors = []; const mutations = [];
     studioPage.on('pageerror', error => { studioErrors.push(error.message); console.error('Studio render error:', error.message); });
@@ -211,8 +213,9 @@ async function main() {
       const request = route.request(); const url = new URL(request.url());
       if (url.pathname.endsWith('/playback')) { mutations.push({action:'preview',data:request.postDataJSON()}); return route.fulfill({json:{token:'FIXTURE',duration:120,seconds:45,expiresAt:9999999999}}); }
       if (url.pathname.endsWith('/poster')) {
-        const entry = [...entries.values()][0]; entry.video.posterUrl = poster;
-        return route.fulfill({ json: { posterUrl: poster } });
+        const entry = [...entries.values()][0];
+        if(['published','unlisted'].includes(entry.video.status)){entry.private.stagedCover={id:'cover-fixture',url:poster};return route.fulfill({json:{posterUrl:poster,coverId:'cover-fixture'}})}
+        entry.video.posterUrl = poster; return route.fulfill({ json: { posterUrl: poster } });
       }
       if (url.pathname.endsWith('/action')) {
         const { action, data } = request.postDataJSON(); mutations.push({ action, data });
@@ -233,9 +236,9 @@ async function main() {
         if (action === 'captions') entries.get(data.id).private[data.kind].captions = [data.language];
         if (action === 'submit') { const entry = entries.get(data.id); entry.video.status = processingReady ? 'in_review' : 'processing'; if(failNextSubmission){failNextSubmission=false;return route.fulfill({status:503,json:{error:'Test submission response lost.'}})} return route.fulfill({json:{ok:true,status:entry.video.status}}); }
         if (action === 'admin_review') { const entry = entries.get(data.id); entry.video.status = data.decision; if(data.decision==='published') entry.video.publishedAt=Date.now(); entry.private.reviewNote = data.note; }
-        if (action === 'creator_revision') { const entry = entries.get(data.id); entry.private.pendingRevision = {id:data.revisionId,draft:data.draft,requestedAt:Date.now()}; if(failNextRevision){failNextRevision=false;return route.fulfill({status:503,json:{error:'Test revision response lost.'}});} }
+        if (action === 'creator_revision') { const entry = entries.get(data.id); entry.private.pendingRevision = {id:data.revisionId,draft:data.draft,requestedAt:Date.now(),...(data.coverId?{cover:entry.private.stagedCover}:{})}; if(failNextRevision){failNextRevision=false;return route.fulfill({status:503,json:{error:'Test revision response lost.'}});} }
         if (action === 'creator_withdraw_revision') entries.get(data.id).private.pendingRevision=null;
-        if (action === 'admin_revision') { const entry=entries.get(data.id); if(data.decision==='approve'){const{rightsAccepted,rightsStatement,...metadata}=entry.private.pendingRevision.draft;Object.assign(entry.video,metadata);entry.private.rightsStatement=rightsStatement;}entry.private.pendingRevision=null;entry.private.revisionReviewNote=data.note||'Changes approved.'; }
+        if (action === 'admin_revision') { const entry=entries.get(data.id); if(data.decision==='approve'){const{rightsAccepted,rightsStatement,...metadata}=entry.private.pendingRevision.draft;Object.assign(entry.video,metadata);if(entry.private.pendingRevision.cover)entry.video.posterUrl=entry.private.pendingRevision.cover.url;entry.private.rightsStatement=rightsStatement;}entry.private.pendingRevision=null;entry.private.revisionReviewNote=data.note||'Changes approved.'; }
         if (action === 'cancel_submission') entries.get(data.id).video.status='draft';
         if (action === 'creator_remove') { const entry=entries.get(data.id); entry.video.status=['published','unlisted'].includes(entry.video.status)?'unlisted':'removed';entry.private.pendingRevision=null;entry.private.creatorRemovedAt=Date.now();return route.fulfill({json:{ok:true,status:entry.video.status}}); }
 
@@ -260,6 +263,17 @@ async function main() {
     await studioPage.evaluate(() => { window.setRole('seller'); window.navigate('/video-studio'); });
     await studioPage.getByRole('button', { name: 'New video', exact: true }).click();
     await studioPage.getByLabel('Title', { exact: true }).fill('ሙዚቃ ሃገረይ');
+    const coverImage={name:'cover.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=','base64')};
+    const coverPicker=studioPage.getByLabel('Cover photo (optional)',{exact:true});
+    assert.equal(await coverPicker.getAttribute('required'),null);
+    await coverPicker.setInputFiles({name:'not-an-image.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg/>')});
+    await studioPage.getByText('Choose a PNG, JPG or WebP image up to 3 MB.').waitFor();
+    await coverPicker.setInputFiles(coverImage);
+    await studioPage.getByRole('img',{name:'Selected cover photo preview'}).waitFor();
+    await studioPage.getByRole('button',{name:'Remove selected photo'}).click();
+    assert.equal(await studioPage.getByRole('img',{name:'Selected cover photo preview'}).count(),0);
+    await coverPicker.setInputFiles(coverImage);
+
     await studioPage.getByLabel('Description', { exact: true }).fill('A documentary about the music and stories of Eritrea.');
     await studioPage.getByLabel('Category').selectOption('Documentaries');
     await studioPage.getByLabel('Spoken language').fill('Tigrinya');
@@ -291,13 +305,14 @@ async function main() {
     await studioPage.evaluate(() => { window.setRole('seller'); window.navigate('/video-studio'); });
     hosting = true; await studioPage.reload(); await studioPage.evaluate(() => window.setRole('seller'));
     await studioPage.getByRole('button', { name: /ሙዚቃ ሃገረይ/ }).click();
-    assert.equal([...entries.values()][0].video.posterUrl, '');
+    assert.equal([...entries.values()][0].video.posterUrl, poster);
+    await studioPage.getByLabel('Cover photo (optional)',{exact:true}).setInputFiles(coverImage);
     await studioPage.getByLabel(/Main video or clip file/).setInputFiles({ name: 'film.mp4', mimeType: 'video/mp4', buffer: Buffer.from('VIDEO-FIXTURE') });
     await studioPage.getByRole('checkbox').check();
     await studioPage.getByRole('button', { name: 'Save draft' }).click();
     await studioPage.getByText('Draft saved. You can return to it from Your videos.').waitFor();
-    await studioPage.getByText('Optional cover, trailer and subtitles', {exact:true}).click();
-    await studioPage.getByLabel(/Cover image \(optional\) ·/).waitFor();
+    await studioPage.getByText('Optional trailer and subtitles', {exact:true}).click();
+    await studioPage.getByLabel('Cover photo (optional)', {exact:true}).waitFor();
     await studioPage.getByLabel(/Optional trailer file/).setInputFiles({ name: 'trailer.mp4', mimeType: 'video/mp4', buffer: Buffer.from('TRAILER-FIXTURE') });
     await studioPage.getByText('Trailer received. Preparation is checked automatically.').waitFor();
     assert.deepEqual(mutations.filter(item => item.action === 'upload').map(item => item.data.maximumSeconds), [120, 120]);
@@ -371,6 +386,7 @@ async function main() {
     await studioPage.evaluate(() => { window.setRole('seller'); window.navigate('/video-studio'); });
     await studioPage.getByRole('button',{name:/ሙዚቃ ሃገረይ/}).click();
     await studioPage.getByRole('button',{name:'Edit details',exact:true}).click();
+    await studioPage.getByLabel('Cover photo (optional)',{exact:true}).setInputFiles(coverImage);
     await studioPage.getByLabel('Description', {exact:true}).fill('Updated description for the original music documentary.');
     await studioPage.setViewportSize({width:390,height:844});
     assert.ok(await studioPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));

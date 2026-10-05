@@ -10,7 +10,7 @@ const creatorRole = (actor: AuthenticatedRequestUser) => {
 
 export async function requestWatchRevision(actor: AuthenticatedRequestUser, input: unknown) {
   creatorRole(actor);
-  const data = z.object({ id: watchId, revisionId: watchId, draft: videoDraftSchema }).strict().parse(input);
+  const data = z.object({ id: watchId, revisionId: watchId, draft: videoDraftSchema, coverId: watchId.optional() }).strict().parse(input);
   const db = await getAdminDb();
   await db.runTransaction(async tx => {
     const [video, media, creator] = await tx.getAll(db.doc(`watchVideos/${data.id}`), db.doc(`watchPrivate/${data.id}`), db.doc(`watchCreators/${actor.uid}`));
@@ -19,12 +19,14 @@ export async function requestWatchRevision(actor: AuthenticatedRequestUser, inpu
     if (!['published', 'unlisted'].includes(video.data()?.status)) throw new WatchError(409, 'Only published or unlisted videos use change review.');
     const pending = media.data()?.pendingRevision;
     if (pending?.id === data.revisionId) {
-      if (!Object.entries(data.draft).every(([key, value]) => pending.draft?.[key] === value)) throw new WatchError(409, 'This request has already been submitted. Refresh before changing it.');
+      if (!Object.entries(data.draft).every(([key, value]) => pending.draft?.[key] === value) || pending.cover?.id !== data.coverId) throw new WatchError(409, 'This request has already been submitted. Refresh before changing it.');
       return;
     }
     if (media.data()?.lastRevisionId === data.revisionId) return;
     if (pending) throw new WatchError(409, 'Your previous changes are awaiting review. Withdraw them before submitting new changes.');
-    tx.update(media.ref, { pendingRevision: { id: data.revisionId, draft: data.draft, requestedAt: Date.now() }, revisionReviewNote: '' });
+    const cover = media.data()?.stagedCover;
+    if (data.coverId && cover?.id !== data.coverId) throw new WatchError(409, 'Upload the cover for this video again before submitting.');
+    tx.update(media.ref, { pendingRevision: { id: data.revisionId, draft: data.draft, requestedAt: Date.now(), ...(data.coverId ? { cover } : {}) }, revisionReviewNote: '' });
     tx.update(video.ref, { updatedAt: Date.now() });
     tx.create(db.collection('watchAudit').doc(), { actorId: actor.uid, action: 'creator_revision', videoId: data.id, revisionId: data.revisionId, createdAt: Date.now() });
   });
@@ -66,7 +68,7 @@ export async function reviewWatchRevision(actor: AuthenticatedRequestUser, input
       // Store checkout prices are managed separately. Pause new sales until an
       // admin aligns the Play price and re-enables the existing product mapping.
       if (priceChanged && product?.exists && product.data()?.videoId === data.id) tx.update(product.ref, { enabled: false, liveEnabled: false, updatedAt: Date.now() });
-      tx.update(video.ref, { ...metadata, updatedAt: Date.now() });
+      tx.update(video.ref, { ...metadata, ...(pending.cover ? { posterUrl: pending.cover.url } : {}), updatedAt: Date.now() });
       tx.update(media.ref, { rightsStatement, rightsAcceptedAt: pending.requestedAt, ...(priceChanged ? { playTestEnabled: false, playLiveEnabled: false } : {}) });
     }
     tx.update(media.ref, { pendingRevision: null, lastRevisionId: data.revisionId, revisionReviewNote: data.note || 'Changes approved.' });

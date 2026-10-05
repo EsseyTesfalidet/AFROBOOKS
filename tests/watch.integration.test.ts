@@ -316,6 +316,30 @@ test('processed clips receive durable artwork without exposing video access toke
   await action(creator, 'refresh', { id });
   assert.equal((await db.doc(`watchVideos/${id}`).get()).data()?.posterUrl, custom.posterUrl);
 });
+
+test('published cover photos stay staged until approval and cannot be attached to another video', async () => {
+  const id = await readyVideo(); const otherId = await readyVideo();
+  const oldCover = (await getWatchDetail(reader, id)).video.posterUrl;
+  await assert.rejects(setWatchPoster(actor('other', 'seller'), id, thumbnail), /another creator/);
+  await assert.rejects(setWatchPoster(creator, id, Buffer.from('<svg/>')), /PNG/);
+  const cover = await setWatchPoster(creator, id, thumbnail);
+  assert.ok(cover.coverId);
+  assert.equal((await getWatchDetail(reader, id)).video.posterUrl, oldCover);
+  await assert.rejects(action(creator, 'creator_revision', { id: otherId, revisionId: 'wrong-film', draft, coverId: cover.coverId }), /for this video/);
+  await assert.rejects(action(creator, 'creator_revision', { id, revisionId: 'raw-url', draft, posterUrl: 'https://evil.test/image' }), /Unrecognized/);
+  const change = { id, revisionId: 'cover-first', draft, coverId: cover.coverId };
+  await action(creator, 'creator_revision', change);
+  await action(creator, 'creator_revision', change);
+  await assert.rejects(action(creator, 'creator_revision', { ...change, coverId: 'changed' }), /already been submitted/);
+  await assert.rejects(setWatchPoster(creator, id, thumbnail), /previous changes reviewed/);
+  assert.equal((await getWatchDetail(reader, id)).video.posterUrl, oldCover);
+  await action(staff, 'admin_revision', { id, revisionId: change.revisionId, decision: 'reject', note: 'Please use approved artwork for this video.' });
+  assert.equal((await getWatchDetail(reader, id)).video.posterUrl, oldCover);
+  await action(creator, 'creator_revision', { ...change, revisionId: 'cover-second' });
+  await action(staff, 'admin_revision', { id, revisionId: 'cover-second', decision: 'approve', note: '' });
+  assert.equal((await getWatchDetail(reader, id)).video.posterUrl, cover.posterUrl);
+  assert.equal((await getWatchDetail(reader, id)).video.status, 'published');
+});
 test('full-video access requires free, ownership or creator access; refunds revoke new playback', async () => {
   const id = await readyVideo();
   await assert.rejects(watchPlayback(reader, id, false), /Purchase access/);
