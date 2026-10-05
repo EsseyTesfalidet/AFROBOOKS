@@ -40,6 +40,7 @@ test('automatic covers use signed frame access, bound response sizes and handle 
   process.env.CLOUDFLARE_STREAM_ACCOUNT_ID = 'a'.repeat(32);
   process.env.CLOUDFLARE_STREAM_API_TOKEN = 'test-only';
   let mode = 'ok';
+  let expectedTime = '0.5s';
   const image = Buffer.from('ffd8ffe000104a4649460001', 'hex');
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input));
@@ -49,13 +50,18 @@ test('automatic covers use signed frame access, bound response sizes and handle 
     }
     assert.equal(url.hostname, 'videodelivery.net');
     assert.equal(url.pathname, '/signed%2Ftoken/thumbnails/thumbnail.jpg');
-    assert.equal(url.searchParams.get('time'), '0.5s');
+    assert.equal(url.searchParams.get('time'), expectedTime);
     assert.equal(init?.redirect, 'error');
     if (mode === 'unavailable') return new Response(null, { status: 503 });
     return new Response(mode === 'large' ? new Uint8Array(3_000_001) : image);
   };
   try {
     assert.deepEqual(await streamPosterBytes('b'.repeat(32), 5), image);
+    expectedTime = '12s';
+    assert.deepEqual(await streamPosterBytes('b'.repeat(32), 120), image);
+    expectedTime = '30s';
+    assert.deepEqual(await streamPosterBytes('b'.repeat(32), 720), image);
+    expectedTime = '0.5s';
     mode = 'unavailable';
     await assert.rejects(streamPosterBytes('b'.repeat(32), 5), /not available/);
     mode = 'large';

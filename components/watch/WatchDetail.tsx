@@ -13,6 +13,7 @@ import type { WatchPlayback } from './WatchPlayer';
 import type { PlayOffer } from '@/lib/watch/play';
 import { useWatchResource, WatchAppGate, WatchFeedback, WatchSheet, watchActionRequest } from './WatchUI';
 import WatchRelated from './WatchRelated';
+import { useVideoPoster } from './WatchPoster';
 
 const WatchPlayer = dynamic(() => import('./WatchPlayer'), { ssr: false, loading: () => <p role="status">Opening player…</p> });
 const WatchPlayPurchase = dynamic(() => import('./WatchPlayPurchase'), { ssr: false });
@@ -25,6 +26,7 @@ function DetailContent({ id }: { id: string }) {
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
   const [report, setReport] = useState(false); const [reason, setReason] = useState('');
   const video = resource.data?.video; const state = resource.data?.state;
+  const poster = useVideoPoster(video);
   const automaticKind = resource.data?.hostingReady ? resource.data.canPlay ? 'full' : video?.hasTrailer ? 'trailer' : null : null;
   useEffect(() => {
     if (!automaticKind) return;
@@ -48,7 +50,7 @@ function DetailContent({ id }: { id: string }) {
   }
   return <><BuyerHeader /><main className="app-page watch-page watch-detail"><Link className="watch-back" href="/watch"><ArrowLeft size={18} /> Screen</Link><WatchFeedback loading={resource.loading} error={resource.error} retry={resource.retry} />
     {video && state && <>
-      {playback ? <><WatchPlayer key={`${id}-${playback.data.token}`} id={id} playback={playback.data} trailer={playback.trailer} title={video.title} poster={video.posterUrl} autoPlay /><button className="watch-button mt-3" onClick={() => { playbackRequest.current++; setPlayback(null); }}>Close player</button></> : <div className="watch-art">{video.posterUrl && <img src={video.posterUrl} alt={video.title} />}<span className="watch-duration">{videoDuration(video.durationSeconds)}</span>{resource.data?.canPlay && resource.data.hostingReady && <button className="watch-play" aria-label={`Play ${video.title}`} disabled={busy} onClick={() => play(false)}><Play size={20} fill="currentColor" /></button>}</div>}
+      {playback ? <><WatchPlayer key={`${id}-${playback.data.token}`} id={id} playback={playback.data} trailer={playback.trailer} title={video.title} poster={poster} autoPlay /><button className="watch-button mt-3" onClick={() => { playbackRequest.current++; setPlayback(null); }}>Close player</button></> : <div className="watch-art">{poster && <img src={poster} alt={video.title} />}<span className="watch-duration">{videoDuration(video.durationSeconds)}</span>{resource.data?.canPlay && resource.data.hostingReady && <button className="watch-play" aria-label={`Play ${video.title}`} disabled={busy} onClick={() => play(false)}><Play size={20} fill="currentColor" /></button>}</div>}
       <h1 dir="auto">{video.title}</h1><p className="watch-detail-meta">{video.category} · {video.language} · {videoDuration(video.durationSeconds)}{video.newsDate ? ` · Published ${video.newsDate}` : ''}</p>
       <div className="watch-creator"><span className="watch-avatar" aria-hidden="true">{video.creatorName.slice(0, 1)}</span><Link href={`/watch/creator/${video.creatorId}`} dir="auto">{video.creatorName}</Link><button className="watch-button" disabled={busy} aria-pressed={following ?? state.following} onClick={() => void action(async () => { const value = !(following ?? state.following); await watchActionRequest('follow', { creatorId: video.creatorId, following: value }); setFollowing(value); })}>{(following ?? state.following) ? 'Following' : 'Follow · free'}</button></div>
       <div className="watch-actions">{resource.data?.canPlay ? <button className="watch-button watch-primary" disabled={busy || !resource.data.hostingReady} onClick={() => play(false)}><Play size={17} fill="currentColor" />{state.seconds > 0 && state.seconds < video.durationSeconds - 5 ? 'Continue watching' : 'Watch now'}{state.owned ? ' · Purchased' : video.priceCents === 0 ? ' · Free' : ''}</button> : resource.data?.playOffer ? null : <button className="watch-button watch-primary" disabled>{video.status === 'removed' ? 'Currently unavailable' : `Buy ${videoPrice(video.priceCents)} · coming soon`}</button>}

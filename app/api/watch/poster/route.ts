@@ -1,9 +1,17 @@
 import type { NextRequest } from 'next/server';
-import { setWatchPoster, watchRateLimit } from '@/lib/server/watch';
+import { getWatchPoster, setWatchPoster, watchRateLimit } from '@/lib/server/watch';
 import { watchActor, watchBytes, watchFailure, watchJson } from '@/lib/server/watchHttp';
 import { WatchError } from '@/lib/server/watchErrors';
 import { watchId } from '@/lib/watch/policy';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
+export async function GET(request: NextRequest) {
+  try {
+    const actor = await watchActor(request);
+    await watchRateLimit(actor, 'poster-read', 120);
+    return watchJson(await getWatchPoster(actor, request.nextUrl.searchParams.get('id') || ''));
+  } catch (error) { return watchFailure(error); }
+}
 export async function POST(request: NextRequest) {
   try {
     const actor = await watchActor(request, true);

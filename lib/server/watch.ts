@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { getAdminBucket, getAdminDb } from '@/lib/firebase/admin';
 import type { AuthenticatedRequestUser } from './auth';
 import { WatchError } from './watchErrors';
-import { createStreamUpload, StreamUploadRejectedError, streamAssetStatus, streamConfigured, streamHostingStatus, streamPlaybackToken, streamPosterBytes, testStreamUploadAccess, uploadStreamCaptions } from './watchStream';
+import { createStreamUpload, StreamUploadRejectedError, streamAssetStatus, streamConfigured, streamHostingStatus, streamPlaybackToken, testStreamUploadAccess, uploadStreamCaptions } from './watchStream';
+import { ensureWatchPoster } from './watchPosters';
 import { captionSchema, EMPTY_WATCH_STATE, posterMime, publicVideo, uploadSchema, videoAccess, videoDraftSchema, watchId } from '@/lib/watch/policy';
 import { getPlayOffer, playLiveConfigured, savePlayProduct, syncPlayPurchase, verifyPlayPlayback } from './watchPlay';
 import { getVideoEarnings } from './watchEarnings';
@@ -67,6 +68,15 @@ export async function getWatchDetail(actor: Actor, id: string) {
   const state = await viewerState(actor, video);
   if (video.status !== 'published' && !state.owned && video.creatorId !== actor.uid && actor.role !== 'admin') throw new WatchError(404, 'This video is unavailable.');
   return { video: publicVideo(video), state, canPlay: videoAccess(video, actor.uid, actor.role === 'admin', state.owned), hostingReady: streamConfigured(), purchasesReady: playLiveConfigured(), playOffer: await getPlayOffer(actor, id) };
+}
+export async function getWatchPoster(actor: Actor, id: string) {
+  const video = await videoRecord(id);
+  if (video.status !== 'published' && video.creatorId !== actor.uid && actor.role !== 'admin') {
+    const state = await viewerState(actor, video);
+    if (video.status !== 'unlisted' || !state.owned) throw new WatchError(404, 'This video is unavailable.');
+  }
+  if (video.status === 'removed') throw new WatchError(404, 'This video is unavailable.');
+  return { posterUrl: video.posterUrl || await ensureWatchPoster(id) };
 }
 export async function getWatchLibrary(actor: Actor) {
   const db = await getAdminDb();
@@ -221,8 +231,8 @@ export async function refreshWatchAssets(actor: Actor, id: string) {
   if (Object.keys(patch).length) await ref.update(patch);
   await db.doc(`watchVideos/${id}`).update({ durationSeconds: duration, hasTrailer });
   let coverWarning = '';
-  if (!video.posterUrl && ['draft', 'processing'].includes(video.status) && video.creatorId === actor.uid && patch['full.ready'] === true && secret.full) {
-    try { await setWatchPoster(actor, id, await streamPosterBytes(secret.full.uid, duration), true); }
+  if (!video.posterUrl && patch['full.ready'] === true && secret.full) {
+    try { if (!await ensureWatchPoster(id)) throw new Error('Cover pending'); }
     catch { coverWarning = 'Your video is ready. An automatic cover could not be created yet; you can retry processing or optionally upload your own cover.'; }
   }
   // A queued submission advances only after every attached asset is ready.

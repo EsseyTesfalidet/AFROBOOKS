@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { authenticatedGet, authenticatedPost } from '@/lib/firebase/request';
 import { videoDuration, videoPrice } from '@/lib/watch/policy';
 import type { WatchState, WatchVideo } from '@/types/video';
+import WatchPoster from './WatchPoster';
 import './watch.css';
 
 export const watchActionRequest = <T,>(action: string, data: unknown) => authenticatedPost<T>('/api/watch/action', { action, data });
@@ -42,7 +43,7 @@ export function WatchEmpty({ title, text, action }: { title: string; text: strin
 }
 export function WatchCard({ video, state, preview }: { video: WatchVideo; state?: WatchState; preview?: ReactNode }) {
   return <article className="watch-card"><Link href={`/watch/${video.id}`} className="watch-card-link">
-    <div className="watch-art" data-preview-id={video.id}>{video.posterUrl ? <img src={video.posterUrl} alt="" loading="lazy" decoding="async" /> : <Film size={44} aria-hidden="true" />}{preview}
+    <div className="watch-art" data-preview-id={video.id}><WatchPoster video={video} />{preview}
       <span className="watch-duration">{videoDuration(video.durationSeconds)}</span>
       <span className="watch-play"><Play size={18} fill="currentColor" aria-hidden="true" /></span>
       {state && state.seconds > 0 && <span className="watch-progress" role="progressbar" aria-label="Watch progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(1, state.seconds / Math.max(1, video.durationSeconds)) * 100)}><i style={{ width: `${Math.min(1, state.seconds / Math.max(1, video.durationSeconds)) * 100}%` }} /></span>}

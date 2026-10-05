@@ -120,7 +120,8 @@ export async function streamPlaybackToken(uid: string, duration: number) {
 }
 export async function streamPosterBytes(uid: string, duration: number) {
   const { token } = await streamPlaybackToken(uid, duration);
-  const time = Math.min(1, Math.max(0, duration / 10));
+  // Look past the opening fade while keeping short clips within their length.
+  const time = Math.min(30, Math.max(0, duration / 10));
   const response = await fetch(`https://videodelivery.net/${encodeURIComponent(token)}/thumbnails/thumbnail.jpg?time=${time}s&width=854&height=480&fit=fill`, { cache: 'no-store', signal: AbortSignal.timeout(15000), redirect: 'error' });
   if (!response.ok || !response.body) throw new WatchError(502, 'The automatic cover is not available yet.');
   const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let size = 0;

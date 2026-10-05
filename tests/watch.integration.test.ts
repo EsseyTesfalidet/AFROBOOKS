@@ -6,9 +6,10 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { initializeTestEnvironment, assertFails, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { createWatchUpload, getWatchCatalog, getWatchDetail, getWatchHostingStatus, getWatchLibrary, getWatchRelated, getWatchStudio, saveWatchDraft, setWatchCaptions, setWatchPoster, watchAction, watchFeedPreview, watchPlayback } from '../lib/server/watch';
+import { createWatchUpload, getWatchCatalog, getWatchDetail, getWatchHostingStatus, getWatchLibrary, getWatchPoster, getWatchRelated, getWatchStudio, saveWatchDraft, setWatchCaptions, setWatchPoster, watchAction, watchFeedPreview, watchPlayback } from '../lib/server/watch';
 import type { AuthenticatedRequestUser } from '../lib/server/auth';
 import { processWatchSubmissions } from '../lib/server/watchProcessing';
+import { ensureWatchPoster, repairWatchPosters } from '../lib/server/watchPosters';
 
 assert.match(process.env.FIRESTORE_EMULATOR_HOST || '', /^(127\.0\.0\.1|localhost):\d+$/, 'Watch tests require the local emulator.');
 const projectId = 'demo-afrobooks-watch';
@@ -20,6 +21,7 @@ const realFetch = globalThis.fetch;
 let providerCalls: { url: string; init?: RequestInit }[] = [];
 let sequence = 0; let providerFailure = false; let signed = true;
 let thumbnailReady = false;
+let beforeThumbnail: (() => Promise<void>) | null = null;
 let processingReady = true;
 let rejectionStatus = 0;
 let orphan: Record<string, unknown> | null = null;
@@ -91,7 +93,7 @@ before(async () => {
   globalThis.fetch = async (input, init) => {
     const url = String(input);
     if (url.startsWith('https://upload.videodelivery.net/') && init?.method === 'HEAD') return new Response(null, { headers: { 'upload-offset': '0' } });
-    if (url.startsWith('https://videodelivery.net/')) return thumbnailReady ? new Response(thumbnail) : new Response(null, { status: 503 });
+    if (url.startsWith('https://videodelivery.net/')) { await beforeThumbnail?.(); return thumbnailReady ? new Response(thumbnail) : new Response(null, { status: 503 }); }
     if (!url.startsWith('https://api.cloudflare.com/')) return realFetch(input, init);
     providerCalls.push({ url, init });
     if (orphan && !url.includes('?') && !url.endsWith('/storage-usage')) {
@@ -113,6 +115,7 @@ before(async () => {
 });
 beforeEach(async () => {
   await env.clearFirestore(); providerCalls = []; sequence = 0; providerFailure = false; rejectionStatus = 0; signed = true; thumbnailReady = false; processingReady = true; orphan = null; deleteFails = false;
+  beforeThumbnail = null;
   for (const person of [creator, staff, reader, actor('other', 'seller')]) await db.doc(`users/${person.uid}`).set(person);
   await action(creator, 'apply', { name: 'Original Studio' });
   await action(staff, 'admin_creator', { uid: creator.uid, status: 'approved', allowanceSeconds: 1800 });
@@ -315,6 +318,61 @@ test('processed clips receive durable artwork without exposing video access toke
   await setWatchPoster(creator, id, thumbnail, true);
   await action(creator, 'refresh', { id });
   assert.equal((await db.doc(`watchVideos/${id}`).get()).data()?.posterUrl, custom.posterUrl);
+});
+
+test('missing published artwork retries after provider failure without granting paid playback', async () => {
+  const id = await readyVideo();
+  await db.doc(`watchVideos/${id}`).update({ posterUrl: '' });
+  await db.doc(`watchPrivate/${id}`).update({ automaticCover: {} });
+  assert.equal((await getWatchPoster(reader, id)).posterUrl, '');
+  const calls = providerCalls.length;
+  thumbnailReady = true;
+  assert.equal((await getWatchPoster(reader, id)).posterUrl, '');
+  assert.equal(providerCalls.length, calls, 'A provider failure has a shared cooldown');
+  const result = await repairWatchPosters(db, Date.now() + 61_000);
+  assert.equal(result.repaired, 1);
+  const response = await getWatchPoster(reader, id);
+  assert.match(response.posterUrl, /firebasestorage.googleapis.com/);
+  assert.doesNotMatch(JSON.stringify(response), /TEST-PLAYBACK-TOKEN|videodelivery|uploadUrl/);
+  assert.equal((await getWatchCatalog(reader, null, null)).videos[0].posterUrl, response.posterUrl);
+  await assert.rejects(watchPlayback(reader, id, false), /Purchase access/);
+  assert.equal((await repairWatchPosters(db)).checked, 0);
+});
+
+test('thumbnail repair respects visibility, moderation, leases and custom artwork races', async () => {
+  const id = await newVideo();
+  await createWatchUpload(creator, { id, kind: 'full', size: 9999, maximumSeconds: 120 });
+  await action(creator, 'submit', { id });
+  await assert.rejects(getWatchPoster(reader, id), /unavailable/);
+  thumbnailReady = true;
+  await db.doc(`watchPrivate/${id}`).update({ automaticCover: {} });
+  await action(staff, 'refresh', { id });
+  assert.ok((await getWatchPoster(staff, id)).posterUrl, 'Admins can generate an image during review');
+  await db.doc(`watchVideos/${id}`).update({ posterUrl: '' });
+  const calls = providerCalls.length;
+  await Promise.all([ensureWatchPoster(id), ensureWatchPoster(id), ensureWatchPoster(id)]);
+  assert.equal(providerCalls.length - calls, 1, 'Only one frame request is signed during concurrent repairs');
+  await db.doc(`watchVideos/${id}`).update({ posterUrl: '' });
+  beforeThumbnail = async () => { await db.doc(`watchVideos/${id}`).update({ posterUrl: 'https://example.test/custom.jpg' }); };
+  assert.equal(await ensureWatchPoster(id), 'https://example.test/custom.jpg');
+  await db.doc(`watchPrivate/${id}`).update({ automaticCover: {} });
+  await db.doc(`watchVideos/${id}`).update({ posterUrl: '' });
+  beforeThumbnail = async () => { await db.doc(`watchVideos/${id}`).update({ status: 'removed' }); };
+  assert.equal(await ensureWatchPoster(id), '');
+  assert.equal((await db.doc(`watchVideos/${id}`).get()).data()?.posterUrl, '');
+  await assert.rejects(getWatchPoster(reader, id), /unavailable/);
+});
+
+test('artwork repair advances its cursor beyond unfinished drafts and respects its job lease', async () => {
+  for (let i = 0; i < 4; i++) await newVideo();
+  const ref = db.doc('watchSystem/artwork');
+  await ref.set({ leaseUntil: Date.now() + 60_000 });
+  assert.equal((await repairWatchPosters(db)).busy, true);
+  await ref.set({ leaseUntil: 0 });
+  assert.equal((await repairWatchPosters(db)).checked, 3);
+  assert.ok((await ref.get()).data()?.cursor);
+  assert.equal((await repairWatchPosters(db)).checked, 1);
+  assert.equal((await ref.get()).data()?.cursor, '');
 });
 
 test('published cover photos stay staged until approval and cannot be attached to another video', async () => {

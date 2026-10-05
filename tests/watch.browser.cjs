@@ -49,6 +49,7 @@ async function main() {
   const poster = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450"><defs><linearGradient id="g"><stop stop-color="#814634"/><stop offset="1" stop-color="#273d45"/></linearGradient></defs><rect width="800" height="450" fill="url(#g)"/><circle cx="605" cy="105" r="48" fill="#e2b676"/><path d="M0 380L210 170L410 340L620 190L800 390V450H0" fill="#142d33"/></svg>');
   const fixture = (id, title, category, priceCents) => ({ id, title, category, priceCents, creatorId: 'studio', creatorName: 'Original Studio', language: 'Tigrinya', description: 'An original African story, told through music and memories. This is a test fixture, never a live catalog entry.', currency: 'usd', posterUrl: poster, durationSeconds: 180, hasTrailer: true, status: 'published', publishedAt: 10, newsDate: '', updatedAt: 10 });
   const videos = [fixture('free-film', 'Stories of home', 'Documentaries', 0), fixture('paid-film', 'ሙዚቃ ሃገረይ', 'Music', 249), fixture('short-film', 'A journey together', 'Short films', 99)];
+  videos[0].posterUrl = ''; // Existing published video without a custom cover.
   try {
     for (const installed of (process.env.STUDIO_ONLY ? [] : [false, true])) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
@@ -58,6 +59,7 @@ async function main() {
       await page.route('**/api/watch**', async route => {
         const request = route.request(); const url = new URL(request.url()); calls.push({ url: url.pathname, body: request.postData() });
         if (outage) return route.fulfill({ status: 503, json: { error: 'Test connection lost. Try again.' } });
+        if (url.pathname.endsWith('/poster')) return route.fulfill({json:{posterUrl:poster}});
         if (url.pathname.endsWith('/action')) { const input = request.postDataJSON(); if (input.action === 'save') saved = input.data.saved; if (input.action === 'follow') following = input.data.following; if (input.action === 'progress') seconds = input.data.seconds; return route.fulfill({ json: { ok: true } }); }
         if (url.pathname.endsWith('/playback') && request.postDataJSON().preview) return route.fulfill({json:{playback:{token:'PREVIEW-ONLY',expiresAt:9999999999,seconds:0,duration:20},trailer:true}});
         if (url.searchParams.get('view') === 'related') return route.fulfill({json:{videos:videos.filter(v=>v.id!==url.searchParams.get('id'))}});
@@ -75,6 +77,7 @@ async function main() {
       await page.getByRole('heading', { name: 'Stories worth watching.' }).waitFor();
       assert.equal(await page.getByRole('link', { name: /Creator studio/i }).count(), 0);
       await page.locator('[data-preview-id="free-film"]').evaluate(el=>el.scrollIntoView({block:'center'}));
+      await page.waitForFunction(()=>{const img=document.querySelector('[data-preview-id="free-film"] img');return img?.complete&&img.naturalWidth>0;});
       await page.waitForFunction(()=>document.querySelectorAll('.watch-feed-preview video').length===1);
       assert.equal(await page.locator('.watch-feed-preview video').evaluate(el=>el.muted&&el.playsInline),true);
       await page.locator('[data-preview-id="short-film"]').evaluate(el=>el.scrollIntoView({block:'center'}));
@@ -82,6 +85,7 @@ async function main() {
       assert.equal(await page.locator('.watch-feed-preview video').count(),1);
       await page.emulateMedia({reducedMotion:'reduce'});
       await page.waitForFunction(()=>!document.querySelector('.watch-feed-preview video'));
+      assert.equal(await page.locator('[data-preview-id="free-film"] img').evaluate(img=>img.complete&&img.naturalWidth>0),true,'The video frame remains visible when motion is disabled');
       await page.emulateMedia({reducedMotion:'no-preference'});
       await page.getByRole('button',{name:'Video previews: On'}).click();
       await page.waitForFunction(()=>!document.querySelector('.watch-feed-preview video'));
