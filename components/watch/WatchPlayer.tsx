@@ -12,7 +12,7 @@ import '@vidstack/react/player/styles/default/layouts/video.css';
 import './watch-player.css';
 
 export interface WatchPlayback { token: string; expiresAt: number; seconds: number; duration: number }
-interface Props { id: string; playback: WatchPlayback; trailer?: boolean; preview?: boolean; title?: string; poster?: string }
+interface Props { id: string; playback: WatchPlayback; trailer?: boolean; preview?: boolean; title?: string; poster?: string; autoPlay?: boolean }
 
 function TouchPlayControls() {
   const paused = useMediaState('paused');
@@ -30,7 +30,7 @@ export default function WatchPlayer(props: Props) {
   return uid && uid === owner ? <PlayerSession key={`${uid}:${props.id}:${props.trailer}:${props.preview}:${props.playback.token}`} {...props} uid={uid} /> : null;
 }
 
-function PlayerSession({ id, playback, trailer = false, preview = false, title = 'Video', poster, uid }: Props & { uid: string }) {
+function PlayerSession({ id, playback, trailer = false, preview = false, title = 'Video', poster, uid, autoPlay = false }: Props & { uid: string }) {
   const player = useRef<MediaPlayerInstance>(null);
   const mounted = useRef(true); const readyRef = useRef(false); const retrying = useRef(false);
   const configured = useRef(false); const engaged = useRef(false);
@@ -42,6 +42,7 @@ function PlayerSession({ id, playback, trailer = false, preview = false, title =
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine); const [busy, setBusy] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [active, setActive] = useState(true);
+  const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
   const reportSave = useCallback((saved: boolean) => {
     if (mounted.current) setSaveError(saved ? '' : 'Your place could not be saved. We’ll retry when your connection returns.');
   }, []);
@@ -115,9 +116,10 @@ function PlayerSession({ id, playback, trailer = false, preview = false, title =
       {active && <MediaPlayer key={source.attempt} ref={player} className="afro-cinema" data-keep-colors
         title={`${title}${trailer ? ' — trailer' : ''}`} src={streamPlaybackSource(source.token)}
         viewType="video" streamType="on-demand" playsInline crossOrigin="anonymous" load="eager" preload="metadata"
-        currentTime={source.seconds} playbackRate={speed}
+        currentTime={source.seconds} playbackRate={speed} autoPlay={autoPlay}
+        onAutoPlayFail={() => setAutoPlayBlocked(true)}
         onProviderChange={provider => { if (isHLSProvider(provider)) { provider.library = () => import('hls.js'); provider.config = { capLevelToPlayerSize: true, maxBufferLength: 30, backBufferLength: 30 }; } }}
-        onCanPlay={available} onPlaying={available} onPlay={() => { engaged.current = true; }}
+        onCanPlay={available} onPlaying={available} onPlay={() => { engaged.current = true; setAutoPlayBlocked(false); }}
         onTimeUpdate={() => updateTime()} onSeeked={seconds => { setBuffering(false); engaged.current = true; record(seconds, true); }}
         onPause={() => { setBuffering(false); updateTime(true); }} onEnded={() => { setBuffering(false); record(source.duration, true); }}
         onWaiting={() => setBuffering(true)} onRateChange={value => setSpeed(value)}
@@ -135,6 +137,7 @@ function PlayerSession({ id, playback, trailer = false, preview = false, title =
     </div>
     {offline && <p className="watch-player-offline" role="status"><WifiOff size={17} aria-hidden="true" />You’re offline. Reconnect to keep watching and save your place.</p>}
     {trailer && <p className="watch-muted">Trailer · the full video is separate.</p>}
+    {autoPlayBlocked && <p className="watch-muted" role="status">Tap Play to start watching.</p>}
     {saveError && <p className="watch-muted" role="status">{saveError}</p>}
   </section>;
 }

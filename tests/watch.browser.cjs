@@ -8,13 +8,13 @@ async function main() {
     import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
     import Catalog from './components/watch/WatchCatalog';import Detail from './components/watch/WatchDetail';import Library from './components/watch/WatchLibrary';
     import Studio from './components/watch/WatchStudio';import AdminVideos from './app/(admin)/admin/videos/page';
-    import Shell from './components/shared/MobileAppShell';import Nav from './components/buyer/BuyerBottomNav';
+    import ProfileAccount from './components/buyer/profile/ProfileAccount';import Shell from './components/shared/MobileAppShell';import Nav from './components/buyer/BuyerBottomNav';
     import {useAuthStore} from './store/authStore';import {useAppAppearanceStore} from './store/appAppearanceStore';import {APP_MODE_BOOTSTRAP} from './lib/app/installed';
     useAuthStore.setState({loading:false,firebaseUser:{uid:'reader'},userProfile:{uid:'reader',role:'buyer',status:'active',firstName:'Test',lastName:'Reader'}});
     window.setTheme=mode=>useAppAppearanceStore.getState().setThemeMode(mode);window.path=location.pathname;new Function(APP_MODE_BOOTSTRAP)();
     window.setRole=role=>{const uid=role==='admin'?'staff':'creator';useAuthStore.setState({loading:false,firebaseUser:{uid,getIdToken:async()=>'fixture'},userProfile:{uid,role,status:'active',firstName:'Test',lastName:'Creator'}})};
     function App(){const[current,setCurrent]=useState(window.path);window.navigate=p=>{history.pushState(null,'',p);window.path=location.pathname;setCurrent(window.path)};
-      return <Shell><div key={current}>{current==='/video-studio'?<Studio/>:current==='/admin/videos'?<div className="admin-workspace"><main className="admin-page"><AdminVideos/></main></div>:current==='/library/videos'?<Library/>:current.startsWith('/watch/creator/')?<Catalog creatorId={current.split('/').pop()}/>:current==='/watch'?<Catalog/>:current.startsWith('/watch/')?<Detail id={current.split('/').pop()}/>:<h1>Books</h1>}</div>{!['/video-studio','/admin/videos'].includes(current)&&<><div className="buyer-nav-space h-[92px]"/><Nav/></>}</Shell>}
+      return <Shell><div key={current}>{current==='/profile'?<ProfileAccount/>:current==='/video-studio'?<Studio/>:current==='/admin/videos'?<div className="admin-workspace"><main className="admin-page"><AdminVideos/></main></div>:current==='/library/videos'?<Library/>:current.startsWith('/watch/creator/')?<Catalog creatorId={current.split('/').pop()}/>:current==='/watch'?<Catalog/>:current.startsWith('/watch/')?<Detail id={current.split('/').pop()}/>:<h1>Books</h1>}</div>{!['/video-studio','/admin/videos'].includes(current)&&<><div className="buyer-nav-space h-[92px]"/><Nav/></>}</Shell>}
     createRoot(document.getElementById('root')).render(<App/>);
   ` }, plugins: [{ name: 'test-boundaries', setup(b) {
     b.onResolve({ filter: /^next\/(navigation|link|image|dynamic)$/ }, a => ({ path: a.path, namespace: 'next-fixture' }));
@@ -26,8 +26,11 @@ async function main() {
     b.onLoad({ filter: /.*/, namespace: 'auth-fixture' }, a => ({ resolveDir: process.cwd(), contents: a.path.endsWith('/auth') ? `export const updateUserProfile=async()=>{};` : `async function call(path,init){const r=await fetch(path,init);const v=await r.json();if(!r.ok)throw Error(v.error);return v}export const authenticatedGet=p=>call(p);export const authenticatedPost=(p,body)=>call(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});` }));
     b.onResolve({ filter: /^@\/components\/notifications\/NotificationBell$/ }, () => ({ path: 'bell', namespace: 'empty-fixture' }));
     b.onLoad({ filter: /.*/, namespace: 'empty-fixture' }, () => ({ contents: 'export default function Bell(){return null}' }));
+    b.onResolve({ filter: /^@\/components\/shared\/AvatarUpload$/ }, () => ({ path:'avatar', namespace:'empty-fixture' }));
+    b.onResolve({ filter: /^hls\.js$/ }, () => ({path:'hls',namespace:'hls-fixture'}));
+    b.onLoad({filter:/.*/,namespace:'hls-fixture'},()=>({contents:`export default class Hls{static isSupported(){return true}static Events={MANIFEST_PARSED:'manifest',ERROR:'error'};constructor(){}on(){}loadSource(){}attachMedia(){}stopLoad(){}destroy(){}}`}));
     b.onResolve({ filter: /^@vidstack\/react(?:\/player\/layouts\/default)?$/ }, () => ({ path: 'stream', namespace: 'stream-fixture' }));
-    b.onLoad({ filter: /.*/, namespace: 'stream-fixture' }, () => ({ loader: 'jsx', resolveDir: process.cwd(), contents: `import React,{useEffect,forwardRef} from 'react';export const MediaPlayer=forwardRef(function Player({onTimeUpdate,onPlay,onPause,onCanPlay,currentTime},ref){useEffect(()=>{ref.current={currentTime:currentTime||0,pause:async()=>{}};onCanPlay();return()=>{ref.current=null}},[]);return <div style={{color:'white',padding:20}}><p>Provider playback fixture</p><button onClick={()=>{onPlay();ref.current.currentTime=45;onTimeUpdate()}}>Advance video</button><button onClick={()=>onPause()}>Pause video</button></div>});export const MediaProvider=()=>null;export const Poster=()=>null;export const DefaultVideoLayout=()=>null;export const PlayButton=()=>null;export const SeekButton=()=>null;export const PIPButton=()=>null;export const defaultLayoutIcons={};export const isHLSProvider=()=>false;export const useMediaState=()=>true;` }));
+    b.onLoad({ filter: /.*/, namespace: 'stream-fixture' }, () => ({ loader: 'jsx', resolveDir: process.cwd(), contents: `import React,{useEffect,forwardRef} from 'react';export const MediaPlayer=forwardRef(function Player({onTimeUpdate,onPlay,onPause,onCanPlay,currentTime,autoPlay},ref){useEffect(()=>{ref.current={currentTime:currentTime||0,pause:async()=>{}};onCanPlay();return()=>{ref.current=null}},[]);return <div style={{color:'white',padding:20}}><p data-autoplay={String(!!autoPlay)}>Provider playback fixture</p><button onClick={()=>{onPlay();ref.current.currentTime=45;onTimeUpdate()}}>Advance video</button><button onClick={()=>onPause()}>Pause video</button></div>});export const MediaProvider=()=>null;export const Poster=()=>null;export const DefaultVideoLayout=()=>null;export const PlayButton=()=>null;export const SeekButton=()=>null;export const PIPButton=()=>null;export const defaultLayoutIcons={};export const isHLSProvider=()=>false;export const useMediaState=()=>true;` }));
     b.onResolve({ filter: /^@\/lib\/watch\/upload$/ }, () => ({ path: 'metadata', namespace: 'metadata-fixture' }));
     b.onLoad({ filter: /.*/, namespace: 'metadata-fixture' }, () => ({ resolveDir: process.cwd(), contents: `export const readVideoDuration=async()=>119;export {uploadReservation} from './lib/watch/upload';` }));
     b.onResolve({ filter: /^tus-js-client$/ }, () => ({ path: 'tus', namespace: 'tus-fixture' }));
@@ -56,6 +59,8 @@ async function main() {
         const request = route.request(); const url = new URL(request.url()); calls.push({ url: url.pathname, body: request.postData() });
         if (outage) return route.fulfill({ status: 503, json: { error: 'Test connection lost. Try again.' } });
         if (url.pathname.endsWith('/action')) { const input = request.postDataJSON(); if (input.action === 'save') saved = input.data.saved; if (input.action === 'follow') following = input.data.following; if (input.action === 'progress') seconds = input.data.seconds; return route.fulfill({ json: { ok: true } }); }
+        if (url.pathname.endsWith('/playback') && request.postDataJSON().preview) return route.fulfill({json:{playback:{token:'PREVIEW-ONLY',expiresAt:9999999999,seconds:0,duration:20},trailer:true}});
+        if (url.searchParams.get('view') === 'related') return route.fulfill({json:{videos:videos.filter(v=>v.id!==url.searchParams.get('id'))}});
         if (url.pathname.endsWith('/playback')) return route.fulfill({ json: { token: 'FIXTURE-NO-LIVE-TOKEN', expiresAt: 9999999999, seconds, duration: 180 } });
         if (url.searchParams.get('view') === 'detail') { const video = videos.find(v => v.id === url.searchParams.get('id')); return route.fulfill({ json: { video, state: { saved, following, seconds, owned: false }, canPlay: video.priceCents === 0, hostingReady: true, purchasesReady: false } }); }
         if (url.searchParams.get('view') === 'library') return route.fulfill({ json: { entries: [{ video: videos[0], state: { saved, following, seconds, owned: false } }], limited: false } });
@@ -68,9 +73,23 @@ async function main() {
         console.log('PASS mobile website keeps existing navigation and does not fetch the video catalog'); await context.close(); continue;
       }
       await page.getByRole('heading', { name: 'Stories worth watching.' }).waitFor();
-      const studioShortcut = page.getByRole('link', { name: /Creator studio/ });
+      assert.equal(await page.getByRole('link', { name: /Creator studio/i }).count(), 0);
+      await page.locator('[data-preview-id="free-film"]').evaluate(el=>el.scrollIntoView({block:'center'}));
+      await page.waitForFunction(()=>document.querySelectorAll('.watch-feed-preview video').length===1);
+      assert.equal(await page.locator('.watch-feed-preview video').evaluate(el=>el.muted&&el.playsInline),true);
+      await page.locator('[data-preview-id="short-film"]').evaluate(el=>el.scrollIntoView({block:'center'}));
+      await page.waitForFunction(()=>document.querySelector('[data-preview-id="short-film"] video'));
+      assert.equal(await page.locator('.watch-feed-preview video').count(),1);
+      await page.emulateMedia({reducedMotion:'reduce'});
+      await page.waitForFunction(()=>!document.querySelector('.watch-feed-preview video'));
+      await page.emulateMedia({reducedMotion:'no-preference'});
+      await page.getByRole('button',{name:'Video previews: On'}).click();
+      await page.waitForFunction(()=>!document.querySelector('.watch-feed-preview video'));
+      await page.evaluate(()=>window.navigate('/profile'));
+      const studioShortcut = page.getByRole('link', { name: /Creator studio/i });
       assert.equal(await studioShortcut.getAttribute('href'), '/author/start?view=web&studio=video');
       assert.equal(await studioShortcut.getAttribute('target'), '_blank');
+      await page.evaluate(()=>window.navigate('/watch'));
       await page.getByRole('heading', { name: 'Stories of home' }).waitFor();
       assert.equal(await page.getByRole('navigation', { name: 'Reader navigation' }).getByRole('link').count(), 3);
       for (const theme of ['light', 'dark']) {
@@ -88,13 +107,16 @@ async function main() {
       await page.getByRole('searchbox').fill('ሙዚቃ'); assert.equal(await page.locator('.watch-card').count(), 1);
       await page.getByRole('heading', { name: 'ሙዚቃ ሃገረይ' }).click();
       await page.getByRole('button', { name: /Buy.*coming soon/ }).waitFor(); assert.equal(await page.getByRole('button', { name: /Buy.*coming soon/ }).isDisabled(), true);
-      await page.getByRole('button', { name: 'Watch trailer' }).click(); await page.getByText('Provider playback fixture').waitFor();
+      await page.getByText('Provider playback fixture').waitFor();
+      assert.equal(await page.locator('[data-autoplay]').getAttribute('data-autoplay'),'true');
+      await page.getByRole('heading',{name:'More to watch'}).waitFor();
+      assert.equal(await page.locator('.watch-related [data-preview-id="paid-film"]').count(),0);
       await page.getByRole('button', { name: 'Advance video' }).click();
       assert.equal(calls.filter(call => call.body?.includes('"progress"')).length, 0, 'Trailers must not overwrite full-video progress');
       await page.evaluate(() => window.navigate('/watch/free-film'));
       await page.getByRole('button', { name: 'Save', exact: true }).click(); await page.getByRole('button', { name: 'Saved', exact: true }).waitFor(); assert.equal(saved, true);
       await page.getByRole('button', { name: 'Follow · free', exact: true }).click(); await page.getByRole('button', { name: 'Following', exact: true }).waitFor(); assert.equal(following, true);
-      await page.getByRole('button', { name: 'Watch now · Free' }).click(); await page.getByRole('button', { name: 'Advance video' }).click();
+      await page.getByText('Provider playback fixture').waitFor(); await page.getByRole('button', { name: 'Advance video' }).click();
       await page.waitForFunction(() => document.querySelector('.watch-player'));
       await page.getByRole('button', { name: 'Pause video' }).click(); assert.equal(seconds, 45);
       await page.getByRole('button', { name: 'Report this video' }).click(); await page.getByRole('dialog').waitFor();
@@ -141,6 +163,8 @@ async function main() {
     const offer = { productId: 'afrobooks_video_test', accountId: 'a'.repeat(64), testOnly: true };
     await billingPage.route('**/api/watch**', async route => {
       const url = new URL(route.request().url());
+      if(url.searchParams.get('view')==='related')return route.fulfill({json:{videos:[]}});
+      if(url.pathname.endsWith('/playback'))return route.fulfill({json:{token:'BILLING-FIXTURE',expiresAt:9999999999,seconds:0,duration:180}});
       if (url.pathname === '/api/watch/play') {
         const body = route.request().postDataJSON();
         if (body.action === 'prepare') return route.fulfill({ json: offer });

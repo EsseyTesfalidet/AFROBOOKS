@@ -6,7 +6,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { initializeTestEnvironment, assertFails, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { createWatchUpload, getWatchCatalog, getWatchDetail, getWatchHostingStatus, getWatchLibrary, getWatchStudio, saveWatchDraft, setWatchCaptions, setWatchPoster, watchAction, watchPlayback } from '../lib/server/watch';
+import { createWatchUpload, getWatchCatalog, getWatchDetail, getWatchHostingStatus, getWatchLibrary, getWatchRelated, getWatchStudio, saveWatchDraft, setWatchCaptions, setWatchPoster, watchAction, watchFeedPreview, watchPlayback } from '../lib/server/watch';
 import type { AuthenticatedRequestUser } from '../lib/server/auth';
 import { processWatchSubmissions } from '../lib/server/watchProcessing';
 
@@ -30,6 +30,24 @@ const creator = actor('creator', 'seller'); const staff = actor('staff', 'admin'
 const draft = { title: 'Music across generations', description: 'An original film about music and memories in Eritrea.', category: 'Documentaries', language: 'Tigrinya', priceCents: 249, newsDate: '', rightsStatement: 'Our studio owns the film and all music is licensed for distribution.', rightsAccepted: true };
 const action = (who: AuthenticatedRequestUser, name: string, data: unknown) => watchAction(who, { action: name, data });
 async function newVideo(priceCents = 249) { return (await saveWatchDraft(creator, { ...draft, priceCents })).id; }
+test('feed previews respect paid access and suggestions only include other published videos', async () => {
+  const paid = await readyVideo();
+  const free = await readyVideo(0); const unpublished = await newVideo(0);
+  assert.deepEqual(await watchFeedPreview(reader, paid), { playback: null });
+  const full = await watchFeedPreview(reader, free);
+  assert.equal(full.playback?.seconds, 0); assert.equal(full.trailer, false);
+  await db.doc(`watchPrivate/${paid}`).update({ trailer: { ready: true, uid: 'b'.repeat(32), duration: 30 } });
+  await db.doc(`watchVideos/${paid}`).update({ hasTrailer: true });
+  const preview = await watchFeedPreview(reader, paid);
+  assert.equal(preview.trailer, true); assert.equal(preview.playback?.duration, 30);
+  assert.equal((await db.collection(`watchStates/${reader.uid}/videos`).get()).size, 0, 'Previews must not save progress or enter watch history');
+  await assert.rejects(watchFeedPreview(reader, unpublished), /unavailable/);
+  const related = await getWatchRelated(reader, paid);
+  assert.deepEqual(related.videos.map(video => video.id), [free]);
+  assert.doesNotMatch(JSON.stringify(related), /uploadUrl|rightsStatement|TEST-PLAYBACK-TOKEN/);
+  await db.doc(`watchVideos/${free}`).update({ status: 'removed' });
+  assert.equal((await getWatchRelated(reader, paid)).videos.length, 0);
+});
 test('orphan recovery protects completed and unrelated files and releases quota exactly once after deletion', async () => {
   const id = await newVideo(); const uid = 'f'.repeat(32); const data = { id, uid, kind: 'full' };
   await db.doc(`watchPrivate/${id}`).update({ fullPending: true });

@@ -4,9 +4,21 @@ import { captionSchema, posterMime, publicVideo, uploadSchema, videoAccess, vide
 import type { WatchVideo } from '../types/video';
 import { mobileReturnPath } from '../lib/auth/mobileAccess';
 import { watchBytes } from '../lib/server/watchHttp';
+import { relatedVideos } from '../lib/watch/discovery';
 
 const video: WatchVideo = { id: 'film', creatorId: 'creator', creatorName: 'Studio', title: 'Test film', description: 'An original documentary about music.', category: 'Documentaries', language: 'Tigrinya', priceCents: 249, currency: 'usd', posterUrl: '', durationSeconds: 300, hasTrailer: true, status: 'published', publishedAt: 10, newsDate: '', updatedAt: 10 };
 const draft = { title: video.title, description: video.description, category: video.category, language: video.language, priceCents: 249, newsDate: '', rightsStatement: 'Our studio owns all footage and has licensed the music.', rightsAccepted: true };
+
+test('related videos rank shared creator, category and language without suggesting unpublished or current videos', () => {
+  const candidates: WatchVideo[] = [video, { ...video, id: 'draft', status: 'draft' },
+    { ...video, id: 'unrelated', creatorId: 'other', language: 'English', category: 'Music' },
+    { ...video, id: 'language', creatorId: 'other', category: 'Music' },
+    { ...video, id: 'category', creatorId: 'other', language: 'English' },
+    { ...video, id: 'creator', category: 'Music', language: 'English' }];
+  assert.deepEqual(relatedVideos(video, candidates).map(item => item.id), ['creator', 'category', 'language', 'unrelated']);
+  assert.equal(relatedVideos(video, candidates, 2).length, 2);
+  assert.equal(candidates[0], video);
+});
 
 test('paid full films stay private while separate trailers are available', () => {
   assert.equal(videoAccess(video, 'viewer', false, false), false);

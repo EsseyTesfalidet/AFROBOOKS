@@ -12,6 +12,7 @@ import { getVideoPayoutOverview, payVideoCreator, registerVideoFunding, runVideo
 import { videoPayoutGateway } from './watchPayoutGateway';
 import { removeWatchVideo, requestWatchRevision, reviewWatchRevision, withdrawWatchRevision } from './watchManagement';
 import { recoverWatchUpload } from './watchUploadRecovery';
+import { relatedVideos } from '@/lib/watch/discovery';
 import type { WatchCreator, WatchPrivate, WatchState, WatchVideo } from '@/types/video';
 
 type Actor = AuthenticatedRequestUser;
@@ -83,6 +84,23 @@ export async function getWatchLibrary(actor: Actor) {
     if (!purchased.has(doc.id) && video.status !== 'published') return [];
     return [{ video: publicVideo(video), state: { ...EMPTY_WATCH_STATE, owned: purchased.has(doc.id), saved: state?.saved === true, seconds: Math.min(video.durationSeconds, Math.max(0, state?.seconds || 0)) } }];
   }), limited: states.size === 100 || purchases.size === 100 };
+}
+export async function getWatchRelated(actor: Actor, id: string) {
+  const { video } = await getWatchDetail(actor, id);
+  const db = await getAdminDb();
+  const candidates = await db.collection('watchVideos').where('status', '==', 'published').limit(100).get();
+  return { videos: relatedVideos(video, candidates.docs.map(row => publicVideo(row.data() as WatchVideo))) };
+}
+
+export async function watchFeedPreview(actor: Actor, id: string) {
+  const { video, canPlay } = await getWatchDetail(actor, id);
+  if (video.status !== 'published' || !streamConfigured()) return { playback: null };
+  // A muted preview is still playback: never issue a paid full-video token to
+  // a reader without access. The regular playback function rechecks purchases.
+  const trailer = video.hasTrailer;
+  if (!trailer && !canPlay) return { playback: null };
+  const playback = await watchPlayback(actor, id, trailer);
+  return { playback: { ...playback, seconds: 0 }, trailer };
 }
 export async function getWatchStudio(actor: Actor) {
   author(actor);

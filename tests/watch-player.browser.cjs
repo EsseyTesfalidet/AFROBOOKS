@@ -7,13 +7,15 @@ async function main() {
   const manifest = await (await fetch(demo, { signal: AbortSignal.timeout(15000) })).text();
   assert.ok(manifest.startsWith('#EXTM3U'));
   const bundle = await build({ bundle: true, write: false, platform: 'browser', format: 'iife', loader: { '.css': 'empty' }, define: { 'process.env': '{}', 'process.env.NODE_ENV': '"production"' }, stdin: { resolveDir: process.cwd(), loader: 'tsx', contents: `
-    import React from 'react';import {createRoot} from 'react-dom/client';import Player from './components/watch/WatchPlayer';import {useAuthStore} from './store/authStore';
+    import React from 'react';import {createRoot} from 'react-dom/client';import Player from './components/watch/WatchPlayer';import Feed from './components/watch/WatchFeed';import {useAuthStore} from './store/authStore';
     window.fixture={calls:[],denyRetry:false};window.setAccount=uid=>useAuthStore.setState({firebaseUser:uid?{uid}:null});window.setAccount('reader');
-    createRoot(document.getElementById('root')).render(<main className="watch-page watch-detail"><h1>AfroBooks Screen</h1><Player id="film" title="Sprite Fight · Player preview" trailer={location.search.includes('trailer')} playback={{token:'fixture',seconds:20,duration:600,expiresAt:0}}/></main>);
+    const rows=[{id:'one',title:'First preview'},{id:'two',title:'Second preview'},{id:'three',title:'Third preview'}];
+    createRoot(document.getElementById('root')).render(location.search.includes('feed')?<main className="watch-page" style={{paddingBlock:'50vh'}}><Feed videos={rows}/></main>:<main className="watch-page watch-detail"><h1>AfroBooks Screen</h1><Player id="film" title="Sprite Fight · Player preview" autoPlay={location.search.includes('autoplay')} trailer={location.search.includes('trailer')} playback={{token:'fixture',seconds:20,duration:600,expiresAt:0}}/></main>);
   ` }, plugins: [{ name: 'player-http-boundary', setup(b) {
     b.onResolve({ filter: /^(\.\/WatchUI|@\/lib\/firebase\/request)$/ }, () => ({ path: 'network', namespace: 'network' }));
-    b.onLoad({ filter: /.*/, namespace: 'network' }, () => ({ contents: `
-      export async function authenticatedPost(path,body){const f=window.fixture;f.calls.push({path,body});if(path.endsWith('/playback')){if(f.denyRetry)throw Error('Purchase access is required to watch this video.');return{token:'fixture-retry',seconds:3,duration:600,expiresAt:9999999999}}return{ok:true}};
+    b.onLoad({ filter: /.*/, namespace: 'network' }, () => ({ loader:'jsx',resolveDir:process.cwd(),contents: `
+      import React from 'react';export function WatchCard({video,preview}){return <article><div data-preview-id={video.id} className="watch-art">{preview}</div><h2>{video.title}</h2></article>}
+      export async function authenticatedPost(path,body){const f=window.fixture;f.calls.push({path,body});if(body.preview)return{playback:{token:'preview-fixture',seconds:0,duration:600,expiresAt:9999999999},trailer:true};if(path.endsWith('/playback')){if(f.denyRetry)throw Error('Purchase access is required to watch this video.');return{token:'fixture-retry',seconds:3,duration:600,expiresAt:9999999999}}return{ok:true}};
       export const watchActionRequest=(action,data)=>authenticatedPost('/api/watch/action',{action,data});
     ` }));
   } }] });
@@ -33,6 +35,7 @@ async function main() {
       const body = manifest.split('\n').map(line => line.startsWith('#EXT-X-STREAM-INF:') ? line + ',SUBTITLES="subs"' : line && !line.startsWith('#') ? new URL(line, demo).href : line).join('\n').replace('#EXTM3U', `#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Tigrinya",LANGUAGE="ti",AUTOSELECT=NO,DEFAULT=NO,URI="${base}/subs.m3u8"`);
       return route.fulfill({ contentType: 'application/vnd.apple.mpegurl', headers: { 'Access-Control-Allow-Origin': '*' }, body });
     });
+    if (!process.env.DISCOVERY_ONLY) {
     await page.goto(base); await page.waitForFunction(() => document.querySelector('[data-media-player]')?.hasAttribute('data-can-play'), { timeout: 45000 });
     const video = page.locator('video'); const surface = page.locator('[data-media-player]');
     await page.waitForFunction(() => { const el = document.querySelector('video'); return Math.abs(el.currentTime - 20) < 1 && !el.seeking && el.readyState >= 3; });
@@ -79,8 +82,34 @@ async function main() {
     await page.getByRole('button', { name: 'Retry playback' }).click();
     await page.waitForFunction(time => { const el = document.querySelector('video'); return el?.readyState >= 2 && Math.abs(el.currentTime - time) < 1; }, before, { timeout: 45000 });
     await page.evaluate(() => window.setAccount('another-reader')); await page.locator('video').waitFor({ state: 'detached' });
+    }
+    await page.goto(base+'?autoplay');
+    await page.locator('[data-media-player]').waitFor();
+    // An explicit user gesture allows the requested detail playback with sound.
+    await page.mouse.click(10,10);
+    await page.waitForFunction(()=>{const video=document.querySelector('video');return video&&!video.paused&&video.currentTime>20;},null,{timeout:45000});
+    await page.goto(base+'?feed');
+    await page.locator('[data-preview-id="one"]').evaluate(el=>el.scrollIntoView({block:'center'}));
+    await page.waitForFunction(()=>{const video=document.querySelector('[data-preview-id="one"] video');return video&&video.muted&&!video.paused&&video.currentTime>.2;},null,{timeout:45000});
+    await page.locator('[data-preview-id="two"]').evaluate(el=>el.scrollIntoView({block:'center'}));
+    await page.waitForFunction(()=>{const video=document.querySelector('[data-preview-id="two"] video');return video&&video.muted&&!video.paused&&video.currentTime>.2;},null,{timeout:45000});
+    assert.equal(await page.locator('video').count(),1,'Only the centered preview is mounted');
+    await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});document.dispatchEvent(new Event('visibilitychange'))});
+    await page.locator('video').waitFor({state:'detached'});
+    await page.evaluate(()=>{delete document.visibilityState;document.dispatchEvent(new Event('visibilitychange'))});
+    await page.waitForFunction(()=>{const video=document.querySelector('video');return video&&!video.paused&&video.currentTime>.2;},null,{timeout:45000});
+    await page.locator('video').evaluate(el=>el.currentTime=20.2);
+    await page.waitForFunction(()=>document.querySelector('video').paused);
+
+    assert.equal(await page.evaluate(()=>window.fixture.calls.filter(c=>c.body.action==='progress').length),0,'Browsing does not write watch progress');
+    await page.emulateMedia({reducedMotion:'reduce'});
+    await page.locator('video').waitFor({state:'detached'});
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await page.getByRole('button',{name:'Video previews: On'}).click();
+    await page.locator('video').waitFor({state:'detached'});
     assert.deepEqual(errors, []);
-    console.log('PASS real HLS decoding, resume, play/pause, touch skip controls, settings, fullscreen, themes/rotation, retry preserving position and account switching.');
+    console.log('PASS muted HLS feed previews, centered switching, one active player, no watch-history writes, reduced motion and preview toggle.');
+    if (!process.env.DISCOVERY_ONLY) console.log('PASS real HLS decoding, resume, play/pause, touch skip controls, settings, fullscreen, themes/rotation, retry preserving position and account switching.');
   } catch (error) {
     const page = browser.contexts().flatMap(context => context.pages())[0]; if (page) { console.log((await page.locator('body').innerText()).slice(0, 1800)); console.log(await page.locator('video').evaluate(el => ({time:el.currentTime,duration:el.duration,ready:el.readyState,paused:el.paused})).catch(()=>({}))); await page.screenshot({ path: '.vercel/watch-player-failure.png' }); }
     throw error;

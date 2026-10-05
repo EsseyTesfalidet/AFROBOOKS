@@ -1,5 +1,24 @@
 # Screen player and clip uploads
 
+## Screen discovery
+
+The installed app feed previews one centered, mostly visible card after a short
+scroll pause. Previews are muted, play for up to 20 seconds, do not write watch
+history, and stop when leaving the viewport or opening Profile. They respect
+reduced motion, supported Data Saver settings, slow connections, offline state
+and tab visibility. Readers can switch previews off. Preview tokens are cached
+only within the current account's mounted feed and normal paid access checks
+still apply: a separate trailer is preferred; full video requires access.
+
+Opening a video requests playback immediately, using the full video for readers
+with access or a trailer otherwise. Browser autoplay restrictions can require
+one tap on Play. Creator/admin review players retain manual playback. Related
+published videos appear below the description, ranked by creator, category and
+language from a bounded set of up to 100 catalog entries. Creator Studio is in
+the installed app Profile, using the existing website handoff and return flow.
+
+Reference: [Vidstack autoplay](https://vidstack.io/docs/player/api/autoplay/).
+
 The installed app's Screen player uses Vidstack with locally bundled hls.js to play Cloudflare Stream's signed HLS source. Controls sit over the video: central play/pause, 10-second skips, touch double-tap seeking, timeline scrubbing, fullscreen, and picture in picture where supported. The settings menu offers playback speed, available quality levels and available caption tracks. Videos retain their aspect ratio. Controls remain consistent when rotating the phone, with reduced-motion support.
 
 Playback still requires the existing server authorization. Retry requests a fresh signed token and checks access again. Changing accounts removes the old player. Resume writes are serialized and throttled, with forced saves on pause/seek and best-effort saves when leaving. Trailers do not overwrite the main video's progress. Signing is access control, not DRM; already-issued tokens remain valid until expiry.
