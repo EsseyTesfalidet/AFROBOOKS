@@ -42,7 +42,7 @@ export function WatchFeedback({ loading, error, retry }: { loading?: boolean; er
 export function WatchEmpty({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
   return <section className="watch-empty"><Film size={34} aria-hidden="true" /><h2>{title}</h2><p>{text}</p>{action && <div className="watch-empty-action">{action}</div>}</section>;
 }
-export function WatchCard({ video, state, preview }: { video: WatchVideo; state?: WatchState; preview?: ReactNode }) {
+export function WatchCard({ video, state, preview, compact = false }: { video: WatchVideo; state?: WatchState; preview?: ReactNode; compact?: boolean }) {
   const [menu, setMenu] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -63,12 +63,12 @@ export function WatchCard({ video, state, preview }: { video: WatchVideo; state?
       else { await navigator.clipboard.writeText(url); setNotice('Video link copied.'); }
     } catch (failure) { if ((failure as Error).name !== 'AbortError') setError('The link could not be shared. Please try again.'); }
   }
-  return <article className="watch-card"><Link href={`/watch/${video.id}`} className="watch-card-link">
+  return <article className={`watch-card${compact ? ' watch-card-compact' : ''}`}><Link href={`/watch/${video.id}`} className="watch-card-link">
     <div className="watch-art" data-preview-id={video.id}><WatchPoster video={video} />{preview}
       <span className="watch-duration">{videoDuration(video.durationSeconds)}</span>
       <span className="watch-play"><Play size={18} fill="currentColor" aria-hidden="true" /></span>
       {state && state.seconds > 0 && <span className="watch-progress" role="progressbar" aria-label="Watch progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(1, state.seconds / Math.max(1, video.durationSeconds)) * 100)}><i style={{ width: `${Math.min(1, state.seconds / Math.max(1, video.durationSeconds)) * 100}%` }} /></span>}
-    </div><div className="watch-card-meta"><span className="watch-avatar" aria-hidden="true">{video.creatorName.slice(0, 1)}</span><div><h2 dir="auto">{video.title}</h2><p dir="auto">{video.creatorName}</p><div className="watch-card-tags"><span>{video.category === 'Documentaries' ? 'Doc' : video.category} · {video.language}</span><strong>{state?.owned ? 'Purchased' : videoPrice(video.priceCents)}</strong>{(state?.saved || saved) && <Bookmark size={14} aria-label="Saved" fill="currentColor" />}</div></div></div>
+    </div><div className="watch-card-meta"><span className="watch-avatar" aria-hidden="true">{video.creatorName.slice(0, 1)}</span><div><h2 dir="auto">{video.title}</h2><p dir="auto">{video.creatorName}</p><div className="watch-card-tags"><span>{video.category === 'Documentaries' ? 'Doc' : video.category} · {video.language}</span><strong>{state?.owned ? 'Purchased' : videoPrice(video.priceCents)}</strong>{(state?.saved || saved) && <Bookmark size={14} aria-label="Saved" fill="currentColor" />}</div>{state && state.seconds > 0 && <p className="watch-card-resume">{state.seconds >= video.durationSeconds ? 'Watched' : `${videoDuration(Math.max(0, video.durationSeconds - state.seconds))} left`}</p>}</div></div>
   </Link><button type="button" className="watch-card-options" aria-label={`Options for ${video.title}`} aria-haspopup="dialog" aria-expanded={menu} onClick={() => { setMenu(true); setError(''); setNotice(''); appHaptic(); }}><MoreHorizontal size={22} aria-hidden="true" /></button>
     {menu && <WatchSheet title={video.title} close={() => setMenu(false)}><div className="watch-card-menu"><button disabled={busy || saved || state?.saved} onClick={() => void save()}>{saved || state?.saved ? <Check size={20} /> : <Bookmark size={20} />}<span>{saved || state?.saved ? 'Saved in your library' : busy ? 'Saving…' : 'Save to video library'}</span></button><button onClick={() => void share()}><Share2 size={20} /><span>Share video</span></button><Link href={`/watch/creator/${video.creatorId}`} onClick={() => setMenu(false)}><UserRound size={20} /><span>Visit creator channel</span></Link></div><WatchFeedback error={error} />{notice && <p role="status" className="watch-muted">{notice}</p>}</WatchSheet>}
   </article>;

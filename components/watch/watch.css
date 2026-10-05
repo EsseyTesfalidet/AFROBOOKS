@@ -125,6 +125,98 @@ html[data-app-mode='installed'] .watch-discovery { padding:16px 12px 32px; }
 .watch-card-menu button:disabled { color:var(--app-muted); cursor:default; }
 .watch-card-menu svg { flex:none; color:var(--app-accent); }
 .watch-sheet-inner>h2 { padding-right:44px; line-height:1.4; }
+/* Keep the player in reach while the viewer explores below. */
+html[data-app-mode='installed'] .watch-viewing { padding:0 18px 32px; }
+.watch-detail-topline { display:flex; align-items:center; gap:10px; min-height:48px; }
+.watch-detail-topline .watch-back { margin:0; font-size:13px; font-weight:600; }
+.watch-detail-topline .watch-icon { background:transparent; }
+.watch-now-label { margin-inline-start:auto; font-size:10px; font-weight:600; color:var(--app-muted); }
+.watch-detail-player { position:relative; margin:0 -18px; background:var(--app-canvas); z-index:30; }
+.watch-detail-player[data-playing=true] { position:sticky; top:var(--watch-header-height,65px); }
+html[data-app-mode='installed'] .mobile-app-viewport[data-watch-playing=true] { scroll-padding-top:var(--watch-sticky-inset,76px); }
+.watch-detail-player :is(.watch-player,.watch-art) { border-radius:0; }
+.watch-detail-player .afro-cinema { --video-border-radius:0; }
+.watch-detail-player .watch-player-section>p { padding:8px 14px; font-size:12px; margin:0; }
+.watch-viewing .watch-detail-heading h1 { font-size:clamp(20px,5.4vw,25px); line-height:1.4; font-weight:750; margin-top:20px; letter-spacing:-.035em; text-wrap:initial; }
+.watch-viewing .watch-detail-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; font-size:11px; margin:8px 0 18px; }
+.watch-owned { display:inline-flex; align-items:center; gap:4px; color:var(--app-success); }
+.watch-viewing .watch-creator { border:0; padding:0; gap:12px; }
+.watch-viewing .watch-creator-link { display:flex; align-items:center; gap:10px; min-width:0; flex:1; }
+.watch-creator-link>span:last-child { min-width:0; }
+.watch-creator-link strong { display:block; font-size:14px; line-height:1.4; }
+.watch-creator-link small { display:block; font-size:10px; font-weight:400; color:var(--app-muted); margin-top:3px; }
+.watch-creator-link .watch-avatar { width:40px; height:40px; }
+.watch-follow { flex:none; border-radius:24px; padding:10px 16px; min-height:44px; font-size:12px; background:var(--app-inverse); color:var(--app-on-inverse); border-color:transparent; }
+.watch-follow[aria-pressed=true] { background:var(--app-field); color:var(--app-text); border-color:var(--app-line); }
+.watch-viewing-actions { margin:18px 0 12px; gap:8px; }
+.watch-viewing-actions .watch-button { border-radius:24px; min-height:44px; font-size:12px; }
+.watch-social-actions { display:flex; gap:8px; margin:16px 0; overflow-x:auto; }
+.watch-social-actions .watch-button { flex:1; white-space:nowrap; min-height:44px; border-radius:24px; background:var(--app-field); border-color:transparent; font-size:12px; padding:10px 14px; }
+.watch-social-actions .watch-button[aria-pressed=true] { color:var(--app-accent); background:var(--app-accent-surface); }
+.watch-description-panel { background:var(--app-field); border-radius:16px; padding:0 14px; margin:18px 0 24px; }
+.watch-description-panel summary { display:flex; align-items:center; justify-content:space-between; gap:14px; min-height:68px; list-style:none; cursor:pointer; font-size:13px; font-weight:650; }
+.watch-description-panel summary::-webkit-details-marker { display:none; }
+.watch-description-panel summary>span { min-width:0; }
+.watch-description-panel summary small { display:block; font-size:12px; font-weight:400; color:var(--app-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:5px; }
+.watch-description-panel summary svg { flex:none; }
+.watch-description-panel[open] summary small { display:none; }
+.watch-description-panel[open] summary svg { transform:rotate(180deg); }
+.watch-description-panel .watch-description { margin:0; padding-bottom:18px; font-size:13px; line-height:1.85; }
+.watch-description-panel .watch-muted { padding-bottom:14px; font-size:11px; }
+.watch-description-panel summary:focus-visible { outline:2px solid var(--app-accent); outline-offset:4px; border-radius:12px; }
+.watch-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+.watch-section-heading h2 { font-size:19px; letter-spacing:-.035em; }
+.watch-section-heading a { display:flex; align-items:center; gap:4px; min-height:44px; font-size:11px; color:var(--app-accent); }
+.watch-video-list { display:grid; gap:20px; }
+.watch-card-compact .watch-card-link { display:grid; grid-template-columns:40% minmax(0,1fr); gap:12px; align-items:start; }
+.watch-card-compact .watch-art { border-radius:12px; }
+.watch-card-compact .watch-play { width:30px; height:30px; }
+.watch-card-compact .watch-play svg { width:13px; }
+.watch-card-compact .watch-duration { font-size:9px; padding:2px 4px; bottom:5px; right:5px; }
+.watch-card-compact .watch-card-meta { display:block; padding:0 26px 0 0; margin:0; }
+.watch-card-compact .watch-avatar { display:none; }
+.watch-card-compact h2 { font-size:13px; line-height:1.4; }
+.watch-card-compact p { font-size:10px; margin-top:4px; }
+.watch-card-compact .watch-card-tags { font-size:9px; gap:5px; }
+.watch-card-compact .watch-card-tags>span { display:none; }
+.watch-card-compact .watch-card-options { top:-8px; inset-inline-end:-12px; width:40px; height:44px; }
+.watch-card .watch-card-resume { color:var(--app-accent); font-size:10px; font-weight:600; margin-top:6px; }
+.watch-channel-header { margin:0 8px 24px; }
+.watch-channel-banner { height:104px; border-radius:20px; overflow:hidden; position:relative; background:linear-gradient(120deg,var(--app-accent-surface),var(--app-field)); border:1px solid var(--app-line); }
+.watch-channel-banner:after { content:''; position:absolute; width:240px; height:240px; border:1px solid color-mix(in srgb,var(--app-accent) 16%,transparent); border-radius:50%; top:-170px; inset-inline-end:70px; box-shadow:0 0 0 30px color-mix(in srgb,var(--app-accent) 3%,transparent),0 0 0 65px color-mix(in srgb,var(--app-accent) 3%,transparent); }
+.watch-channel-banner>svg { position:absolute; inset-inline-end:25px; bottom:-10px; transform:rotate(-12deg); color:var(--app-accent); opacity:.25; }
+.watch-channel-identity { display:flex; align-items:center; gap:14px; margin: -25px 12px 0; position:relative; }
+.watch-channel-avatar { display:grid; place-items:center; flex:none; width:74px; height:74px; border:5px solid var(--app-canvas); border-radius:50%; background:var(--app-accent-surface); color:var(--app-accent); font-size:29px; font-weight:700; }
+.watch-channel-identity>div { padding-top:25px; min-width:0; }
+.watch-channel-header h1 { font-size:23px; }
+.watch-channel-about { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:18px; }
+.watch-channel-about p { font-size:12px; color:var(--app-muted); line-height:1.6; }
+html[data-app-mode='installed'] .watch-library { padding-top:22px; }
+.watch-library .watch-intro { margin-bottom:22px; }
+.watch-library h1 { font-size:27px; }
+.watch-library .watch-eyebrow { font-size:9px; margin-bottom:4px; }
+.watch-library .watch-format-tabs { margin-bottom:20px; padding:4px; border-radius:24px; }
+.watch-library .watch-format-tabs a { border-radius:20px; font-size:12px; }
+.watch-resume-section { padding:15px; border:1px solid var(--app-line); border-radius:19px; margin-bottom:22px; background:var(--app-surface); }
+.watch-resume-section>.watch-eyebrow { margin-bottom:12px; }
+.watch-resume-card { display:grid; grid-template-columns:36% minmax(0,1fr); gap:13px; align-items:center; }
+.watch-resume-card .watch-art { border-radius:10px; }
+.watch-resume-card .watch-play { width:30px; height:30px; }
+.watch-resume-card strong { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:13px; line-height:1.4; }
+.watch-resume-card p { font-size:10px; color:var(--app-muted); margin-top:5px; }
+.watch-resume-card>div:last-child>span { display:block; color:var(--app-accent); font-size:10px; margin-top:5px; font-weight:650; }
+.watch-library-filters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:20px; }
+.watch-library-filters button { display:flex; flex-direction:column; justify-content:center; gap:9px; min-height:78px; padding:10px 12px; border-radius:15px; background:var(--app-field); color:var(--app-muted); border:1px solid transparent; text-align:start; }
+.watch-library-filters button>span:first-child { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.watch-library-filters button>span:last-child { font-size:10px; font-weight:600; }
+.watch-library-filters b { font-size:13px; font-variant-numeric:tabular-nums; }
+.watch-library-filters button[aria-pressed=true] { color:var(--app-accent); background:var(--app-accent-surface); border-color:color-mix(in srgb,var(--app-accent) 20%,transparent); }
+.watch-library-search { margin:0 0 22px; background:var(--app-field); border-color:transparent; }
+.watch-library-search input { font-size:14px; }
+.watch-library-search button { display:grid; place-items:center; min-width:44px; height:44px; }
+.watch-library-restore { margin-top:28px; }
+@media(min-width:640px) { .watch-detail-player { margin-inline:0; } .watch-detail-player :is(.watch-player,.watch-art) { border-radius:18px; } .watch-detail-player .afro-cinema { --video-border-radius:18px; } .watch-video-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; } .watch-viewing .watch-video-list { grid-template-columns:1fr; } .watch-card-compact h2 { font-size:15px; } }
+@media(orientation:landscape) and (max-height:500px) { .watch-detail-player[data-playing=true] { position:relative; top:auto; } html[data-app-mode='installed'] .mobile-app-viewport[data-watch-playing=true] { scroll-padding-top:76px; } }
 @media (min-width:640px) { html[data-app-mode='installed'] .watch-discovery { padding-inline:20px; } .watch-discovery-controls { margin-inline:0; } }
 @media (orientation:landscape) and (max-height:500px) {
   .watch-discovery-controls { position:static; }

@@ -5,6 +5,18 @@ export function streamPlaybackSource(token: string) {
   return `https://videodelivery.net/${encodeURIComponent(token)}/manifest/video.m3u8`;
 }
 
+// The player already holds authorized, expiring access to this exact video.
+// Vidstack loads the current preview image as the user scrubs, not all frames.
+export function streamScrubThumbnails(token: string, duration: number) {
+  if (!token || !Number.isFinite(duration) || duration <= 0) return [];
+  const count = Math.min(120, Math.ceil(duration / 5));
+  const step = duration / count;
+  return Array.from({ length: count }, (_, index) => ({
+    url: `https://videodelivery.net/${encodeURIComponent(token)}/thumbnails/thumbnail.jpg?time=${(index * step).toFixed(3)}s&width=320&height=180&fit=crop`,
+    startTime: index * step, endTime: (index + 1) * step, width: 320, height: 180,
+  }));
+}
+
 export function playbackPosition(seconds: number, duration: number) {
   return Number.isFinite(seconds) && Number.isFinite(duration) && duration > 0 ? Math.min(duration, Math.max(0, seconds)) : 0;
 }

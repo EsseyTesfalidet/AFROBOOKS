@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createWatchProgress, playbackPosition, playbackStart, streamPlaybackSource } from '../lib/watch/playback';
+import { createWatchProgress, playbackPosition, playbackStart, streamPlaybackSource, streamScrubThumbnails } from '../lib/watch/playback';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 test('custom playback uses the signed token on the fixed streaming host', () => {
@@ -44,4 +44,21 @@ test('queued progress cannot move to another signed-in account or save trailer t
   assert.deepEqual(writes, [10]);
   const trailer = createWatchProgress({ initial: 0, duration: 900, isCurrent: () => false, onResult: () => {}, write: async () => assert.fail('Trailer must not save full-video progress') });
   trailer.record(30); await trailer.flush(true);
+});
+
+test('scrub previews use only the authorized token, bound images and cover the complete duration', () => {
+  for (const duration of [.2, 5, 319.63, 720.15, 14400]) {
+    const frames = streamScrubThumbnails('signed/token?private', duration);
+    assert.ok(frames.length > 0 && frames.length <= 120);
+    assert.equal(frames[0].startTime, 0);
+    assert.ok(Math.abs(frames.at(-1)!.endTime - duration) < .00001);
+    for (const frame of frames) {
+      const url = new URL(frame.url);
+      assert.equal(url.pathname, '/signed%2Ftoken%3Fprivate/thumbnails/thumbnail.jpg');
+      assert.ok(parseFloat(url.searchParams.get('time')!) < duration);
+      assert.equal(url.searchParams.get('width'), '320');
+    }
+  }
+  for (const duration of [0, -1, NaN, Infinity]) assert.deepEqual(streamScrubThumbnails('token', duration), []);
+  assert.deepEqual(streamScrubThumbnails('', 30), []);
 });

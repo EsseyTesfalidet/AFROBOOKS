@@ -1,11 +1,11 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { isHLSProvider, MediaPlayer, MediaProvider, Poster, PlayButton, SeekButton, PIPButton, useMediaState, type MediaPlayerInstance } from '@vidstack/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isHLSProvider, MediaPlayer, MediaProvider, Poster, PlayButton, SeekButton, PIPButton, useMediaState, useMediaRemote, type MediaPlayerInstance } from '@vidstack/react';
 import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
 import { WifiOff, Play, Pause, RotateCcw, RotateCw, PictureInPicture2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { authenticatedPost } from '@/lib/firebase/request';
-import { createWatchProgress, playbackPosition, playbackStart, streamPlaybackSource, WATCH_SPEEDS } from '@/lib/watch/playback';
+import { createWatchProgress, playbackPosition, playbackStart, streamPlaybackSource, streamScrubThumbnails, WATCH_SPEEDS } from '@/lib/watch/playback';
 import { watchActionRequest } from './WatchUI';
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
@@ -23,6 +23,15 @@ function TouchPlayControls() {
   </div>;
 }
 
+function QuickSpeed() {
+  const rate = useMediaState('playbackRate');
+  const remote = useMediaRemote();
+  return <button type="button" className="vds-button afro-cinema-speed" aria-label={`Playback speed ${rate}x. Tap to change`} title="Change playback speed" onClick={event => {
+    const index = WATCH_SPEEDS.findIndex(value => value >= rate);
+    remote.changePlaybackRate(WATCH_SPEEDS[(index + 1) % WATCH_SPEEDS.length], event.nativeEvent);
+  }}>{rate}×</button>;
+}
+
 // Remount for a different account, video or full-video/trailer session.
 export default function WatchPlayer(props: Props) {
   const uid = useAuthStore(s => s.firebaseUser?.uid);
@@ -37,6 +46,7 @@ function PlayerSession({ id, playback, trailer = false, preview = false, title =
   const initialPosition = preview ? 0 : playbackStart(playback.seconds, playback.duration);
   const positionRef = useRef(initialPosition);
   const [source, setSource] = useState({ ...playback, seconds: initialPosition, attempt: 0 });
+  const thumbnails = useMemo(() => streamScrubThumbnails(source.token, source.duration), [source.token, source.duration]);
   const [error, setError] = useState(''); const [saveError, setSaveError] = useState('');
   const [ready, setReady] = useState(false); const [buffering, setBuffering] = useState(false);
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine); const [busy, setBusy] = useState(false);
@@ -127,9 +137,9 @@ function PlayerSession({ id, playback, trailer = false, preview = false, title =
       >
         <MediaProvider>{poster && <Poster className="vds-poster" src={poster} alt="" />}</MediaProvider>
         <DefaultVideoLayout icons={defaultLayoutIcons} colorScheme="dark" seekStep={10} playbackRates={[...WATCH_SPEEDS]}
-          menuGroup="bottom" smallLayoutWhen={true} hideQualityBitrate noAudioGain slots={{ googleCastButton: null, airPlayButton: null, chapterTitle: null,
+          menuGroup="bottom" smallLayoutWhen={true} thumbnails={thumbnails} hideQualityBitrate noAudioGain slots={{ googleCastButton: null, airPlayButton: null, chapterTitle: null,
             topControlsGroupStart: <span className="afro-cinema-title" dir="auto">{title}{trailer && <small>Trailer</small>}</span>,
-            smallLayout: { playButton: <TouchPlayControls />, afterFullscreenButton: <PIPButton className="vds-button vds-pip-button" aria-label="Picture in picture"><PictureInPicture2 aria-hidden="true" /></PIPButton> },
+            smallLayout: { playButton: <TouchPlayControls />, beforeCaptionButton: <QuickSpeed />, beforeFullscreenButton: <span className="afro-cinema-spacer" />, afterFullscreenButton: <PIPButton className="vds-button vds-pip-button" aria-label="Picture in picture"><PictureInPicture2 aria-hidden="true" /></PIPButton> },
           }} />
         {failure}
       </MediaPlayer>}

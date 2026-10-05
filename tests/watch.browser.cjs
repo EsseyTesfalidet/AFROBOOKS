@@ -30,7 +30,7 @@ async function main() {
     b.onResolve({ filter: /^hls\.js$/ }, () => ({path:'hls',namespace:'hls-fixture'}));
     b.onLoad({filter:/.*/,namespace:'hls-fixture'},()=>({contents:`export default class Hls{static isSupported(){return true}static Events={MANIFEST_PARSED:'manifest',ERROR:'error'};constructor(){}on(){}loadSource(){}attachMedia(){}stopLoad(){}destroy(){}}`}));
     b.onResolve({ filter: /^@vidstack\/react(?:\/player\/layouts\/default)?$/ }, () => ({ path: 'stream', namespace: 'stream-fixture' }));
-    b.onLoad({ filter: /.*/, namespace: 'stream-fixture' }, () => ({ loader: 'jsx', resolveDir: process.cwd(), contents: `import React,{useEffect,forwardRef} from 'react';export const MediaPlayer=forwardRef(function Player({onTimeUpdate,onPlay,onPause,onCanPlay,currentTime,autoPlay},ref){useEffect(()=>{ref.current={currentTime:currentTime||0,pause:async()=>{}};onCanPlay();return()=>{ref.current=null}},[]);return <div style={{color:'white',padding:20}}><p data-autoplay={String(!!autoPlay)}>Provider playback fixture</p><button onClick={()=>{onPlay();ref.current.currentTime=45;onTimeUpdate()}}>Advance video</button><button onClick={()=>onPause()}>Pause video</button></div>});export const MediaProvider=()=>null;export const Poster=()=>null;export const DefaultVideoLayout=()=>null;export const PlayButton=()=>null;export const SeekButton=()=>null;export const PIPButton=()=>null;export const defaultLayoutIcons={};export const isHLSProvider=()=>false;export const useMediaState=()=>true;` }));
+    b.onLoad({ filter: /.*/, namespace: 'stream-fixture' }, () => ({ loader: 'jsx', resolveDir: process.cwd(), contents: `import React,{useEffect,forwardRef} from 'react';export const MediaPlayer=forwardRef(function Player({onTimeUpdate,onPlay,onPause,onCanPlay,currentTime,autoPlay},ref){useEffect(()=>{ref.current={currentTime:currentTime||0,pause:async()=>{}};onCanPlay();return()=>{ref.current=null}},[]);return <div style={{color:'white',padding:20}}><p data-autoplay={String(!!autoPlay)}>Provider playback fixture</p><button onClick={()=>{onPlay();ref.current.currentTime=45;onTimeUpdate()}}>Advance video</button><button onClick={()=>onPause()}>Pause video</button></div>});export const MediaProvider=()=>null;export const Poster=()=>null;export const DefaultVideoLayout=()=>null;export const PlayButton=()=>null;export const SeekButton=()=>null;export const PIPButton=()=>null;export const defaultLayoutIcons={};export const isHLSProvider=()=>false;export const useMediaState=()=>true;export const useMediaRemote=()=>({changePlaybackRate(){}});` }));
     b.onResolve({ filter: /^@\/lib\/watch\/upload$/ }, () => ({ path: 'metadata', namespace: 'metadata-fixture' }));
     b.onLoad({ filter: /.*/, namespace: 'metadata-fixture' }, () => ({ resolveDir: process.cwd(), contents: `export const readVideoDuration=async()=>119;export {uploadReservation} from './lib/watch/upload';` }));
     b.onResolve({ filter: /^tus-js-client$/ }, () => ({ path: 'tus', namespace: 'tus-fixture' }));
@@ -129,6 +129,17 @@ async function main() {
       await page.getByText('Provider playback fixture').waitFor();
       assert.equal(await page.locator('[data-autoplay]').getAttribute('data-autoplay'),'true');
       await page.getByRole('heading',{name:'More to watch'}).waitFor();
+      await page.locator('.watch-description-panel summary').click();
+      assert.equal(await page.locator('.watch-description-panel').evaluate(el=>el.open),true);
+      for (const theme of ['light','dark']) {
+        await page.evaluate(theme=>window.setTheme(theme),theme);
+        await page.locator('.mobile-app-viewport').evaluate(el=>el.scrollTo({top:0,behavior:'instant'}));
+        await page.screenshot({path:`.vercel/watch-detail-modern-${theme}.png`});
+      }
+      await page.locator('.mobile-app-viewport').evaluate(el=>el.scrollTo({top:340,behavior:'instant'}));
+      const pinned=await page.locator('.watch-detail-player').boundingBox();
+      const header=await page.locator('.buyer-header').boundingBox();
+      assert.ok(Math.abs(pinned.y-(header.y+header.height))<2,'Player stays below the app header while reading details');
       assert.equal(await page.locator('.watch-related [data-preview-id="paid-film"]').count(),0);
       await page.getByRole('button', { name: 'Advance video' }).click();
       assert.equal(calls.filter(call => call.body?.includes('"progress"')).length, 0, 'Trailers must not overwrite full-video progress');
@@ -143,10 +154,20 @@ async function main() {
       await page.getByText('Your report has been sent for review.').waitFor();
       await page.evaluate(() => window.navigate('/library/videos'));
       await page.getByRole('heading', { name: 'Stories of home' }).waitFor();
+      await page.locator('.watch-resume-card').waitFor();
+      await page.getByRole('searchbox',{name:'Search your videos'}).fill('no such video');
+      await page.getByRole('heading',{name:'No matching videos'}).waitFor();
+      await page.getByRole('button',{name:'Clear library search'}).click();
+      await page.screenshot({path:'.vercel/watch-library-modern.png'});
       await page.getByRole('button', { name: 'Continue watching', exact: true }).click(); assert.equal(await page.locator('.watch-card').count(), 1);
       await page.getByRole('button', { name: 'Purchased', exact: true }).click(); await page.getByRole('heading', { name: 'Your video collection starts here' }).waitFor();
       await page.screenshot({ path: '.vercel/watch-empty-library.png' });
       await page.getByRole('link', { name: 'Screen', exact: true }).click();
+      await page.evaluate(()=>window.navigate('/watch/creator/studio'));
+      await page.getByRole('heading',{name:'Original Studio',exact:true}).waitFor();
+      assert.equal(await page.locator('.watch-channel-header .watch-follow').getAttribute('aria-pressed'),'true');
+      await page.screenshot({path:'.vercel/watch-channel-modern.png'});
+      await page.evaluate(()=>window.navigate('/watch'));
       for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport); await page.getByRole('heading', { name: 'Stories of home' }).waitFor();
         const sizing = await page.evaluate(() => ({ body: document.documentElement.scrollWidth, width: innerWidth, scrollbars: getComputedStyle(document.querySelector('.mobile-app-viewport')).scrollbarWidth }));

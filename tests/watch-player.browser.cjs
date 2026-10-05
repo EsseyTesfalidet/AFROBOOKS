@@ -31,7 +31,9 @@ async function main() {
   const browser = await chromium.launch({ headless: true, ...(process.env.EDGE_PATH ? { executablePath: process.env.EDGE_PATH } : {}) });
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true }); page.setDefaultTimeout(15000); const errors = []; page.on('pageerror', error => { errors.push(error.message); console.log('Browser error:', error.stack); });
+    const thumbnailRequests=[];
     await page.route('https://videodelivery.net/**', route => {
+      if(route.request().url().includes('/thumbnails/')) { thumbnailRequests.push(route.request().url()); return route.fulfill({contentType:'image/png',headers:{'Access-Control-Allow-Origin':'*'},body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=','base64')}); }
       const body = manifest.split('\n').map(line => line.startsWith('#EXT-X-STREAM-INF:') ? line + ',SUBTITLES="subs"' : line && !line.startsWith('#') ? new URL(line, demo).href : line).join('\n').replace('#EXTM3U', `#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Tigrinya",LANGUAGE="ti",AUTOSELECT=NO,DEFAULT=NO,URI="${base}/subs.m3u8"`);
       return route.fulfill({ contentType: 'application/vnd.apple.mpegurl', headers: { 'Access-Control-Allow-Origin': '*' }, body });
     });
@@ -53,10 +55,17 @@ async function main() {
     await page.getByRole('button', { name: 'Play', exact: true }).click(); await page.waitForFunction(() => !document.querySelector('video').paused && document.querySelector('video').currentTime > 20.2);
     await surface.hover();
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await page.getByRole('button',{name:'Playback speed 1x. Tap to change',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('video').playbackRate===1.25);
+    const seek=await page.locator('.vds-time-slider').boundingBox();
+    await page.mouse.move(seek.x+seek.width*.35,seek.y+seek.height/2);
+    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.vds-slider-thumbnail img')).some(img=>img.complete&&img.naturalWidth>0));
+    assert.ok(thumbnailRequests.length>0&&thumbnailRequests.length<10,'Scrubbing loads the requested frames rather than the whole set');
+    await page.screenshot({path:'.vercel/watch-player-scrub.png'});
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('menuitem', { name: /Speed/ }).click();
     const speedSlider = page.getByRole('slider', { name: 'Speed', exact: true }); await speedSlider.focus(); await page.keyboard.press('ArrowRight');
-    await page.waitForFunction(() => document.querySelector('video').playbackRate === 1.25);
+    await page.waitForFunction(() => document.querySelector('video').playbackRate === 1.5);
     await page.keyboard.press('Escape');
     await page.getByRole('menuitem', { name: 'Quality', exact: true }).click();
     await page.getByRole('menuitemradio', { name: '360p', exact: true }).click();
