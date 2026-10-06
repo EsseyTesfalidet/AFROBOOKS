@@ -8,7 +8,10 @@ import { getStorage } from 'firebase-admin/storage';
 import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { ref, uploadBytes, getBytes } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { audioAction, audioDetail, audioList, audioPlayback } from '../lib/server/audio';
+import { audioAction, audioDetail, audioList, audioPlayback, audioPreview } from '../lib/server/audio';
+import { generateAudioSample } from '../lib/server/audioSample';
+import { setAudioCover } from '../lib/server/audioCover';
+import { recording } from './audioFixtures';
 import { getPlayOffer, playAccountId, preparePlayPurchase, savePlayProduct, syncPlayPurchase } from '../lib/server/watchPlay';
 import type { PlayPurchase, PlayClient } from '../lib/server/watchPlayClient';
 import type { AuthenticatedRequestUser } from '../lib/server/auth';
@@ -74,6 +77,70 @@ test('invalid recordings and concurrent upload quota are rejected', async () => 
   await assert.rejects(act(creator, 'submit', { id: value.id }), /Finish uploading/);
   await db.doc('audioQuotas/creator').set({ count: 19 });
   const results = await Promise.allSettled([create(), create(), create()]); assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+});
+
+test('automatic samples expose only a short generated file and never unlock paid audio or create progress', async () => {
+  const value = await create(199); const source = await recording(2);
+  await bucket.file(value.path).save(source, { contentType: 'audio/mpeg' });
+  await act(creator, 'finish', { id:value.id, durationSeconds:2 });
+  await assert.rejects(generateAudioSample(stranger,value.id), /another creator/);
+  await assert.rejects(audioPreview(reader,value.id), /unavailable/);
+  await generateAudioSample(creator,value.id); const first = (await db.doc(`audioTitles/${value.id}`).get()).data()!;
+  await generateAudioSample(creator,value.id); assert.equal((await db.doc(`audioTitles/${value.id}`).get()).data()?.previewVersion,first.previewVersion);
+  await act(creator,'submit',{id:value.id}); await act(admin,'review',{id:value.id,publish:true});
+  const sample = await audioPreview(reader,value.id); assert.equal(sample.preview,true); assert.equal(sample.sessionId,null);
+  assert.match(sample.url,/preview-/); assert.doesNotMatch(sample.url,/playback\.mp3/);
+  assert.ok(sample.title.previewSeconds! > 1 && sample.title.previewSeconds! < 3);
+  assert.equal((await audioDetail(reader,value.id)).canPlay,false);
+  await assert.rejects(audioPlayback(reader,value.id),/Purchase/);
+  assert.equal((await audioList(reader,'library',null)).entries.length,0);
+  const path = `audio/creator/${value.id}/preview-${first.previewVersion}.mp3`;
+  assert.ok(!(await bucket.file(path).getMetadata())[0].metadata?.firebaseStorageDownloadTokens);
+  await assertFails(getBytes(ref(env.authenticatedContext(reader.uid).storage(`gs://${projectId}.appspot.com`),path)));
+  await assertFails(uploadBytes(ref(env.authenticatedContext(creator.uid).storage(`gs://${projectId}.appspot.com`),path),mp3,{contentType:'audio/mpeg'}));
+});
+
+test('grouped recordings enforce reservations, preserve one entitlement, and resume across chapter boundaries', async () => {
+  const value = await ready(199);
+  const added = await act(creator,'prepare_part',{id:value.id,title:'ክፋል ክልተ',bytes:mp3.length}) as {partId:string;path:string};
+  const retry = await act(creator,'prepare_part',{id:value.id,partId:added.partId,title:'ክፋል ክልተ',bytes:mp3.length}) as {partId:string};
+  assert.equal(retry.partId,added.partId); assert.equal((await db.doc(`audioTitles/${value.id}`).get()).data()?.parts.length,1);
+  await assert.rejects(act(stranger,'finish_part',{id:value.id,partId:added.partId,durationSeconds:90}),/another creator/);
+  const storage = env.authenticatedContext(creator.uid).storage(`gs://${projectId}.appspot.com`);
+  await assertFails(uploadBytes(ref(storage,added.path.replace(added.partId,'00000000-0000-4000-8000-000000000000')),mp3,{contentType:'audio/mpeg'}));
+  await assertFails(uploadBytes(ref(storage,added.path),Buffer.alloc(mp3.length+1),{contentType:'audio/mpeg'}));
+  await assertSucceeds(uploadBytes(ref(storage,added.path),mp3,{contentType:'audio/mpeg'}));
+  await assert.rejects(act(creator,'submit',{id:value.id}),/Finish uploading/);
+  await act(creator,'finish_part',{id:value.id,partId:added.partId,durationSeconds:90});
+  await act(creator,'finish_part',{id:value.id,partId:added.partId,durationSeconds:90});
+  const chapters = [{title:'መጀመርታ',startSeconds:0},{title:'Second chapter',startSeconds:130}];
+  await act(creator,'edit',{...draft,priceCents:199,id:value.id,chapters});
+  await assert.rejects(act(creator,'edit',{...draft,id:value.id,chapters:[...chapters,{title:'Beyond the end',startSeconds:210}]}),/before the recording ends/);
+  await act(creator,'submit',{id:value.id}); await act(admin,'review',{id:value.id,publish:true});
+  await assert.rejects(audioPlayback(reader,value.id,130),/Purchase/);
+  await db.doc(`audioEntitlements/reader/titles/${value.id}`).set({status:'active'});
+  const playback = await audioPlayback(reader,value.id,130); assert.equal(playback.partId,added.partId); assert.equal(playback.partStartSeconds,120); assert.equal(playback.seconds,130); assert.equal(playback.title.durationSeconds,210);
+  assert.match(playback.url,new RegExp(`part-${added.partId}`));
+  assert.doesNotMatch(JSON.stringify(playback.title),/partUploads|coverPath|previewVersion/);
+  await act(reader,'progress',{id:value.id,seconds:150}); assert.equal((await audioPlayback(reader,value.id)).partId,added.partId);
+  assert.equal((await audioList(reader,'library',null)).entries.length,1);
+  await act(creator,'withdraw',{id:value.id}); await db.doc(`audioPrivate/${value.id}`).set({playProductId:'afrobooks_audio_test'});
+  await assert.rejects(act(creator,'remove_part',{id:value.id,partId:added.partId}),/available for buyers/);
+  await db.doc(`audioEntitlements/reader/titles/${value.id}`).set({status:'revoked'});
+  await assert.rejects(audioPlayback(reader,value.id,130),/unavailable|Purchase/);
+});
+
+test('optional covers are decoded and sanitized, require draft ownership, and can be removed', async () => {
+  const value = await ready(); const sharp = (await import('sharp')).default;
+  const image = await sharp({create:{width:24,height:24,channels:3,background:'#ab6745'}}).png().toBuffer();
+  await assert.rejects(setAudioCover(stranger,value.id,image),/another creator/);
+  await assert.rejects(setAudioCover(creator,value.id,Buffer.from('<svg><script>alert(1)</script></svg>')),/JPG/);
+  const cover = await setAudioCover(creator,value.id,image); assert.match(cover.coverUrl,/audio-covers/);
+  const record = (await db.doc(`audioTitles/${value.id}`).get()).data()!;
+  assert.equal((await bucket.file(record.coverPath).getMetadata())[0].contentType,'image/webp');
+  await setAudioCover(creator,value.id,null); assert.equal((await bucket.file(record.coverPath).exists())[0],false);
+  await setAudioCover(creator,value.id,image); await act(creator,'submit',{id:value.id});
+  await assert.rejects(setAudioCover(creator,value.id,null),/Withdraw/);
 });
 test('paid audio uses separate verified entitlements, handles pending/refund/repurchase and preserves buyers on withdrawal', async () => {
   const value = await publish(199); const sku = 'afrobooks_audio_test';

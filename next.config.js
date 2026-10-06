@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep the WASM decoder's optional worker loader out of the server bundler.
+  serverExternalPackages: ['mpg123-decoder'],
   async headers() {
     return [
       { source: '/:path*', headers: [

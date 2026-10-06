@@ -88,13 +88,15 @@ service firebase.storage {
 
     // Immutable audio originals: server-authorized, bounded uploads only.
     match /audio/{creatorId}/{titleId}/{filename} {
+      function validAudioUpload() {
+        let title = firestore.get(/databases/(default)/documents/audioTitles/$(titleId)).data;
+        return title.creatorId == creatorId && title.status == 'draft' &&
+          ((filename == 'source.mp3' && title.ready == false && request.resource.size <= 250 * 1024 * 1024) ||
+           (filename in title.get('partUploads', {}) && request.resource.size <= title.partUploads[filename] && request.resource.size <= 250 * 1024 * 1024));
+      }
       allow read, update, delete: if false;
-      allow create: if filename == 'source.mp3' && resource == null && isOwner(creatorId) &&
-        firestore.get(/databases/(default)/documents/audioTitles/$(titleId)).data.creatorId == creatorId &&
-        firestore.get(/databases/(default)/documents/audioTitles/$(titleId)).data.status == 'draft' &&
-        firestore.get(/databases/(default)/documents/audioTitles/$(titleId)).data.ready == false &&
-        request.resource.size >= 128 && request.resource.size <= 250 * 1024 * 1024 &&
-        request.resource.contentType == 'audio/mpeg';
+      allow create: if resource == null && isOwner(creatorId) && request.resource.size >= 128 &&
+        request.resource.contentType == 'audio/mpeg' && validAudioUpload();
     }
 
     // Deny everything else

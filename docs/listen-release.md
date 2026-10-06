@@ -9,23 +9,49 @@ from their profile and author navigation. Admin reviews audio at `/admin/audio`.
 
 Creators upload Music, Podcasts or Audiobooks as MP3 files, up to 250 MB each,
 with 20 active uploads per creator. Titles, descriptions and language names are
-Unicode, including Tigrinya. A title currently contains one recording; multi-track
-albums and audiobook chapter manifests are not part of this release.
+Unicode, including Tigrinya. Each title supports a first recording plus up to 49
+additional tracks, episodes or audiobook parts (1 GB and 48 hours combined).
+Files play in upload order. A title's single purchase unlocks all its recordings.
+Optional chapter markers name positions across the combined timeline, starting
+at 0:00. Enter increasing times as minutes:seconds or hours:minutes:seconds.
 
 Uploads go directly to Firebase Storage with resumable progress and cancellation.
 Only the owner of a server-created draft can create its original file. Finalizing
 validates size, MIME and MP3 signature, copies to an immutable, server-only object
 without Firebase download tokens, removes the staging file, and marks it ready.
-No audio transcoding or Cloudflare processing is needed. A completed upload can
-be recovered after a connection failure by selecting the same file again.
+The full recording is not transcoded. A completed upload can be recovered after
+a connection failure by selecting the same file and saving again. Additional
+recordings have size-bound, idempotent reservations; unfinished parts can be
+reselected or removed. Published parts with checkout configured cannot be deleted.
+
+Saving prepares a separate MP3 sample containing up to the first 60 seconds of
+the first recording. The server reads at most 4 MB of audio after ID3 metadata,
+decodes bounded chunks with `mpg123-decoder`, and encodes the sample with LAME.
+The decoder remains a server external package for its optional worker loader.
+A lease prevents duplicate generation; a failed sample leaves the full upload
+saved for retry. Existing titles have **Prepare free sample** in the studio/admin.
+Sample playback signs only the sample object for 15 minutes, without an
+entitlement, progress update or music royalty session. Full playback still
+requires the title purchase or music subscription.
+
+Cover art is optional: JPG, PNG or WebP, up to 3 MB and 24 megapixels. Server-side
+decoding strips metadata and creates a WebP up to 1200 pixels. Covers are public;
+audio objects remain private. Missing or failed images use category artwork.
 
 The creator previews and submits; admin previews and approves or returns it with
 feedback. Editing published metadata requires withdrawal and another review.
 Removal hides records and deletes files; titles with checkout mappings or
 purchases must instead be withdrawn so existing buyers retain access.
 
-The mobile player provides play/pause, seeking, 15-second skips, speed, resume
-and a mini-player across buyer pages. It stops for sign-out/account changes,
+The mobile player provides play/pause, seeking, 15-second skips, speed, volume,
+global resume, chapter selection, next/previous recordings and automatic
+continuation. Its mini-player persists across buyer pages. Expanded artwork
+grows during playback; a cover-colored background blends with AfroBooks accents.
+Sound bars and the current Up next indicator animate with playback state (they
+are decorative indicators, not a measured waveform). Reduced-motion preferences
+disable animation. Devices that reject software volume changes show a device
+volume hint. Website studio button adjustments exclude installed-app mode.
+The player stops for sign-out/account changes,
 reader/video detail pages, and checkout. Background playback uses HTML audio and
 the browser's Media Session support; it remains subject to OS/browser limits.
 The service worker never caches private audio or signed URLs. Playback URLs last
@@ -99,13 +125,17 @@ guarantee. The optional `scripts/prepare-music-subscription.ts` creates only an 
 
 ## Validation
 
+- `tests/audio-sample.test.ts`: real MP3 encoding/decoding, the 60-second cutoff,
+  short and invalid recordings, Unicode chapter times and part boundaries.
 - `tests/audio.integration.test.ts`: Storage and Firestore ownership, immutable
-  originals, file validation, quota, moderation, library, purchases and refunds.
+  originals, bounded part reservations, isolated samples, cover sanitization,
+  quota, moderation, combined timelines, library, purchases and refunds.
 - `tests/music.integration.test.ts`: account binding, membership lifecycle,
   subscription gates, bounded listening, exact royalty allocation and reversals.
 - Existing Play and payout integration suites remain applicable to shared changes.
-- `tests/audio.browser.cjs`: actual MP3 decoding, seek/speed/resume, responsive
-  themes, studio upload/review and mocked native subscription checkout.
+- `tests/audio.browser.cjs`: actual MP3 decoding, sample isolation, automatic
+  next-part playback, seek/speed/volume, covers, reduced motion, responsive themes,
+  studio uploads, desktop buttons and mocked native subscription checkout.
 - `tests/mobile-scroll.browser.cjs`: floating tabs, profile drawer, scrolling
   and rotation for browser/standalone/iOS/Android presentation signals.
 
