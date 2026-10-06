@@ -1,4 +1,19 @@
 .watch-surface { background:var(--app-canvas,#101114); color:var(--app-text,#f5f3ef); min-height:100%; }
+/* Logo gold is an accent within mobile video content. Headers, other formats
+   and the admin workspace retain their own palettes. */
+html[data-app-mode='installed'] .watch-page:not(.watch-admin) {
+  --watch-gold:#e9bd73;
+  --watch-on-gold:#241a0e;
+  --app-accent:#e9bd73;
+  --app-action:#e9bd73;
+  --app-accent-surface:#2d251a;
+  --app-price:#e9bd73;
+}
+html[data-app-mode='installed'][data-app-theme='light'] .watch-page:not(.watch-admin) {
+  --app-accent:#805a23;
+  --app-accent-surface:#f5e9d5;
+  --app-price:#805a23;
+}
 .watch-page { width:100%; max-width:900px; margin:auto; padding:24px 18px 32px; overflow-wrap:anywhere; }
 .watch-page h1 { font-family:var(--font-heading); font-size:clamp(27px,6vw,36px); font-weight:750; letter-spacing:-.035em; line-height:1.2; }
 .watch-page h2,.watch-sheet h2 { font-weight:700; letter-spacing:-.02em; }
@@ -41,7 +56,7 @@
 .watch-card-tags { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:8px; font-size:11px; color:var(--app-muted,#a8abb5); }
 .watch-card-tags strong { color:var(--app-price,#f1c4a6); font-weight:650; }
 .watch-progress { height:3px; position:absolute; inset:auto 0 0; background:#0009; }
-.watch-progress i { display:block; height:100%; background:#ed6647; }
+.watch-progress i { display:block; height:100%; background:var(--watch-gold,#e9bd73); }
 .watch-button { display:inline-flex; justify-content:center; align-items:center; gap:8px; min-height:46px; border-radius:13px; padding:10px 17px; font-size:14px; font-weight:600; background:var(--app-surface,#191b20); border:1px solid var(--app-line,#ffffff20); text-align:center; }
 .watch-button:disabled { opacity:.55; cursor:not-allowed; }
 .watch-primary { background:var(--app-action,#c9442c); color:#fff; border-color:transparent; }
@@ -215,6 +230,15 @@ html[data-app-mode='installed'] .watch-library { padding-top:22px; }
 .watch-library-search input { font-size:14px; }
 .watch-library-search button { display:grid; place-items:center; min-width:44px; height:44px; }
 .watch-library-restore { margin-top:28px; }
+html[data-app-mode='installed'] .watch-page:not(.watch-admin) .watch-primary {
+  background:var(--watch-gold); color:var(--watch-on-gold); border-color:transparent;
+}
+html[data-app-mode='installed'] .watch-page:not(.watch-admin) .watch-chips button[aria-pressed=true] {
+  background:var(--watch-gold); color:var(--watch-on-gold); border-color:transparent;
+}
+html[data-app-mode='installed'] .watch-page:not(.watch-admin) .watch-preview-toggle[aria-pressed=true] .watch-toggle-track i { background:var(--watch-on-gold); }
+html[data-app-mode='installed'] .watch-page:not(.watch-admin) .watch-upload-steps li[aria-current=step] { color:var(--watch-on-gold); }
+html[data-app-mode='installed'] .watch-page:not(.watch-admin) .watch-check input { accent-color:var(--app-accent); }
 @media(min-width:640px) { .watch-detail-player { margin-inline:0; } .watch-detail-player :is(.watch-player,.watch-art) { border-radius:18px; } .watch-detail-player .afro-cinema { --video-border-radius:18px; } .watch-video-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; } .watch-viewing .watch-video-list { grid-template-columns:1fr; } .watch-card-compact h2 { font-size:15px; } }
 @media(orientation:landscape) and (max-height:500px) { .watch-detail-player[data-playing=true] { position:relative; top:auto; } html[data-app-mode='installed'] .mobile-app-viewport[data-watch-playing=true] { scroll-padding-top:76px; } }
 @media (min-width:640px) { html[data-app-mode='installed'] .watch-discovery { padding-inline:20px; } .watch-discovery-controls { margin-inline:0; } }

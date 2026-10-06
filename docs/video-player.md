@@ -1,5 +1,16 @@
 # Screen player and clip uploads
 
+## Brand accents
+
+The mobile video pages use the logo's gold (`#E9BD73`) for selected filters,
+primary actions and viewing progress. Accent text becomes dark bronze (`#805A23`)
+in light mode, and filled gold controls use dark text for contrast. Backgrounds,
+body text and secondary controls keep their neutral theme colors. These page
+tokens are scoped away from the shared audio UI, app headers and admin palette.
+The shared video player uses gold for its timeline, central play control and
+keyboard focus ring, including creator/admin previews; the video and other
+controls retain their dark cinematic treatment.
+
 ## Optional cover photos
 
 The main upload form accepts an optional PNG, JPG or WebP cover up to 3 MB,

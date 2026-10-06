@@ -107,7 +107,7 @@ async function main() {
       for (const theme of ['light', 'dark']) {
         await page.evaluate(theme => window.setTheme(theme), theme);
         await page.waitForFunction(theme => document.documentElement.dataset.appTheme === theme, theme);
-        await page.waitForFunction(theme => getComputedStyle(document.querySelector('.watch-chips button[aria-pressed="true"]')).backgroundColor === (theme === 'light' ? 'rgb(37, 39, 44)' : 'rgb(245, 242, 235)'), theme);
+        await page.waitForFunction(() => getComputedStyle(document.querySelector('.watch-chips button[aria-pressed="true"]')).backgroundColor === 'rgb(233, 189, 115)');
         const colors = await page.locator('.watch-surface').evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, text: getComputedStyle(el).color }));
         assert.equal(colors.bg, theme === 'light' ? 'rgb(247, 245, 241)' : 'rgb(16, 17, 20)');
         assert.equal(colors.text, theme === 'light' ? 'rgb(37, 39, 44)' : 'rgb(245, 243, 239)');
