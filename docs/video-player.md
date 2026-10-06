@@ -1,9 +1,9 @@
-# Screen player and clip uploads
+# Watch player and clip uploads
 
 ## Brand accents
 
-The installed mobile app shares the logo's gold (`#E9BD73`) across Browse,
-Screen, Listen, Library, account/sign-in controls, primary actions and progress. Accent text becomes dark bronze (`#805A23`)
+The installed mobile app shares the logo's gold (`#E9BD73`) across Read,
+Watch, Listen, Library, account/sign-in controls, primary actions and progress. Accent text becomes dark bronze (`#805A23`)
 in light mode, and filled gold controls use dark text for contrast. Backgrounds,
 body text and secondary controls keep their neutral theme colors. The shared action/foreground/accent tokens live under
 `html[data-app-mode='installed']`; components retain their original website
@@ -26,7 +26,7 @@ with a revision, never a client-supplied URL. Reviewers see current and requeste
 images. Only approval replaces the public cover; rejection keeps the current
 artwork and all existing video access intact.
 
-## Screen discovery
+## Watch discovery
 
 The installed app feed previews one centered, mostly visible card after a short
 scroll pause. Previews are muted, play for up to 20 seconds, do not write watch
@@ -45,7 +45,7 @@ the installed app Profile, using the existing website handoff and return flow.
 
 Reference: [Vidstack autoplay](https://vidstack.io/docs/player/api/autoplay/).
 
-The installed app's Screen player uses Vidstack with locally bundled hls.js to play Cloudflare Stream's signed HLS source. Controls sit over the video: central play/pause, 10-second skips, touch double-tap seeking, timeline scrubbing, fullscreen, and picture in picture where supported. The settings menu offers playback speed, available quality levels and available caption tracks. Videos retain their aspect ratio. Controls remain consistent when rotating the phone, with reduced-motion support.
+The installed app's Watch player uses Vidstack with locally bundled hls.js to play Cloudflare Stream's signed HLS source. Controls sit over the video: central play/pause, 10-second skips, touch double-tap seeking, timeline scrubbing, fullscreen, and picture in picture where supported. The settings menu offers playback speed, available quality levels and available caption tracks. Videos retain their aspect ratio. Controls remain consistent when rotating the phone, with reduced-motion support.
 
 The player also provides a quick speed button and signed image previews while scrubbing. At most 120 frame descriptors cover a video; images load as needed rather than downloading a complete set. Preview images use the same authorized, expiring token as the current full-video/trailer session and are renewed on retry. Touch controls retain the same layout through rotation and fullscreen.
 
@@ -57,7 +57,7 @@ Playback still requires the existing server authorization. Retry requests a fres
 
 Admins have a full-width Video preview panel above each submission's review controls. Creators have the same panel near the top of their editor, including for unpublished videos. Both use the shared player with the title, cover and a separate optional trailer preview. Unready media shows a preparation message. Preview sessions start at the beginning and do not save viewing progress. Closing a preview or its containing review/trailer section stops playback. Existing server authorization allows only the creator and admins to preview unpublished media; adding these panels does not make it public.
 
-Screen discovery uses a compact heading, wide video artwork and search/category controls that stick below the measured header height. Landscape leaves those controls in the scroll flow to preserve viewing space. The video menu saves to the existing library, shares the video link or opens the creator channel. Opening a menu stops feed previews; preview visibility also accounts for the sticky controls. No view counts or popularity claims are fabricated. The light/dark theme tokens are shared with the rest of the installed app.
+Watch discovery uses a compact heading, wide video artwork and search/category controls that stick below the measured header height. Landscape leaves those controls in the scroll flow to preserve viewing space. The video menu saves to the existing library, shares the video link or opens the creator channel. Opening a menu stops feed previews; preview visibility also accounts for the sticky controls. No view counts or popularity claims are fabricated. The light/dark theme tokens are shared with the rest of the installed app.
 
 ## Creator uploads
 

@@ -32,7 +32,7 @@ export function useWatchResource<T>(path: string, retainDuringRefresh = false) {
 }
 export function WatchAppGate({ children }: { children: ReactNode }) {
   const installed = useInstalledApp();
-  if (!installed) return <div className="watch-surface"><BuyerHeader /><main className="watch-page"><WatchEmpty title="AfroBooks Screen is in the app" text="Films, documentaries, music and stories from African creators. Open AfroBooks on your phone and choose Screen." /><Link className="watch-button" href="/browse">Back to books</Link></main></div>;
+  if (!installed) return <div className="watch-surface"><BuyerHeader /><main className="watch-page"><WatchEmpty title="AfroBooks Watch is in the app" text="Films, documentaries, music and stories from African creators. Open AfroBooks on your phone and choose Watch." /><Link className="watch-button" href="/browse">Back to books</Link></main></div>;
   return <div className="watch-surface">{children}</div>;
 }
 export function WatchFeedback({ loading, error, retry }: { loading?: boolean; error?: string; retry?: () => void }) {

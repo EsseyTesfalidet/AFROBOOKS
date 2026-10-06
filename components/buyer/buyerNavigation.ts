@@ -42,7 +42,7 @@ const ROUTE_STATE_RULES: Array<{
   state: Partial<BuyerRouteState>;
 }> = [
   { matches: ['/listen'], state: { eyebrow: 'AfroBooks Listen', title: 'Listen', subtitle: 'Music, podcasts and audiobooks.', showFooter: false, showSwipe: false } },
-  { matches: ['/watch'], state: { eyebrow: 'AfroBooks Screen', title: 'Screen', subtitle: 'African films, music and ideas.', showFooter: false, showSwipe: false } },
+  { matches: ['/watch'], state: { eyebrow: 'AfroBooks Watch', title: 'Watch', subtitle: 'African films, music and ideas.', showFooter: false, showSwipe: false } },
   {
     matches: ['/about-help'],
     state: { eyebrow: 'AfroBooks', title: 'About & Help', subtitle: 'Support, information and app details.', showSwipe: false },
@@ -193,8 +193,8 @@ export const BUYER_DESKTOP_LINKS: BuyerNavItem[] = BUYER_MOBILE_TABS.filter(
 );
 
 export const BUYER_APP_TABS: BuyerNavItem[] = [
-  { label: 'Browse', href: '/browse', icon: BookOpen, matches: ['/browse', '/discover', '/search', '/community'] },
-  { label: 'Screen', href: '/watch', icon: Clapperboard, matches: ['/watch'] },
+  { label: 'Read', href: '/browse', icon: BookOpen, matches: ['/browse', '/discover', '/search', '/community'] },
+  { label: 'Watch', href: '/watch', icon: Clapperboard, matches: ['/watch'] },
   { label: 'Listen', href: '/listen', icon: Headphones, matches: ['/listen'] },
   { label: 'Library', href: '/library', icon: Library, matches: ['/library'] },
 ];

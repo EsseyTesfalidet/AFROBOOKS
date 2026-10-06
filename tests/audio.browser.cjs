@@ -66,7 +66,7 @@ async function main() {
       await route.fulfill({ json: value });
     });
     await page.goto(base + '/listen'); await page.getByRole('button', { name: /ሙዚቃ ሃገረይ.*Original Studio/ }).waitFor();
-    assert.deepEqual(await page.locator('.buyer-nav-item').allTextContents(), ['Browse', 'Screen', 'Listen', 'Library']);
+    assert.deepEqual(await page.locator('.buyer-nav-item').allTextContents(), ['Read', 'Watch', 'Listen', 'Library']);
     assert.equal(await page.locator('.buyer-nav-item[aria-current="page"]').innerText(), 'Listen');
     await page.getByRole('button', { name: 'Audiobooks', exact: true }).click(); assert.equal(await page.locator('.listen-card').count(), 1);
     await page.getByRole('button', { name: /Audiobooks.*Stories of home/ }).click(); await page.getByText('Purchases for this title are not available yet. Please check again later.').waitFor(); assert.equal(await page.locator('audio').count(), 0);

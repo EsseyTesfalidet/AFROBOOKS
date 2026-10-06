@@ -70,11 +70,11 @@ async function main() {
       });
       await page.goto(base + '/watch');
       if (!installed) {
-        await page.getByRole('heading', { name: 'AfroBooks Screen is in the app' }).waitFor();
-        assert.equal(calls.length, 0); assert.equal(await page.getByRole('link', { name: 'Screen', exact: true }).count(), 0);
+        await page.getByRole('heading', { name: 'AfroBooks Watch is in the app' }).waitFor();
+        assert.equal(calls.length, 0); assert.equal(await page.getByRole('link', { name: 'Watch', exact: true }).count(), 0);
         console.log('PASS mobile website keeps existing navigation and does not fetch the video catalog'); await context.close(); continue;
       }
-      await page.getByRole('heading', { name: 'Screen', exact: true }).waitFor();
+      await page.getByRole('heading', { name: 'Watch', exact: true }).waitFor();
       assert.equal(await page.getByRole('link', { name: /Creator studio/i }).count(), 0);
       await page.locator('[data-preview-id="free-film"]').evaluate(el=>el.scrollIntoView({block:'center'}));
       await page.waitForFunction(()=>{const img=document.querySelector('[data-preview-id="free-film"] img');return img?.complete&&img.naturalWidth>0;});
@@ -113,7 +113,7 @@ async function main() {
         assert.equal(colors.text, theme === 'light' ? 'rgb(37, 39, 44)' : 'rgb(245, 243, 239)');
         const raised = await page.locator('.buyer-nav-item[data-active="true"] .buyer-nav-icon').boundingBox();
         const dock = await page.locator('.buyer-bottom-nav-shell').boundingBox();
-        assert.ok(raised.y < dock.y,'The selected Screen icon rises above the floating dock');
+        assert.ok(raised.y < dock.y,'The selected Watch icon rises above the floating dock');
         assert.equal(await page.locator('.buyer-nav-item[data-active="true"] .buyer-nav-icon').evaluate(el=>getComputedStyle(el).color),'rgb(36, 26, 14)');
         await page.getByRole('searchbox').focus();
         await page.screenshot({ path: `.vercel/watch-${theme}-integrated.png` });
@@ -162,7 +162,7 @@ async function main() {
       await page.getByRole('button', { name: 'Continue watching', exact: true }).click(); assert.equal(await page.locator('.watch-card').count(), 1);
       await page.getByRole('button', { name: 'Purchased', exact: true }).click(); await page.getByRole('heading', { name: 'Your video collection starts here' }).waitFor();
       await page.screenshot({ path: '.vercel/watch-empty-library.png' });
-      await page.getByRole('link', { name: 'Screen', exact: true }).click();
+      await page.getByRole('link', { name: 'Watch', exact: true }).click();
       await page.evaluate(()=>window.navigate('/watch/creator/studio'));
       await page.getByRole('heading',{name:'Original Studio',exact:true}).waitFor();
       assert.equal(await page.locator('.watch-channel-header .watch-follow').getAttribute('aria-pressed'),'true');
@@ -180,7 +180,7 @@ async function main() {
       assert.equal(await page.getByRole('dialog').evaluate(el => getComputedStyle(el).animationName), 'none'); await page.keyboard.press('Escape');
       outage = true; await page.evaluate(() => window.navigate('/watch')); await page.getByRole('alert').waitFor(); outage = false;
       await page.getByRole('button', { name: 'Try again' }).click(); await page.getByRole('heading', { name: 'Stories of home' }).waitFor();
-      assert.deepEqual(errors, []); console.log('PASS installed Screen navigation, light/dark themes, categories, Tigrinya search, saved library, follow, paid gate, trailer isolation, resume, reports, retry, portrait/landscape and reduced motion');
+      assert.deepEqual(errors, []); console.log('PASS installed Watch navigation, light/dark themes, categories, Tigrinya search, saved library, follow, paid gate, trailer isolation, resume, reports, retry, portrait/landscape and reduced motion');
       await context.close();
     }
 
