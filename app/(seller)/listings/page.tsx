@@ -1,5 +1,7 @@
 'use client';
 
+import { accountFetch } from '@/lib/network';
+
 import { Suspense, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -33,7 +35,7 @@ function ListingsPageContent() {
     try {
       const headers: HeadersInit = {};
       if (firebaseUser) headers.Authorization = `Bearer ${await firebaseUser.getIdToken()}`;
-      const response = await fetch(`/api/books/${encodeURIComponent(book.id)}`, { method: 'DELETE', headers, credentials: 'include' });
+      const response = await accountFetch(`/api/books/${encodeURIComponent(book.id)}`, { method: 'DELETE', headers, credentials: 'include' });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error ?? 'This book could not be removed. Please try again.');
       if (useAuthStore.getState().userProfile?.uid !== uid) return;

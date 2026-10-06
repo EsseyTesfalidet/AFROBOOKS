@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountStorage } from '@/lib/auth/tabAccount';
 
 interface RecentlyViewedState {
   bookIds: string[];
@@ -24,6 +25,7 @@ export const useRecentlyViewedStore = create<RecentlyViewedState>()(
         return bookIds.length === state.bookIds.length ? state : { bookIds };
       }),
     }),
-    { name: 'afrobooks-recently-viewed' }
+    { storage: createJSONStorage(accountStorage),
+      name: 'afrobooks-recently-viewed' }
   )
 );

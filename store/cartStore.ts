@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountStorage } from '@/lib/auth/tabAccount';
 import type { Book } from '@/types/book';
 import { calculateCartTotals } from '@/lib/utils/fees';
 import { publicationTitle } from '@/lib/utils/publication';
@@ -100,6 +101,6 @@ export const useCartStore = create<CartState>()(
 
       getTotal: () => calculateCartTotals(get().items.map(item => item.price)).total,
     }),
-    { name: 'afrobooks-cart', version: 1, migrate: (state) => ({ ...(state as CartState), promoCode: null, promoBookId: null, discountAmount: 0 }) }
+    { storage: createJSONStorage(accountStorage), name: 'afrobooks-cart', version: 1, migrate: (state) => ({ ...(state as CartState), promoCode: null, promoBookId: null, discountAmount: 0 }) }
   )
 );

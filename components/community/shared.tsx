@@ -1,5 +1,7 @@
 'use client';
 
+import { accountFetch } from '@/lib/network';
+
 import Link from 'next/link';
 import { useState } from 'react';
 import { authenticatedGet } from '@/lib/firebase/request';
@@ -7,7 +9,7 @@ import type { CommunityPost, CommunityReply } from '@/types/community';
 
 export async function getCommunity<T>(params: URLSearchParams, admin = false, signal?: AbortSignal): Promise<T> {
   if (admin) { params.set('view', 'admin'); return authenticatedGet<T>(`/api/community?${params}`); }
-  const response = await fetch(`/api/community?${params}`, { cache: 'no-store', signal });
+  const response = await accountFetch(`/api/community?${params}`, { cache: 'no-store', signal });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Unable to load community.');
   return data;

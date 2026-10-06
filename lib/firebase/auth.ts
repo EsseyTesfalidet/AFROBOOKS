@@ -1,3 +1,4 @@
+import { accountFetch } from '@/lib/network';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -17,6 +18,7 @@ import { auth, db } from './config';
 import { clearAuthSession, setClientAuthHints, syncAuthSession } from './session';
 import type { User as UserProfile } from '@/types/user';
 import { authenticatedPost } from './request';
+import { isSeparateAccount } from '@/lib/auth/tabAccount';
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -178,6 +180,12 @@ export async function signInWithGoogle(): Promise<{ user: User; isNewUser: boole
 }
 
 export async function logOut(): Promise<void> {
+  if (isSeparateAccount()) {
+    const { useCartStore } = await import('@/store/cartStore');
+    const { useRecentlyViewedStore } = await import('@/store/recentlyViewedStore');
+    useCartStore.getState().clearCart();
+    useRecentlyViewedStore.getState().clear();
+  }
   await Promise.allSettled([clearAuthSession(), signOut(auth)]);
 }
 
@@ -196,7 +204,7 @@ export async function deleteCurrentAccount(): Promise<void> {
     headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
   }
 
-  const response = await fetch('/api/account', {
+  const response = await accountFetch('/api/account', {
     method: 'DELETE',
     headers,
     credentials: 'include',

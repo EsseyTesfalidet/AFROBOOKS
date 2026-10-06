@@ -1,5 +1,7 @@
 'use client';
 
+import { accountFetch } from '@/lib/network';
+
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { sendEmailVerification } from 'firebase/auth';
@@ -40,7 +42,7 @@ export default function ClaimGiftPage() {
     setBusy(true); setError(''); setCode(''); setNotice('');
     try {
       await firebaseUser.reload();
-      const response = await fetch('/api/gifts', {
+      const response = await accountFetch('/api/gifts', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await firebaseUser.getIdToken(true)}` },
         body: JSON.stringify({ action, token }),
       });

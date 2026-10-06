@@ -7,6 +7,7 @@ import { Search, ArrowUpRight, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { logOutAndRedirect } from '@/lib/firebase/auth';
 import { ADMIN_NAV } from './navigation';
+import SeparateAccountLink from '@/components/auth/SeparateAccountLink';
 
 export default function AdminWorkspace({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -79,6 +80,7 @@ export default function AdminWorkspace({ children }: { children: React.ReactNode
               item.label.toLowerCase().includes(search.trim().toLowerCase()),
             ) && <p className="admin-muted p-3 text-sm">No matching sections.</p>}
         </nav>
+        <SeparateAccountLink />
         <div className="admin-account">
           <span className="admin-avatar">{userProfile.firstName?.[0] ?? 'A'}</span>
           <div>

@@ -1,4 +1,6 @@
 'use client';
+
+import { accountFetch } from '@/lib/network';
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -6,7 +8,7 @@ export async function uploadVideoCover(id: string, file: File): Promise<{ poster
   const user = useAuthStore.getState().firebaseUser;
   if (!user) throw new Error('Sign in to continue.');
   const body = new FormData(); body.set('id', id); body.set('file', file);
-  const response = await fetch('/api/watch/poster', { method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}` }, body });
+  const response = await accountFetch('/api/watch/poster', { method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}` }, body });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Cover upload failed.');
   return result;

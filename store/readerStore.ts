@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountStorage } from '@/lib/auth/tabAccount';
 import type { TextFlow } from '@/lib/utils/paragraphFlow';
 import { appHaptic } from '@/lib/app/haptics';
 
@@ -62,7 +63,8 @@ export const useReaderStore = create<ReaderState>()(
       applyReadingPreset: (preset) => set({ fontSize: preset === 'large' ? 'xlarge' : 'medium', lineSpacing: 'normal', marginSize: 'normal' }),
       setCurrentChapter: (chapter) => set({ currentChapter: chapter }),
     }),
-    { name: 'afrobooks-reader', merge: (saved, current) => {
+    { storage: createJSONStorage(accountStorage),
+      name: 'afrobooks-reader', merge: (saved, current) => {
       const previous = saved as Partial<ReaderState> | null;
       const validTheme = previous?.theme && ['paper', 'sepia', 'dark', 'night'].includes(previous.theme);
       // Old saves did not track explicit choices. Preserve their page theme.

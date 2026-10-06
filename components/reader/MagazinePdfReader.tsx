@@ -1,5 +1,7 @@
 'use client';
 
+import { accountFetch } from '@/lib/network';
+
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
@@ -36,7 +38,7 @@ export default function MagazinePdfReader({ book }: { book: Book }) {
     async function load() {
       if (!user) throw new Error('Sign in to open your magazine.');
       const token = await user.getIdToken();
-      const response = await fetch(`/api/books/${encodeURIComponent(book.id)}/pdf?view=read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: 'no-store' });
+      const response = await accountFetch(`/api/books/${encodeURIComponent(book.id)}/pdf?view=read`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: 'no-store' });
       if (!response.ok) throw new Error('This PDF could not be opened. Check that this issue is in your library and try again.');
       const data = new Uint8Array(await response.arrayBuffer());
       if (!active) return;

@@ -14,6 +14,7 @@ import { APP_MODE_BOOTSTRAP } from '@/lib/app/installed';
 import { APP_APPEARANCE_BOOTSTRAP } from '@/lib/app/appearance';
 import MobileAppShell from '@/components/shared/MobileAppShell';
 import AuthorReturnBar from '@/components/shared/AuthorReturnBar';
+import AccountRouteGate from '@/components/auth/AccountRouteGate';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
@@ -79,7 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileAppShell>
             <MobileAccessGate>
               <AppExperience />
-              <AgreementGate>{children}<AuthWelcome /></AgreementGate>
+              <AccountRouteGate><AgreementGate>{children}<AuthWelcome /></AgreementGate></AccountRouteGate>
             </MobileAccessGate>
           </MobileAppShell>
         </AuthProvider>

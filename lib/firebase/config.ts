@@ -1,5 +1,6 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, initializeAuth, browserSessionPersistence, browserPopupRedirectResolver } from 'firebase/auth';
+import { isSeparateAccount } from '@/lib/auth/tabAccount';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -12,9 +13,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+// A separate Firebase app prevents the normal/local login from synchronizing
+// into this tab. Session persistence survives reloads without affecting others.
+const separate = isSeparateAccount();
+const name = separate ? 'afrobooks-tab-account' : '[DEFAULT]';
+const existing = getApps().find(app => app.name === name);
+const app = existing ?? initializeApp(firebaseConfig, name);
 
-export const auth = getAuth(app);
+export const auth = separate && !existing ? initializeAuth(app, {
+  persistence: browserSessionPersistence,
+  popupRedirectResolver: browserPopupRedirectResolver,
+}) : getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export default app;

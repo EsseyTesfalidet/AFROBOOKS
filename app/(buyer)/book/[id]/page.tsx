@@ -1,5 +1,7 @@
 'use client';
 
+import { accountFetch } from '@/lib/network';
+
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -178,7 +180,7 @@ export default function BookDetailPage() {
         headers.Authorization = `Bearer ${await firebaseUser.getIdToken()}`;
       }
 
-      const response = await fetch('/api/reports', {
+      const response = await accountFetch('/api/reports', {
         method: 'POST',
         headers,
         credentials: 'include',

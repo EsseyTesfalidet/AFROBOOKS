@@ -1,5 +1,7 @@
 'use client';
 
+import { accountFetch } from '@/lib/network';
+
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, CircleAlert, Clock3, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -28,7 +30,7 @@ export default function AuthorPaymentSetupCard({ hasPublishedBooks }: { hasPubli
       pending = true;
       try {
         const token = await user!.getIdToken();
-        const response = await fetch('/api/stripe/connect?view=setup', {
+        const response = await accountFetch('/api/stripe/connect?view=setup', {
           cache: 'no-store', signal: controller.signal,
           headers: { Authorization: `Bearer ${token}` },
         });

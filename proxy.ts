@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { PAYOUT_SETUP_PATH, payoutReturnPath, publicReturnPath } from '@/lib/utils/loginDestination';
-
-const BUYER_PATHS = [
-  '/checkout', '/library', '/profile', '/notifications', '/watch', '/listen',
-];
-const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller', '/promotions', '/video-studio', '/audio-studio'];
-const ADMIN_PATHS = ['/admin'];
+import { TAB_ACCOUNT_COOKIE } from '@/lib/auth/tabAccount';
+import { BUYER_PATHS, SELLER_PATHS, ADMIN_PATHS, pathStartsWith } from '@/lib/auth/routeAccess';
 const AUTH_PATHS = ['/login', '/signup'];
-
-function pathStartsWith(pathname: string, prefixes: string[]) {
-  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'));
-}
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Cookies cannot identify which tab is navigating. Once separate accounts
+  // are used, the client route gate reads that tab's Firebase identity instead.
+  // This does not grant API or Firestore access.
+  if (request.cookies.get(TAB_ACCOUNT_COOKIE)?.value === '1' ||
+    (pathname === '/login' && request.nextUrl.searchParams.get('account') === 'separate')) {
+    return NextResponse.next();
+  }
 
   if (
     pathname.startsWith('/__') ||

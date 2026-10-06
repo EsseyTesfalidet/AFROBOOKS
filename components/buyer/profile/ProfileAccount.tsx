@@ -13,6 +13,7 @@ import { PROFILE_SECTIONS, buttonClass, inputClass, panelClass } from './profile
 import { useInstalledApp } from '@/hooks/useInstalledApp';
 import { AUTHOR_APP_START, authorWebsiteHref } from '@/lib/app/authorWebsite';
 import { useAndroidDevice } from '@/hooks/useAndroidDevice';
+import SeparateAccountLink from '@/components/auth/SeparateAccountLink';
 
 export default function ProfileAccount() {
   const user = useAuthStore(s => s.userProfile)!;
@@ -62,6 +63,7 @@ export default function ProfileAccount() {
     finally { setWorkspaceBusy(false); }
   }
   return <div className="space-y-6">
+    <SeparateAccountLink />
     <div className="flex items-center gap-4">
       <AvatarUpload size={72} />
       <div className="min-w-0 flex-1">

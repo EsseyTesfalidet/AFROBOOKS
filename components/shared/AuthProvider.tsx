@@ -33,9 +33,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       unsub = onAuthStateChanged(auth, async (firebaseUser) => {
         await waitForAuthFlow();
         if (auth.currentUser !== firebaseUser) return;
+        if (useAuthStore.getState().firebaseUser?.uid !== firebaseUser?.uid) {
+          setLoading(true);
+          setUserProfile(null);
+          setFirebaseUser(firebaseUser);
+        }
         if (firebaseUser) {
           try {
             const profile = await getUserProfile(firebaseUser.uid);
+            if (auth.currentUser !== firebaseUser) return;
             if (!profile || profile.status === 'suspended' || profile.status === 'banned') {
               await revokeAccess();
               return;
@@ -48,11 +54,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             const token = await firebaseUser.getIdToken();
             await syncAuthSession(token, firebaseUser.uid);
           } catch {
+            if (auth.currentUser !== firebaseUser) return;
             await clearAuthSession();
             setFirebaseUser(firebaseUser);
             setUserProfile(null);
           } finally {
-            setLoading(false);
+            if (auth.currentUser === firebaseUser) setLoading(false);
           }
         } else {
           if (isInstalledApp()) {
@@ -61,7 +68,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             setLoading(true);
           }
           await clearAuthSession();
-          reset();
+          if (!auth.currentUser) reset();
         }
       });
     }
@@ -69,7 +76,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     init();
 
     return () => { unsub?.(); };
-  }, []);
+  }, [reset, setFirebaseUser, setLoading, setUserProfile]);
 
   return <>{children}</>;
 }

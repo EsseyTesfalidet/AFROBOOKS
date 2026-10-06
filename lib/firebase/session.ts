@@ -1,5 +1,7 @@
 'use client';
 
+import { isSeparateAccount } from '@/lib/auth/tabAccount';
+
 const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
 function setCookie(name: string, value: string, maxAge = AUTH_COOKIE_MAX_AGE) {
@@ -13,6 +15,7 @@ function clearCookie(name: string) {
 }
 
 export function setClientAuthHints(uid: string, role: string) {
+  if (isSeparateAccount()) return;
   setCookie('ab_uid', uid);
   setCookie('ab_role', role);
 }
@@ -23,6 +26,7 @@ function clearClientAuthHints() {
 }
 
 export async function syncAuthSession(idToken: string, uid: string) {
+  if (isSeparateAccount()) return true;
   try {
     const response = await fetch('/api/auth/session', {
       method: 'POST',
@@ -42,6 +46,7 @@ export async function syncAuthSession(idToken: string, uid: string) {
 }
 
 export async function clearAuthSession() {
+  if (isSeparateAccount()) return;
   clearClientAuthHints();
 
   await fetch('/api/auth/session', {

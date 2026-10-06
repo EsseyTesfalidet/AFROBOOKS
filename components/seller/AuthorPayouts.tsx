@@ -1,5 +1,7 @@
 'use client';
 
+import { accountFetch } from '@/lib/network';
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -41,7 +43,7 @@ export default function AuthorPayouts() {
     try {
       const user = useAuthStore.getState().firebaseUser;
       if (!user) throw new Error('Please sign in again.');
-      const response = await fetch('/api/stripe/connect', {
+      const response = await accountFetch('/api/stripe/connect', {
         cache: 'no-store',
         headers: { Authorization: `Bearer ${await user.getIdToken()}` },
       });

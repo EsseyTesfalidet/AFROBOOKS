@@ -22,6 +22,7 @@ import { beginAuthFlow } from '@/lib/auth/flow';
 import { mobileAuthDestination, mobileAuthSwitchHref } from '@/lib/auth/mobileAccess';
 import { useInstalledApp } from '@/hooks/useInstalledApp';
 import MobileSignIn from './MobileSignIn';
+import { SeparateAccountNotice } from './SeparateAccountLink';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -192,6 +193,7 @@ function WebsiteLoginForm() {
         />
         <div className="app-login-content relative">
           <span className="app-login-eyebrow eyebrow-chip">Secure Sign In</span>
+          <SeparateAccountNotice />
           <div className="app-login-intro mt-5 text-center">
             <div className="app-login-brand"><Logo size="lg" href="/" /></div>
             <h1 className="mt-6 font-display text-[32px] leading-tight text-white sm:text-5xl">Welcome back</h1>

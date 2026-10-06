@@ -20,7 +20,8 @@ export async function requireRequestUser(
   request: NextRequest
 ): Promise<AuthenticatedRequestUser> {
   const bearerToken = getBearerToken(request);
-  const sessionCookie = request.cookies.get('__session')?.value ?? null;
+  const sessionCookie = request.headers.get('x-afrobooks-account-mode') === 'tab'
+    ? null : request.cookies.get('__session')?.value ?? null;
 
   if (!bearerToken && !sessionCookie) {
     throw new Error('Unauthorized');

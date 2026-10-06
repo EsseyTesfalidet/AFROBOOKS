@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { reviewVerification } from '@/lib/admin/reviewVerification';
 import { db } from '@/lib/firebase/config';
 import { useAuthStore } from '@/store/authStore';
+import PrivateVerificationDocument from '@/components/admin/PrivateVerificationDocument';
 
 import { useAdminCollection } from '@/lib/admin/useAdminCollection';
 import { dateValue } from '@/lib/admin/metrics';
@@ -176,14 +177,7 @@ export default function AdminVerificationsPage() {
             Open the private document and verify it before recording a decision. This publishing
             check is separate from Stripe’s payout verification.
           </p>
-          <a
-            href={'/api/admin/verifications/' + encodeURIComponent(request.id) + '/file'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="admin-secondary"
-          >
-            Open identity document ↗
-          </a>
+          <PrivateVerificationDocument key={request.id} id={request.id} />
           <AdminError error={actionError} />
           {request.status === 'pending' && (
             <div className="admin-drawer-actions">
