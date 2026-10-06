@@ -20,6 +20,7 @@ import LanguageChoices from '@/components/experience/LanguageChoices';
 import { StoryCollections, ContinueEnjoying } from '@/components/experience/MediaShelves';
 import { useDiscoveryLanguages } from '@/hooks/useDiscoveryLanguages';
 import { preferLanguages } from '@/lib/utils/languagePreference';
+import MobilePullToRefresh from '@/components/shared/MobilePullToRefresh';
 import './listen.css';
 interface Page { entries: AudioEntry[]; next: string | null; limited?: boolean }
 interface Detail { title: AudioTitle; canPlay: boolean; offer: PlayOffer | null }
@@ -44,6 +45,7 @@ function Catalog({ library = false }: { library?: boolean }) {
     catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
   return <><BuyerHeader /><main className="listen-page app-page"><header className="listen-heading"><div><p className="listen-eyebrow">AfroBooks</p><h1>{library ? 'Your library' : 'Listen'}</h1><p>{library ? 'Your audio, ready when you are.' : 'Music. Conversations. Stories told aloud.'}</p></div><Headphones size={36} /></header>
+    <MobilePullToRefresh onRefresh={async () => { setExtra([]); setCursor(undefined); setError(''); setNotice(''); await resource.refresh(); }} />
     {library ? <LibraryFormatTabs active="audio" /> : <section className="listen-hero"><span className="listen-hero-mark" aria-hidden="true"><Headphones size={70} strokeWidth={1} /></span><p>Find your next favourite voice.</p><span>Discover African music, podcasts and audiobooks.</span></section>}
     {library&&<ContinueEnjoying/>}<Playlists/><LanguageChoices/>
     <label className="listen-search"><Search size={19} /><input id="listen-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search audio, creators or languages" aria-label="Search loaded audio" /></label>

@@ -8,6 +8,7 @@ These additions apply only in the installed mobile app. The website keeps its ex
 - Audio titles can be added to a playlist, placed at the front of the queue with **Play next**, or added to the queue. Queue order can be changed and queued titles can be removed.
 - Starting a playlist or queued title checks the normal audio playback endpoint. A playlist never grants access to a paid title; an unavailable or unpurchased title stays queued if playback is denied.
 - The player has a 15, 30, or 60 minute sleep timer and an end-of-chapter/recording timer. The timer survives navigation while the player remains open and is cleared when the account changes.
+- In the expanded player, pull the top handle down to minimize. Swipe the cover left to advance recordings or queued titles, and right to go back through recordings or the previous title. Title changes still use the authenticated playback endpoint; unavailable or unpurchased titles cannot be opened by swiping.
 
 ## Read, Watch, Listen
 
@@ -17,3 +18,7 @@ These additions apply only in the installed mobile app. The website keeps its ex
 - Admins create, reorder, publish, unpublish, and delete collections under **Admin → Story collections**. A published collection needs at least two titles in at least two formats, and every item must be published. Removing access or unpublishing a title removes it from the public collection view.
 
 Downloads are not included in this release.
+
+## Touch refresh
+
+On mobile Browse, Watch, Listen, and the audio library, pull down from the top of the scroll area to refresh the current catalog. Horizontal shelves, video/audio players, links, and form controls do not start a refresh gesture. The indicator respects the app palette and reduced-motion setting.

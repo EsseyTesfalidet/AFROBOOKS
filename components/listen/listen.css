@@ -158,3 +158,6 @@ html:not([data-app-mode=installed]) .listen-studio-form input[type=file]::file-s
 @media(prefers-reduced-motion:no-preference) { .listen-sound-bars i { animation:listen-sound var(--bar-speed) ease-in-out var(--bar-delay) infinite alternate; animation-play-state:paused; } .listen-sound-bars[data-playing=true] i { animation-play-state:running; } @keyframes listen-sound { from { transform:scaleY(.25); } to { transform:scaleY(1); } } }
 @media(prefers-reduced-motion:no-preference) { .listen-now-playing>.listen-art { transition:transform .45s cubic-bezier(.2,.8,.3,1),box-shadow .45s; } }
 @media(prefers-reduced-motion:no-preference) { .listen-card-open,.listen-round { transition:transform .15s; }.listen-card-open:active,.listen-round:active { transform:scale(.97); } }
+.listen-player-swipe-handle { display:grid; place-items:center; width:100%; min-height:24px; padding:0; border:0; background:transparent; touch-action:none; cursor:grab; }
+.listen-player-swipe-handle span { display:block; width:36px; height:4px; border-radius:99px; background:var(--app-muted,#aaa); opacity:.55; }
+.listen-now-playing { touch-action:pan-y; -webkit-user-select:none; user-select:none; }

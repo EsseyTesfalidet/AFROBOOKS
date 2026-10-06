@@ -29,6 +29,13 @@ html[data-app-mode='installed'], html[data-app-mode='installed'] body {
   height: 100%; min-height: 0; overflow: hidden; overscroll-behavior: none;
 }
 html[data-app-mode='installed'] body { padding: 0; }
+html[data-app-mode='installed'] .app-pull-refresh { position:fixed; z-index:1000; top:env(safe-area-inset-top); left:50%; display:flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:0 15px; border:1px solid var(--app-line); border-radius:24px; background:var(--app-surface); color:var(--app-text); box-shadow:0 8px 24px #0004; font-size:12px; font-weight:650; pointer-events:none; opacity:0; transform:translate(-50%,calc(-100% - 8px + var(--pull-distance,0px))); transition:transform 150ms ease,opacity 150ms ease; }
+html[data-app-mode='installed'] .app-pull-refresh[data-active='true'] { opacity:1; }
+html[data-app-mode='installed'] .app-pull-refresh[data-refreshing='true'] { color:var(--app-accent); }
+html[data-app-mode='installed'] .app-pull-refresh-icon { animation:app-pull-spin 850ms linear infinite; }
+html[data-app-mode='installed'] .app-pull-refresh-arrow { color:var(--app-accent); }
+@keyframes app-pull-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { html[data-app-mode='installed'] .app-pull-refresh, html[data-app-mode='installed'] .app-pull-refresh-icon { animation:none; transition:none; } }
 /* Allow native one-finger scrolling, without page pinch or double-tap zoom.
    Include nested scrollers and portal sheets; custom drag controls override it. */
 html[data-app-mode='installed'],

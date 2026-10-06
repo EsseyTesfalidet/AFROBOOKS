@@ -15,14 +15,14 @@ async function main() {
     stdin: { resolveDir: process.cwd(), loader: 'tsx', contents: `
 import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
 import Shell from './components/shared/MobileAppShell';import Experience from './components/shared/AppExperience';
-import Keyboard from './components/shared/MobileKeyboard';import Rail from './components/buyer/BookRail';
+import Keyboard from './components/shared/MobileKeyboard';import PullRefresh from './components/shared/MobilePullToRefresh';import Rail from './components/buyer/BookRail';
 import Header from './components/buyer/BuyerHeader';import Chrome from './components/buyer/BuyerChrome';
 import {useAuthStore} from './store/authStore';
-window.path=location.pathname;useAuthStore.setState({loading:false,firebaseUser:{uid:'fixture'},userProfile:{uid:'fixture',firstName:'Reader',lastName:'Test',status:'active',role:'buyer',activeRole:'buyer'}});
+window.path=location.pathname;window.pullRefreshes=0;useAuthStore.setState({loading:false,firebaseUser:{uid:'fixture'},userProfile:{uid:'fixture',firstName:'Reader',lastName:'Test',status:'active',role:'buyer',activeRole:'buyer'}});
 const books=Array.from({length:8},(_,i)=>({id:'book-'+i,title:i===1?'ታሪኽ — ትግርኛ':i===0?'How Eurocentric Perspectives Shape the Stories We Tell':'Story '+(i+1),authorName:'AfroBooks Author',price:199,coverBgColor:['#423647','#29434c','#464335'][i%3]}));
 function App(){const [path,setPath]=useState(window.path);const[loaded,setLoaded]=useState(true);
 window.navigate=(p,delayed=false)=>{history.pushState(null,'',p);window.path=p;setPath(p);setLoaded(!delayed);if(delayed)setTimeout(()=>setLoaded(true),150)};
-const reader=path.startsWith('/read/');return <><Keyboard/><Shell><Experience/>{reader?<div className="reader-shell"><div className="reader-viewport" data-testid="reader"><article style={{padding:24}}><h1>Reader</h1>{Array.from({length:40},(_,i)=><p key={i} style={{marginBlock:24}}>A readable paragraph with room to breathe. ታሪኽ — ትግርኛ</p>)}</article></div></div>:<div className="min-h-screen app-canvas"><Header/><main className="app-page" style={{paddingInline:20}}><h1>{path==='/browse'?'Discover your next read':'Library'}</h1>{loaded&&<><Rail title="Featured stories" subtitle="Stories from across Africa" books={books}/>{Array.from({length:24},(_,i)=><p key={i} style={{marginBlock:36}}>Page paragraph {i+1}. Selectable text and space for a growing library.</p>)}<label htmlFor="note">Reading note</label><input id="note" style={{display:'block',height:48,color:'black'}}/><p data-testid="last" style={{marginBlock:32}}>End of content</p></>}</main><Chrome/></div>}</Shell></>}
+const reader=path.startsWith('/read/');return <><Keyboard/><Shell><PullRefresh onRefresh={()=>{window.pullRefreshes++;}}/><Experience/>{reader?<div className="reader-shell"><div className="reader-viewport" data-testid="reader"><article style={{padding:24}}><h1>Reader</h1>{Array.from({length:40},(_,i)=><p key={i} style={{marginBlock:24}}>A readable paragraph with room to breathe. ታሪኽ — ትግርኛ</p>)}</article></div></div>:<div className="min-h-screen app-canvas"><Header/><main className="app-page" style={{paddingInline:20}}><h1>{path==='/browse'?'Discover your next read':'Library'}</h1>{loaded&&<><Rail title="Featured stories" subtitle="Stories from across Africa" books={books}/>{Array.from({length:24},(_,i)=><p key={i} style={{marginBlock:36}}>Page paragraph {i+1}. Selectable text and space for a growing library.</p>)}<label htmlFor="note">Reading note</label><input id="note" style={{display:'block',height:48,color:'black'}}/><p data-testid="last" style={{marginBlock:32}}>End of content</p></>}</main><Chrome/></div>}</Shell></>}
 createRoot(document.getElementById('root')).render(<App/>);
 ` },
     plugins: [{ name: 'account-and-framework-fixtures', setup(b) {
@@ -72,6 +72,15 @@ createRoot(document.getElementById('root')).render(<App/>);
       } else {
         await page.locator('.app-swipe-shelf[data-ready=true]').waitFor();
         assert.equal(await shell.evaluate(el => getComputedStyle(el).scrollbarWidth), 'none');
+        await page.evaluate(() => document.querySelector('.mobile-app-viewport').scrollTo({ top: 0, behavior: 'instant' }));
+        const pullCdp = await context.newCDPSession(page);
+        await pullCdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 190, y: 90 }] });
+        for (let step = 1; step <= 10; step++) await pullCdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 190, y: 90 + step * 10 }] });
+        await page.getByText('Release to refresh').waitFor();
+        await pullCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await page.waitForFunction(() => window.pullRefreshes === 1);
+        await page.getByText('Updated').waitFor();
+        assert.equal(await page.evaluate(() => document.querySelector('.mobile-app-viewport').scrollTop), 0, 'pull refresh keeps the app at the top');
         const headerBefore = await page.locator('.app-header').boundingBox(); const navBefore = await page.locator('.buyer-bottom-nav').boundingBox();
         await page.mouse.move(370, 700); await page.mouse.wheel(0, 450);
         await page.waitForFunction(() => document.querySelector('.mobile-app-viewport').scrollTop > 100);
@@ -107,6 +116,7 @@ createRoot(document.getElementById('root')).render(<App/>);
         for (let step = 1; step <= 8; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - step * 25, y }] });
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
         assert.ok(await offset() < -50, 'touch swipe moves shelf');
+        assert.equal(await page.evaluate(() => window.pullRefreshes), 1, 'horizontal shelf gestures do not refresh the page');
         await page.locator('.app-book-card').last().focus();
         await page.waitForFunction(() => { const r = document.querySelectorAll('.app-book-card')[7].getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; });
         for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }, { width: 768, height: 1024 }]) {
@@ -121,10 +131,10 @@ createRoot(document.getElementById('root')).render(<App/>);
         await page.setViewportSize({ width: 390, height: 844 });
         await page.getByRole('button', { name: 'Open account', exact: true }).click(); await page.getByRole('dialog').waitFor();
         assert.equal(await page.locator('.buyer-account-button').getAttribute('data-active'),'true');
-        assert.deepEqual(await page.locator('.buyer-nav-item').allTextContents(),['Browse','Screen','Listen','Library']);
+        assert.deepEqual(await page.locator('.buyer-nav-item').allTextContents(),['Read','Watch','Listen','Library']);
         assert.ok(await shell.evaluate(el => Boolean(el.closest('[inert]'))));
         await page.keyboard.press('Escape'); assert.equal(await page.getByRole('dialog').count(), 0);
-        assert.equal(await page.locator('.buyer-nav-item[data-active="true"]').innerText(),'Browse');
+        assert.equal(await page.locator('.buyer-nav-item[data-active="true"]').innerText(),'Read');
         await page.getByLabel('Reading note').fill('My next read');
         await page.evaluate(() => {
           Object.defineProperty(visualViewport, 'height', { configurable: true, value: 480 });

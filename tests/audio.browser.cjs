@@ -98,12 +98,16 @@ async function main() {
     await page.getByRole('button',{name:'Next recording',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.src.includes('part=two'));await page.waitForFunction(()=>document.querySelector('audio')?.currentTime>0);
     await page.getByRole('button',{name:'Pause audio',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.listen-sound-bars')?.dataset.playing==='false');
     assert.equal(await page.getByRole('slider',{name:'Audio position'}).getAttribute('max'),'26');assert.ok(actions.some(a=>a.action==='progress'&&a.data.id==='podcast'&&a.data.seconds>=13));
+    await page.locator('.listen-now-playing').evaluate(el=>{const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',clientX:x,clientY:y}));el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',clientX:x-90,clientY:y}));});
+    await page.waitForFunction(()=>document.querySelector('audio')?.src.includes('part=two'));
     await page.getByRole('button',{name:'Previous recording',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.src.includes('part=main'));
     await page.waitForFunction(()=>Number.isFinite(document.querySelector('audio')?.duration));await page.evaluate(()=>{const a=document.querySelector('audio');a.currentTime=a.duration-.1;a.play()});await page.waitForFunction(()=>document.querySelector('audio')?.src.includes('part=two'));
     await page.getByRole('button',{name:'Pause audio',exact:true}).click();
     await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.listen-sound-bars i').first().evaluate(e=>getComputedStyle(e).animationName),'none');await page.emulateMedia({reducedMotion:'no-preference'});
     await page.getByRole('slider',{name:'Volume',exact:true}).fill('0.4');assert.equal(await page.locator('audio').evaluate(a=>a.volume),.4);await page.locator('.listen-expanded').evaluate(e=>e.scrollTop=0);await page.screenshot({path:'.vercel/audio-player-upgraded.png'});
     assert.equal(await page.locator('.listen-now-playing .listen-art img').count(),1);await page.locator('.listen-player-atmosphere').waitFor();
+    await page.locator('.listen-player-swipe-handle').evaluate(el=>{const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',clientX:x,clientY:y}));el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',clientX:x,clientY:y+90}));});
+    await page.waitForFunction(()=>document.querySelector('.listen-player')?.dataset.expanded==='false');await page.locator('.listen-player-title').click();await page.waitForFunction(()=>document.querySelector('.listen-player')?.dataset.expanded==='true');
     for (const theme of ['light','dark']) {
       await page.evaluate(t=>document.documentElement.dataset.appTheme=t,theme);
       for (const size of [{width:320,height:568},{width:390,height:844},{width:768,height:1024},{width:844,height:390}]) {
@@ -144,6 +148,10 @@ async function main() {
     await page.evaluate(()=>window.audioPrefs.getState().setSleep({mode:'time',deadline:Date.now()+100}));
     await page.getByText('Sleep timer finished.',{exact:false}).waitFor();assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
     await page.getByRole('button',{name:'Play next title',exact:true}).click();await page.waitForFunction(()=>window.audioPrefs.getState().queue.length===0);
+    await page.evaluate(()=>window.audioPrefs.getState().enqueue({id:'podcast',title:'Stories of home',creator:'Original Studio'},'reader',true));
+    await page.getByRole('button',{name:'Play next title',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.src.includes('id=podcast'));
+    await page.locator('.listen-now-playing').evaluate(el=>{const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',clientX:x,clientY:y}));el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',clientX:x+90,clientY:y}));});
+    await page.waitForFunction(()=>document.querySelector('audio')?.src.includes('id=music'));
     await page.getByLabel('Sleep timer',{exact:true}).selectOption('chapter');
     assert.equal(await page.evaluate(()=>window.audioPrefs.getState().sleep.mode),'chapter');
     await page.evaluate(()=>{const a=document.querySelector('audio');a.currentTime=a.duration-.1;a.play()});

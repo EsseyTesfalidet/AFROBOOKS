@@ -15,6 +15,7 @@ import { StoryCollections } from '@/components/experience/MediaShelves';
 import { useDiscoveryLanguages } from '@/hooks/useDiscoveryLanguages';
 import { preferLanguages } from '@/lib/utils/languagePreference';
 import { useWatchHeaderOffset } from './useWatchHeaderOffset';
+import MobilePullToRefresh from '@/components/shared/MobilePullToRefresh';
 
 interface Catalog { videos: WatchVideo[]; next: string | null; channel: { uid: string; name: string; following: boolean } | null }
 function CatalogContent({ creatorId }: { creatorId?: string }) {
@@ -41,6 +42,7 @@ function CatalogContent({ creatorId }: { creatorId?: string }) {
     catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
   return <><BuyerHeader /><main ref={main} className="app-page watch-page watch-discovery">
+    <MobilePullToRefresh onRefresh={async () => { setExtra([]); setCursor(undefined); setError(''); await resource.refresh(); }} />
     {creatorId && <Link className="watch-back" href="/watch"><ArrowLeft size={18} /> Watch</Link>}
     {creatorId ? <header className="watch-channel-header"><div className="watch-channel-banner" aria-hidden="true"><Clapperboard size={90} strokeWidth={.8} /></div><div className="watch-channel-identity"><span className="watch-channel-avatar" aria-hidden="true">{(resource.data?.channel?.name || 'C').slice(0, 1)}</span><div><p className="watch-eyebrow">Creator channel</p><h1 dir="auto">{resource.data?.channel?.name || 'Creator videos'}</h1></div></div><div className="watch-channel-about"><p>Original voices. Stories worth staying for.</p>{resource.data?.channel && <button className="watch-button watch-follow" aria-pressed={following ?? resource.data.channel.following} disabled={busy} onClick={follow}>{(following ?? resource.data.channel.following) ? 'Following' : 'Follow · free'}</button>}</div></header>
     : <header className="watch-intro watch-discovery-intro"><div className="watch-discovery-heading"><span className="watch-screen-mark" aria-hidden="true"><Clapperboard size={23} /></span><div><p className="watch-eyebrow">AfroBooks</p><h1>Watch</h1></div></div><Link className="watch-icon watch-saved-link" href="/library/videos" aria-label="Saved videos"><Bookmark size={20} /></Link></header>}

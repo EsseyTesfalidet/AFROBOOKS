@@ -13,15 +13,25 @@ let generation = 0;
 let unsubscribe: (() => void) | undefined;
 const reconnect = () => { if (useCatalogState.getState().error) connect(); };
 
-function connect() {
+function connect(onSettled?: (error?: unknown) => void, retain = false) {
   unsubscribe?.();
   const current = ++generation;
-  useCatalogState.setState({ books: [], loading: true, error: '' });
-  unsubscribe = subscribeLiveBooks(books => {
-    if (current === generation) useCatalogState.setState({ books: newestBooks(books), loading: false, error: '' });
-  }, () => {
-    if (current === generation) useCatalogState.setState({ books: [], loading: false, error: 'The catalog could not be loaded. Check your connection and try again.' });
-  });
+  const previous = useCatalogState.getState();
+  useCatalogState.setState(retain ? { ...previous, loading: previous.books.length === 0, error: '' } : { books: [], loading: true, error: '' });
+  let settled = false;
+  const finish = (error?: unknown) => { if (!settled) { settled = true; onSettled?.(error); } };
+  try {
+    unsubscribe = subscribeLiveBooks(books => {
+      if (current === generation) useCatalogState.setState({ books: newestBooks(books), loading: false, error: '' });
+      finish();
+    }, () => {
+      if (current === generation) useCatalogState.setState({ books: retain ? previous.books : [], loading: false, error: 'The catalog could not be loaded. Check your connection and try again.' });
+      finish(new Error('The catalog could not be loaded. Check your connection and try again.'));
+    });
+  } catch (error) {
+    if (current === generation) useCatalogState.setState({ books: retain ? previous.books : [], loading: false, error: 'The catalog could not be loaded. Check your connection and try again.' });
+    finish(error);
+  }
 }
 
 export function useCatalog() {
@@ -37,5 +47,5 @@ export function useCatalog() {
       }
     };
   }, []);
-  return { ...state, retry: connect };
+  return { ...state, retry: () => connect(), refresh: () => new Promise<void>((resolve, reject) => connect(error => error ? reject(error) : resolve(), true)) };
 }

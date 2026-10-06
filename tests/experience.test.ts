@@ -23,7 +23,7 @@ test('queue prioritizes Play next, supports reorder/removal and clears across ac
   assert.deepEqual(useAudioStore.getState().queue.map(item=>item.id),['b','a']);
   store.moveQueued(0,1);assert.deepEqual(useAudioStore.getState().queue.map(item=>item.id),['a','b']);
   store.removeQueued(0);assert.equal(useAudioStore.getState().queue[0].id,'b');
-  store.setSleep({mode:'time',deadline:1000});store.enqueue({id:'c',title:'C',creator:'Creator'},'another');
-  assert.deepEqual(useAudioStore.getState().queue.map(item=>item.id),['c']);assert.equal(useAudioStore.getState().sleep,null);store.close();
+  store.setSleep({mode:'time',deadline:1000});store.setPreviousTitle({id:'old',title:'Old title',creator:'Creator',seconds:20});store.enqueue({id:'c',title:'C',creator:'Creator'},'another');
+  assert.deepEqual(useAudioStore.getState().queue.map(item=>item.id),['c']);assert.equal(useAudioStore.getState().sleep,null);assert.equal(useAudioStore.getState().previousTitle,null);store.close();
   assert.equal(useAudioStore.getState().queue.length,0);
 });

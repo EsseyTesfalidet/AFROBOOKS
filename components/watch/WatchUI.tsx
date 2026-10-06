@@ -20,15 +20,27 @@ export function useWatchResource<T>(path: string, retainDuringRefresh = false) {
   const authLoading = useAuthStore(s => s.loading);
   const [state, setState] = useState<{ data: T | null; error: string; key: string }>({ data: null, error: '', key: '' });
   const [attempt, setAttempt] = useState(0);
-  const key = `${user?.uid || ''}:${path}:${attempt}`;
-  const retry = useCallback(() => setAttempt(value => value + 1), []);
+    const key = `${user?.uid || ''}:${path}:${attempt}`;
+    const retry = useCallback(() => setAttempt(value => value + 1), []);
+    const refresh = useCallback(async () => {
+      if (!user) throw new Error('Please sign in to refresh this page.');
+      const requestKey = key;
+      try {
+        const data = await authenticatedGet<T>(path);
+        if (useAuthStore.getState().firebaseUser?.uid === user.uid) setState({ data, error: '', key: requestKey });
+      } catch (failure) {
+        const message = failure instanceof Error ? failure.message : 'Unable to refresh. Check your connection and try again.';
+        if (useAuthStore.getState().firebaseUser?.uid === user.uid) setState(previous => ({ data: retainDuringRefresh && previous.key.startsWith(`${user.uid}:${path}:`) ? previous.data : null, error: message, key: requestKey }));
+        throw failure;
+      }
+    }, [user, path, key, retainDuringRefresh]);
   useEffect(() => {
     let active = true;
     if (user) void authenticatedGet<T>(path).then(data => { if (active) setState({ data, error: '', key }); }).catch(error => { if (active) setState(previous => ({ data: retainDuringRefresh && previous.key.startsWith(`${user.uid}:${path}:`) ? previous.data : null, error: error.message, key })); });
     return () => { active = false; };
   }, [path, user, key, retainDuringRefresh]);
   const sameAccountAndPath = !!user && state.key.startsWith(`${user.uid}:${path}:`);
-  return { data: user && (state.key === key || (retainDuringRefresh && sameAccountAndPath)) ? state.data : null, loading: authLoading || (!!user && state.key !== key && !(retainDuringRefresh && sameAccountAndPath)), error: !user && !authLoading ? 'Please sign in to continue.' : state.key === key ? state.error : '', retry };
+    return { data: user && (state.key === key || (retainDuringRefresh && sameAccountAndPath)) ? state.data : null, loading: authLoading || (!!user && state.key !== key && !(retainDuringRefresh && sameAccountAndPath)), error: !user && !authLoading ? 'Please sign in to continue.' : state.key === key ? state.error : '', retry, refresh };
 }
 export function WatchAppGate({ children }: { children: ReactNode }) {
   const installed = useInstalledApp();

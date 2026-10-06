@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { usePathname } from 'next/navigation';
 import { Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, X, ChevronDown, ListMusic, Volume2, VolumeX } from 'lucide-react';
 import { useAudioStore, type AudioPlayback } from '@/store/audioStore';
@@ -12,13 +12,15 @@ import { getBuyerRouteState } from '@/components/buyer/buyerNavigation';
 import AudioArtwork from './AudioArtwork';
 import { QueueRows } from './Playlists';
 import { sleepReached } from '@/lib/audio/sleep';
+import { classifyPlayerSwipe } from '@/lib/audio/playerGestures';
+import { appHaptic } from '@/lib/app/haptics';
 import './listen.css';
 
 function SoundBars({ playing, mini = false }: { playing: boolean; mini?: boolean }) {
   return <span className={`listen-sound-bars${mini ? ' listen-sound-mini' : ''}`} data-playing={playing} aria-hidden="true">{(mini ? [45, 90, 65, 100] : [25, 48, 32, 76, 50, 93, 64, 100, 57, 83, 44, 95, 62, 78, 39, 59, 31, 44]).map((height, index) => <i key={index} style={{ '--bar-height': `${height}%`, '--bar-delay': `${-index * .17}s`, '--bar-speed': `${.65 + (index % 5) * .15}s` } as CSSProperties} />)}</span>;
 }
 function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
-  const ref = useRef<HTMLAudioElement>(null); const lastSaved = useRef(0); const changing = useRef(false); const alive = useRef(true); const pathname = usePathname();
+  const ref = useRef<HTMLAudioElement>(null); const lastSaved = useRef(0); const changing = useRef(false); const alive = useRef(true); const gestureStart = useRef<{ x: number; y: number } | null>(null); const suppressHandleClick = useRef(false); const pathname = usePathname();
   const close = useAudioStore(s => s.close); const set = useAudioStore(s => s.set);
   const [playing, setPlaying] = useState(false); const [seconds, setSeconds] = useState(playback.seconds);
   const [expanded, setExpanded] = useState(!!playback.expanded); const [error, setError] = useState(''); const [rate, setRate] = useState(playback.rate || 1); const [loading, setLoading] = useState(false);
@@ -38,7 +40,7 @@ function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
     if (changing.current) return; changing.current = true; setLoading(true); setError(''); save(true);
     try {
       const next = await authenticatedGet<AudioPlayback>(`/api/audio?view=${preview ? 'preview' : 'playback'}&id=${playback.title.id}${preview ? '' : `&position=${position}`}`);
-      if (alive.current && useAuthStore.getState().firebaseUser?.uid === uid) set({ ...next, ...(preview && retry ? { seconds: position } : {}), expanded, rate, volume }, uid);
+      if (alive.current && useAuthStore.getState().firebaseUser?.uid === uid) set({ ...next, ...(preview && retry ? { seconds: position } : {}), expanded, rate, volume }, uid, { preservePrevious: true });
     } catch (failure) { if (alive.current) setError((failure as Error).message); }
     finally { changing.current = false; if (alive.current) setLoading(false); }
   }
@@ -85,14 +87,61 @@ function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
       if(!alive.current||useAuthStore.getState().firebaseUser?.uid!==uid||stopForSleep(seconds))return;
       // A queued title is removed only after authorization and a successful load.
       if(useAudioStore.getState().queue[0]?.id!==first.id)return;
-      useAudioStore.getState().removeQueued(0);set({...next,expanded,rate,volume},uid);
+      useAudioStore.getState().removeQueued(0);
+      useAudioStore.getState().setPreviousTitle({ id: playback.title.id, title: playback.title.title, creator: playback.title.creatorName, seconds });
+      set({...next,expanded,rate,volume},uid,{preservePrevious:true});
     }catch(e){if(alive.current)setError(`Could not open ${first.title}. ${(e as Error).message} The title is still in your queue.`);}
     finally{queueBusy.current=false;if(alive.current)setLoading(false);}
+  }
+  async function previousTitle() {
+    const previous = useAudioStore.getState().previousTitle;
+    if (!previous || queueBusy.current || stopForSleep(seconds)) return;
+    queueBusy.current = true; setLoading(true); setError(''); save(true); ref.current?.pause();
+    try {
+      const prior = await authenticatedGet<AudioPlayback>(`/api/audio?view=playback&id=${encodeURIComponent(previous.id)}&position=${Math.max(0, previous.seconds)}`);
+      if (!alive.current || useAuthStore.getState().firebaseUser?.uid !== uid || stopForSleep(seconds)) return;
+      if (useAudioStore.getState().previousTitle?.id !== previous.id) return;
+      useAudioStore.getState().setPreviousTitle({ id: playback.title.id, title: playback.title.title, creator: playback.title.creatorName, seconds });
+      set({ ...prior, expanded, rate, volume }, uid, { preservePrevious: true });
+    } catch (failure) {
+      if (alive.current) setError(`Could not reopen ${previous.title}. ${(failure as Error).message}`);
+    } finally { queueBusy.current = false; if (alive.current) setLoading(false); }
+  }
+  function beginGesture(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+    gestureStart.current = { x: event.clientX, y: event.clientY };
+  }
+  function endArtworkGesture(event: ReactPointerEvent<HTMLElement>) {
+    const start = gestureStart.current; gestureStart.current = null;
+    if (!start || loading || preview) return;
+    const direction = classifyPlayerSwipe(event.clientX - start.x, event.clientY - start.y);
+    if (direction === 'next') {
+      const next = tracks[trackIndex + 1];
+      if (next) { appHaptic(); seek(next.startSeconds); }
+      else if (queue.length) { appHaptic(); void nextTitle(); }
+    } else if (direction === 'previous') {
+      if (trackIndex > 0) { appHaptic(); seek(tracks[trackIndex - 1].startSeconds); }
+      else if (useAudioStore.getState().previousTitle) { appHaptic(); void previousTitle(); }
+    }
+  }
+  function endCollapseGesture(event: ReactPointerEvent<HTMLElement>) {
+    const start = gestureStart.current; gestureStart.current = null;
+    if (!start) return;
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (Math.abs(deltaX) >= 18 || Math.abs(deltaY) >= 18) {
+      suppressHandleClick.current = true;
+      window.setTimeout(() => { suppressHandleClick.current = false; }, 500);
+    }
+    if (classifyPlayerSwipe(deltaX, deltaY) === 'collapse') {
+      appHaptic(); setExpanded(false);
+    }
   }
   function toggle() { const node = ref.current!; if (playing) node.pause(); else { if (preview && node.currentTime >= duration) node.currentTime = 0; void node.play().catch(() => setError('Unable to play. Try again.')); } }
   function changeVolume(value: number) { const node = ref.current!; node.volume = value; setDeviceVolume(Math.abs(node.volume - value) > .01); setVolume(node.volume); }
   return <><div hidden={hidden} aria-hidden="true" style={{ height: expanded ? 360 : 100 }} /><section className="listen-player" data-expanded={expanded} data-playing={playing} data-has-dock={getBuyerRouteState(pathname).showBottomNav} style={tint} aria-label="Audio player" hidden={hidden}>
     {expanded && <div className="listen-player-atmosphere" aria-hidden="true"><span style={playback.title.coverUrl ? { backgroundImage: `url(${JSON.stringify(playback.title.coverUrl)})` } : undefined} /></div>}
+    {expanded && <button type="button" className="listen-player-swipe-handle" aria-label="Swipe down or tap to minimize audio player" onClick={() => { if (suppressHandleClick.current) { suppressHandleClick.current = false; return; } setExpanded(false); }} onPointerDown={beginGesture} onPointerUp={endCollapseGesture} onPointerCancel={() => { gestureStart.current = null; suppressHandleClick.current = false; }}><span /></button>}
     <audio ref={ref} src={playback.url} preload="metadata" autoPlay onLoadedMetadata={() => { const node = ref.current!; node.playbackRate = rate; node.volume = volume; if (Number.isFinite(node.duration)) { if (preview) setDuration(Math.min(node.duration, playback.title.previewSeconds || 60)); node.currentTime = Math.max(0, Math.min(playback.seconds - offset, node.duration - .05)); } }}
       onPlay={event => { if(stopForSleep(offset+event.currentTarget.currentTime))return; sleepStopped.current=false; document.querySelectorAll('audio,video').forEach(other => { if (other !== event.currentTarget) (other as HTMLMediaElement).pause(); }); setPlaying(true); setError(''); }} onPause={() => { setPlaying(false); save(true); }}
       onTimeUpdate={() => { const node = ref.current!; stopForSleep(offset+node.currentTime); if (preview && node.currentTime >= duration) node.pause(); setSeconds(Math.min(duration, offset + node.currentTime)); save(); }}
@@ -101,7 +150,7 @@ function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
       {!expanded && <button className="listen-round listen-primary" disabled={loading} aria-label={playing ? 'Pause audio' : 'Play audio'} onClick={toggle}>{playing ? <Pause size={21} /> : <Play size={21} />}</button>}
       <button className="listen-round" aria-label="Close audio player" onClick={() => { save(true); ref.current?.pause(); close(); }}><X size={20} /></button></div>
     {!expanded && <div className="listen-mini-progress" aria-hidden="true"><span style={{ width: `${Math.min(100, seconds / (duration || 1) * 100)}%` }} /></div>}
-    {expanded && <div className="listen-expanded"><div className="listen-now-playing"><p className="listen-eyebrow">{playback.title.category}</p><AudioArtwork category={playback.title.category} coverUrl={playback.title.coverUrl} /><strong dir="auto">{playback.title.title}</strong><span dir="auto">{playback.title.creatorName}</span>{!preview && tracks.length > 1 && <p className="listen-current-recording" dir="auto">{tracks[trackIndex]?.title}</p>}<SoundBars playing={playing} /></div>
+    {expanded && <div className="listen-expanded"><div className="listen-now-playing" onPointerDown={beginGesture} onPointerUp={endArtworkGesture} onPointerCancel={() => { gestureStart.current = null; }}><p className="listen-eyebrow">{playback.title.category}</p><AudioArtwork category={playback.title.category} coverUrl={playback.title.coverUrl} /><strong dir="auto">{playback.title.title}</strong><span dir="auto">{playback.title.creatorName}</span>{!preview && tracks.length > 1 && <p className="listen-current-recording" dir="auto">{tracks[trackIndex]?.title}</p>}<SoundBars playing={playing} /></div>
       <div className="listen-transport"><input type="range" aria-label="Audio position" min="0" max={duration || 1} step="1" disabled={loading} value={Math.min(seconds, duration)} style={{ '--listen-progress': `${Math.min(100, seconds / (duration || 1) * 100)}%` } as CSSProperties} onChange={event => seek(Number(event.target.value))} /><div className="listen-times"><span aria-label="Elapsed time">{audioTime(seconds)}</span><span aria-label="Remaining time">−{audioTime(Math.max(0, duration - seconds))}</span></div>
       <div className="listen-controls">{!preview && tracks.length > 1 && <button className="listen-round" aria-label="Previous recording" disabled={loading || trackIndex <= 0} onClick={() => seek(tracks[trackIndex - 1].startSeconds)}><SkipBack size={20} /></button>}<button className="listen-round" aria-label="Back 15 seconds" disabled={loading} onClick={() => seek(seconds - 15)}><RotateCcw size={22} /><small>15</small></button><button className="listen-round listen-primary listen-main-play" aria-label={playing ? 'Pause audio' : 'Play audio'} disabled={loading} onClick={toggle}>{playing ? <Pause size={25} /> : <Play size={25} />}</button><button className="listen-round" aria-label="Forward 15 seconds" disabled={loading} onClick={() => seek(seconds + 15)}><RotateCw size={22} /><small>15</small></button>{!preview && tracks.length > 1 && <button className="listen-round" aria-label="Next recording" disabled={loading || trackIndex >= tracks.length - 1} onClick={() => seek(tracks[trackIndex + 1].startSeconds)}><SkipForward size={20} /></button>}</div>
       <div className="listen-playback-options"><button onClick={() => { const next = rate >= 2 ? .75 : rate + .25; setRate(next); ref.current!.playbackRate = next; }} aria-label={`Playback speed ${rate} times`}>{rate}× speed</button><span role="status">{loading ? 'Opening recording…' : preview && seconds >= duration ? 'Sample finished' : playing ? 'Playing' : 'Paused'}</span></div>

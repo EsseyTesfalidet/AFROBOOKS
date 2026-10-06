@@ -22,13 +22,14 @@ import { useDiscoveryLanguages } from '@/hooks/useDiscoveryLanguages';
 import { preferLanguages } from '@/lib/utils/languagePreference';
 import type { Book } from '@/types/book';
 import { useCartStore } from '@/store/cartStore';
+import MobilePullToRefresh from '@/components/shared/MobilePullToRefresh';
 
 export default function BrowsePage() {
   const router = useRouter();
   const languages=useDiscoveryLanguages();
   const userProfile = useAuthStore(state => state.userProfile);
   const recentBookIds = useRecentlyViewedStore(state => state.bookIds);
-  const { books: allBooks, loading, error, retry } = useCatalog();
+  const { books: allBooks, loading, error, retry, refresh } = useCatalog();
   const [followed, setFollowed] = useState<{ uid: string; ids: string[] } | null>(null);
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('All');
@@ -57,6 +58,7 @@ export default function BrowsePage() {
   return <div className="app-canvas min-h-screen bg-[#10100f]">
     <BuyerHeader />
     <main className="app-page mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
+      <MobilePullToRefresh onRefresh={refresh} />
       <header className="app-page-intro"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">The AfroBooks collection</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Stories to get lost in.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">Explore books and magazines, discover creators, and open your next read.</p></header>
       <LanguageChoices/>
       <div className="app-catalog-filters grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
