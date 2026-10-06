@@ -1,0 +1,103 @@
+import { before, beforeEach, after, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { generateKeyPairSync } from 'node:crypto';
+import { initializeApp, deleteApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
+import { initializeTestEnvironment, assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
+import { ref, uploadBytes, getBytes } from 'firebase/storage';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { audioAction, audioDetail, audioList, audioPlayback } from '../lib/server/audio';
+import { getPlayOffer, playAccountId, preparePlayPurchase, savePlayProduct, syncPlayPurchase } from '../lib/server/watchPlay';
+import type { PlayPurchase, PlayClient } from '../lib/server/watchPlayClient';
+import type { AuthenticatedRequestUser } from '../lib/server/auth';
+
+assert.match(process.env.FIRESTORE_EMULATOR_HOST || '', /^(127\.0\.0\.1|localhost):\d+$/);
+assert.match(process.env.FIREBASE_STORAGE_EMULATOR_HOST || '', /^(127\.0\.0\.1|localhost):\d+$/);
+const projectId = 'demo-afrobooks-watch';
+const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const app = initializeApp({ projectId, storageBucket: `${projectId}.appspot.com`, credential: cert({ projectId, clientEmail: `test@${projectId}.iam.gserviceaccount.com`, privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() }) });
+const db = getFirestore(app); const bucket = getStorage(app).bucket(); let env: RulesTestEnvironment;
+const person = (uid: string, role: AuthenticatedRequestUser['role'] = 'buyer'): AuthenticatedRequestUser => ({ uid, role, status: 'active', email: null });
+const creator = person('creator', 'seller'), stranger = person('stranger', 'seller'), admin = person('admin', 'admin'), reader = person('reader');
+const draft = { title: 'ታሪኽ — Stories told aloud', description: 'Original narration in Tigrinya.', category: 'Audiobooks', language: 'Tigrinya', priceCents: 0, rightsAccepted: true };
+const act = (actor: AuthenticatedRequestUser, action: string, data: unknown) => audioAction(actor, { action, data });
+const mp3 = Buffer.alloc(512); mp3.write('ID3');
+async function create(priceCents = 0) { return (await act(creator, 'create', { ...draft, priceCents }) as { id: string; path: string }); }
+async function ready(priceCents = 0) { const value = await create(priceCents); await bucket.file(value.path).save(mp3, { contentType: 'audio/mpeg', metadata: { metadata: { firebaseStorageDownloadTokens: 'secret-permanent-token' } } }); await act(creator, 'finish', { id: value.id, durationSeconds: 120 }); return value; }
+async function publish(priceCents = 0) { const value = await ready(priceCents); await act(creator, 'submit', { id: value.id }); await act(admin, 'review', { id: value.id, publish: true }); return value; }
+before(async () => { env = await initializeTestEnvironment({ projectId, firestore: { rules: readFileSync('firestore.rules', 'utf8') }, storage: { rules: readFileSync('storage.rules', 'utf8') } }); });
+beforeEach(async () => { await env.clearFirestore(); await env.clearStorage(); for (const user of [creator, stranger, admin, reader]) await db.doc(`users/${user.uid}`).set(user); process.env.GOOGLE_PLAY_SERVICE_ACCOUNT = '{}'; process.env.WATCH_PLAY_TEST_UIDS = reader.uid; });
+after(async () => { delete process.env.GOOGLE_PLAY_SERVICE_ACCOUNT; delete process.env.WATCH_PLAY_TEST_UIDS; await env.cleanup(); await deleteApp(app); });
+
+test('audio drafts, originals and publication cannot be accessed or forged by other users', async () => {
+  const value = await create();
+  await assert.rejects(act(reader, 'create', draft), /author space/);
+  await assert.rejects(act(stranger, 'edit', { ...draft, id: value.id }), /another creator/);
+  await assert.rejects(act(creator, 'review', { id: value.id, publish: true }), /Administrator/);
+  await assert.rejects(audioDetail(reader, value.id), /unavailable/);
+  assert.equal((await audioList(reader, 'catalog', null)).entries.length, 0);
+  await assertFails(setDoc(doc(env.authenticatedContext(creator.uid).firestore(), `audioTitles/${value.id}`), { status: 'published' }));
+  await assertFails(getDoc(doc(env.authenticatedContext(reader.uid).firestore(), `audioTitles/${value.id}`)));
+  const ownerFile = ref(env.authenticatedContext(creator.uid).storage(`gs://${projectId}.appspot.com`), value.path);
+  await assertFails(uploadBytes(ref(env.authenticatedContext(stranger.uid).storage(`gs://${projectId}.appspot.com`), value.path), mp3, { contentType: 'audio/mpeg' }));
+  await assertFails(uploadBytes(ownerFile, mp3, { contentType: 'text/html' }));
+  await assertSucceeds(uploadBytes(ownerFile, mp3, { contentType: 'audio/mpeg' }));
+  await assertFails(uploadBytes(ownerFile, mp3, { contentType: 'audio/mpeg' }));
+  await assertFails(getBytes(ownerFile));
+  await act(creator, 'finish', { id: value.id, durationSeconds: 120 });
+  const [metadata] = await bucket.file(value.path.replace('source.mp3', 'playback.mp3')).getMetadata(); assert.ok(!metadata.metadata?.firebaseStorageDownloadTokens);
+  assert.equal((await bucket.file(value.path).exists())[0], false);
+  await assertFails(uploadBytes(ref(env.authenticatedContext(creator.uid).storage(`gs://${projectId}.appspot.com`), value.path.replace('source.mp3', 'playback.mp3')), mp3, { contentType: 'audio/mpeg' }));
+});
+test('upload validation, review and library progress work without exposing source paths or rights records', async () => {
+  const value = await ready();
+  await act(creator, 'submit', { id: value.id });
+  await assert.rejects(act(creator, 'edit', { ...draft, id: value.id }), /Withdraw/);
+  await assert.rejects(act(admin, 'review', { id: value.id, publish: false }), /what needs changing/);
+  await act(admin, 'review', { id: value.id, publish: true });
+  const catalog = await audioList(reader, 'catalog', null); assert.equal(catalog.entries[0].title.language, 'Tigrinya');
+  assert.doesNotMatch(JSON.stringify(catalog), /source.mp3|rightsAccepted|private_key|DownloadTokens/);
+  const playback = await audioPlayback(reader, value.id); assert.match(playback.url, /X-Goog-Signature=/); assert.equal(playback.seconds, 0);
+  await act(reader, 'save', { id: value.id, saved: true }); await act(reader, 'progress', { id: value.id, seconds: 55 });
+  assert.equal((await audioList(reader, 'library', null)).entries[0].seconds, 55);
+  assert.equal((await audioPlayback(reader, value.id)).seconds, 55);
+  await act(creator, 'remove', { id: value.id }); await act(creator, 'remove', { id: value.id });
+  assert.equal((await audioList(reader, 'library', null)).entries.length, 0); assert.equal((await audioList(creator, 'studio', null)).entries.length, 0);
+  assert.equal((await db.doc('audioQuotas/creator').get()).data()?.count, 0);
+  await assert.rejects(audioPlayback(reader, value.id), /unavailable/);
+});
+test('invalid recordings and concurrent upload quota are rejected', async () => {
+  const value = await create(); await bucket.file(value.path).save(Buffer.alloc(500, 60), { contentType: 'audio/mpeg' });
+  await assert.rejects(act(creator, 'finish', { id: value.id, durationSeconds: 120 }), /does not look like an MP3/);
+  await assert.rejects(act(creator, 'submit', { id: value.id }), /Finish uploading/);
+  await db.doc('audioQuotas/creator').set({ count: 19 });
+  const results = await Promise.allSettled([create(), create(), create()]); assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+});
+test('paid audio uses separate verified entitlements, handles pending/refund/repurchase and preserves buyers on withdrawal', async () => {
+  const value = await publish(199); const sku = 'afrobooks_audio_test';
+  await savePlayProduct(admin, { videoId: value.id, productId: sku, contentKind: 'audio', enabled: true });
+  assert.equal(await getPlayOffer(reader, value.id), null, 'Video API must not prepare an audio purchase');
+  assert.equal((await audioDetail(reader, value.id)).canPlay, false);
+  await assert.rejects(audioPlayback(reader, value.id), /Purchase this audio/);
+  await preparePlayPurchase(reader, value.id, 'audio');
+  let purchase: PlayPurchase = { productLineItem: [{ productId: sku, productOfferDetails: { quantity: 1, refundableQuantity: 1, consumptionState: 'CONSUMPTION_STATE_YET_TO_BE_CONSUMED' } }], purchaseStateContext: { purchaseState: 'PENDING' }, testPurchaseContext: { fopType: 'TEST' }, obfuscatedExternalAccountId: playAccountId(reader.uid), acknowledgementState: 'ACKNOWLEDGEMENT_STATE_PENDING' };
+  const client: PlayClient = { purchase: async () => purchase, acknowledge: async () => {} };
+  const sync = (token = 'AUDIO-TEST-PURCHASE-TOKEN') => syncPlayPurchase(db, token, reader.uid, sku, client);
+  assert.equal((await sync()).status, 'pending'); assert.equal((await audioDetail(reader, value.id)).canPlay, false);
+  purchase = { ...purchase, purchaseStateContext: { purchaseState: 'PURCHASED' } }; await sync(); await sync();
+  assert.equal((await audioDetail(reader, value.id)).canPlay, true); assert.equal((await getPlayOffer(reader, value.id, 'audio')), null);
+  assert.equal((await audioList(reader, 'library', null)).entries[0].owned, true);
+  assert.equal((await db.doc(`watchEntitlements/reader/videos/${value.id}`).get()).exists, false);
+  await assert.rejects(act(creator, 'remove', { id: value.id }), /purchases/);
+  await act(creator, 'withdraw', { id: value.id }); assert.equal((await audioDetail(reader, value.id)).canPlay, true);
+  assert.equal((await audioList(reader, 'library', null)).entries.length, 1);
+  await act(creator, 'submit', { id: value.id }); await act(admin, 'review', { id: value.id, publish: true });
+  purchase = { ...purchase, purchaseStateContext: { purchaseState: 'CANCELLED' } }; await sync();
+  assert.equal((await audioDetail(reader, value.id)).canPlay, false); assert.equal((await audioList(reader, 'library', null)).entries[0].owned, false);
+  assert.ok(await getPlayOffer(reader, value.id, 'audio'));
+  await preparePlayPurchase(reader, value.id, 'audio'); purchase = { ...purchase, purchaseStateContext: { purchaseState: 'PURCHASED' } }; await sync('SECOND-AUDIO-TEST-TOKEN');
+  assert.equal((await audioDetail(reader, value.id)).canPlay, true);
+  await sync(); assert.equal((await audioDetail(reader, value.id)).canPlay, true, 'Old revoked token cannot revoke a repurchase');
+});

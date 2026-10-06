@@ -1,17 +1,17 @@
 # AfroBooks Android release
 
-The Android app opens the live AfroBooks website at `https://afrobs.com/browse` using a Trusted Web Activity, originally generated with Bubblewrap 1.25.0. Version 3 adds the native bridge for one-time video purchases through Google Play. Website updates appear without rebuilding the wrapper; a network connection and a compatible browser are required. The website payment code was deployed on October 4, 2026; Console setup and a Play-installed device test remain required.
+The Android app opens the live AfroBooks website at `https://afrobs.com/browse` using a Trusted Web Activity, originally generated with Bubblewrap 1.25.0. Version 4 extends the native Google Play bridge to one-time audio purchases and the monthly Music pass, alongside video purchases. See [Listen release setup](listen-release.md). Website updates appear without rebuilding the wrapper; a network connection and a compatible browser are required. The website payment code was deployed on October 4, 2026; Console setup and a Play-installed device test remain required.
 
 | Setting | Value |
 | --- | --- |
 | Application ID | `com.afrobs.app` |
-| Version | `1.0.2` |
-| Version code | `3` |
+| Version | `1.0.3` |
+| Version code | `4` |
 | Minimum Android API | `24` (Android 7; required by the updated browser helper) |
 | Target and compile API | `36` (Android 16) |
 | Orientation | Any; portrait and landscape |
-| Signed Play upload | `dist/android/afrobooks-1.0.2.aab` |
-| Signed device-test install | `dist/android/afrobooks-1.0.2.apk` |
+| Signed Play upload | `dist/android/afrobooks-1.0.3.aab` |
+| Signed device-test install | `dist/android/afrobooks-1.0.3.apk` |
 | Public upload certificate | `dist/android/afrobooks-upload-certificate.pem` |
 | File hashes and certificate fingerprint | `dist/android/release-info.json` |
 
@@ -19,7 +19,7 @@ The bundle is signed and passes Google's bundletool validation. The APK signatur
 
 ## Upload to Google Play
 
-1. Open the existing AfroBooks listing in Play Console, then upload `afrobooks-1.0.2.aab` to an internal or closed testing release. The `.apk` is for direct installation on a test device; it is not the Play upload artifact. If version code 3 has been used outside this workspace, increase it and rebuild first.
+1. Open the existing AfroBooks listing in Play Console, then upload `afrobooks-1.0.3.aab` to an internal or closed testing release. The `.apk` is for direct installation on a test device; it is not the Play upload artifact. If version code 4 has been used outside this workspace, increase it and rebuild first.
 2. Enroll in Play App Signing. The generated local key signs uploads. If Google generates the app-signing key, Play-installed copies will have a different certificate from this local upload key.
 3. The owner-provided **app signing key certificate SHA-256 fingerprint** beginning `51:C3:69:60` is now in `public/.well-known/assetlinks.json`, alongside the existing upload fingerprint. The website now serves both fingerprints; the HTTPS response was verified after deployment. The fingerprint is public; never share the private key or passwords.
 4. Verify `https://afrobs.com/.well-known/assetlinks.json` returns both fingerprints directly over HTTPS. Test the Play-installed app to confirm the website opens as a Trusted Web Activity. Until the Play certificate is served by the website, it can fall back to a browser tab with visible browser controls.

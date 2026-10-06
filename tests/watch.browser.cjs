@@ -103,7 +103,7 @@ async function main() {
       assert.equal(await studioShortcut.getAttribute('target'), '_blank');
       await page.evaluate(()=>window.navigate('/watch'));
       await page.getByRole('heading', { name: 'Stories of home' }).waitFor();
-      assert.equal(await page.getByRole('navigation', { name: 'Reader navigation' }).getByRole('link').count(), 3);
+      assert.equal(await page.getByRole('navigation', { name: 'Reader navigation' }).getByRole('link').count(), 4);
       for (const theme of ['light', 'dark']) {
         await page.evaluate(theme => window.setTheme(theme), theme);
         await page.waitForFunction(theme => document.documentElement.dataset.appTheme === theme, theme);

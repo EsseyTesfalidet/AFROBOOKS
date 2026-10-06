@@ -27,7 +27,7 @@ Google pays the platform. Monthly creator transfers now use the existing Stripe
 Connected Accounts after the owner funds Stripe and registers a verified top-up
 in admin. Google net revenue is split 80/20; Stripe transfer and bank payout status
 are distinct. Currency conversion is not guessed: funding must match the sales
-currency. Subscriptions and custom receipt emails are not included. See
+currency. Audio purchases now share this pipeline. Music subscriptions use a separate membership and listening ledger; see [Listen setup](listen-release.md). Custom receipt emails are not included. See
 [Monthly video payouts](video-payouts.md).
 
 ## Production configuration

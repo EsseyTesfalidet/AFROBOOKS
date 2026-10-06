@@ -73,10 +73,10 @@ export function WatchCard({ video, state, preview, compact = false }: { video: W
     {menu && <WatchSheet title={video.title} close={() => setMenu(false)}><div className="watch-card-menu"><button disabled={busy || saved || state?.saved} onClick={() => void save()}>{saved || state?.saved ? <Check size={20} /> : <Bookmark size={20} />}<span>{saved || state?.saved ? 'Saved in your library' : busy ? 'Saving…' : 'Save to video library'}</span></button><button onClick={() => void share()}><Share2 size={20} /><span>Share video</span></button><Link href={`/watch/creator/${video.creatorId}`} onClick={() => setMenu(false)}><UserRound size={20} /><span>Visit creator channel</span></Link></div><WatchFeedback error={error} />{notice && <p role="status" className="watch-muted">{notice}</p>}</WatchSheet>}
   </article>;
 }
-export function LibraryFormatTabs({ active }: { active: 'books' | 'videos' }) {
+export function LibraryFormatTabs({ active }: { active: 'books' | 'videos' | 'audio' }) {
   const installed = useInstalledApp();
   if (!installed) return null;
-  return <nav className="watch-format-tabs" aria-label="Library format"><Link href="/library" aria-current={active === 'books' ? 'page' : undefined}>Books</Link><Link href="/library/videos" aria-current={active === 'videos' ? 'page' : undefined}>Videos</Link></nav>;
+  return <nav className="watch-format-tabs" aria-label="Library format"><Link href="/library" aria-current={active === 'books' ? 'page' : undefined}>Books</Link><Link href="/library/videos" aria-current={active === 'videos' ? 'page' : undefined}>Videos</Link><Link href="/library/audio" aria-current={active === 'audio' ? 'page' : undefined}>Audio</Link></nav>;
 }
 export function WatchSheet({ title, close, children }: { title: string; close: () => void; children: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);

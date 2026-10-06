@@ -34,7 +34,7 @@ export async function getVideoEarnings(actor: AuthenticatedRequestUser) {
   const rows = await query.limit(100).get();
   return rows.docs.map(doc => {
     const e = doc.data();
-    return { id: doc.id, videoId: e.videoId, videoTitle: e.videoTitle, creatorId: e.creatorId, orderId: e.orderId,
+    return { id: doc.id, contentKind: e.contentKind || 'video', videoId: e.videoId, videoTitle: e.videoTitle, creatorId: e.creatorId, orderId: e.orderId,
       status: e.status, currency: e.currency, googleRevenueNanos: e.googleRevenueNanos,
       creatorEarningsNanos: e.creatorEarningsNanos, platformEarningsNanos: e.platformEarningsNanos, updatedAt: e.updatedAt } as VideoEarning;
   });

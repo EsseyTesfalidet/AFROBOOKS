@@ -16,10 +16,16 @@ export const playPurchaseId = (token: string) => createHash('sha256').update(tok
 export function playTester(uid: string) { return (process.env.WATCH_PLAY_TEST_UIDS || '').split(',').map(s => s.trim()).filter(Boolean).includes(uid); }
 export function playLiveConfigured() { return playConfigured() && process.env.WATCH_PLAY_LIVE_ENABLED === 'true' && !!process.env.GOOGLE_PLAY_RTDN_AUDIENCE && !!process.env.GOOGLE_PLAY_RTDN_SERVICE_ACCOUNT_EMAIL; }
 const checkoutPath = (account: string, product: string) => `watchPlayCheckouts/${account}_${product}`;
+type ContentKind = 'video' | 'audio';
+const contentPaths = (kind: ContentKind = 'video') => kind === 'audio'
+  ? { titles: 'audioTitles', private: 'audioPrivate', entitlements: 'audioEntitlements', states: 'audioStates', items: 'titles' }
+  : { titles: 'watchVideos', private: 'watchPrivate', entitlements: 'watchEntitlements', states: 'watchStates', items: 'videos' };
 
 export async function savePlayProduct(actor: AuthenticatedRequestUser, input: unknown, client: PlayClient = googlePlay) {
   if (actor.role !== 'admin') throw new WatchError(403, 'Administrator access required.');
-  const data = z.object({ videoId: watchId, productId: playProductId, enabled: z.boolean(), liveEnabled: z.boolean().default(false) }).strict().parse(input);
+  const data = z.object({ videoId: watchId, productId: playProductId, enabled: z.boolean(), liveEnabled: z.boolean().default(false), contentKind: z.enum(['video', 'audio']).default('video') }).strict().parse(input);
+  const paths = contentPaths(data.contentKind);
+  if (!data.productId.startsWith(`afrobooks_${data.contentKind}_`)) throw new WatchError(400, 'The product prefix must match the content type.');
   const db = await getAdminDb();
   if (data.liveEnabled) {
     if (!playLiveConfigured() || !client.product) throw new WatchError(409, 'Complete Google Play verification and purchase notifications before enabling sales.');
@@ -29,15 +35,16 @@ export async function savePlayProduct(actor: AuthenticatedRequestUser, input: un
     if (product.packageName !== PLAY_PACKAGE || product.productId !== data.productId || options?.length !== 1 || options[0].state !== 'ACTIVE' || !options[0].buyOption || options[0].rentOption || options[0].buyOption.multiQuantityEnabled) throw new WatchError(409, 'Activate one standard, single-quantity buy option for this product in Play Console.');
   }
   await db.runTransaction(async tx => {
-    const videoRef = db.doc(`watchVideos/${data.videoId}`);
+    const videoRef = db.doc(`${paths.titles}/${data.videoId}`);
     const productRef = db.doc(`watchPlayProducts/${data.productId}`);
-    const privateRef = db.doc(`watchPrivate/${data.videoId}`);
+    const privateRef = db.doc(`${paths.private}/${data.videoId}`);
     const [video, product, privateData] = await Promise.all([tx.get(videoRef), tx.get(productRef), tx.get(privateRef)]);
     if (!video.exists || video.data()?.priceCents <= 0) throw new WatchError(409, 'Choose a paid video first.');
-    if ((product.exists && (product.data()?.videoId !== data.videoId || product.data()?.creatorId !== video.data()?.creatorId)) || (privateData.data()?.playProductId && privateData.data()?.playProductId !== data.productId)) throw new WatchError(409, 'A Play product cannot be reassigned to another video.');
+    if (data.contentKind === 'audio' && video.data()?.status === 'removed') throw new WatchError(409, 'This audio has been removed.');
+    if ((product.exists && (product.data()?.videoId !== data.videoId || (product.data()?.contentKind || 'video') !== data.contentKind || product.data()?.creatorId !== video.data()?.creatorId)) || (privateData.data()?.playProductId && privateData.data()?.playProductId !== data.productId)) throw new WatchError(409, 'A Play product cannot be reassigned to another title.');
     if (data.liveEnabled) {
       const creator = await tx.get(db.doc(`watchCreators/${video.data()!.creatorId}`));
-      if (video.data()?.status !== 'published' || !privateData.data()?.full?.ready || creator.data()?.status !== 'approved') throw new WatchError(409, 'Publish a processed video from an approved creator before enabling checkout.');
+      if (video.data()?.status !== 'published' || !(data.contentKind === 'audio' ? video.data()?.ready : privateData.data()?.full?.ready) || creator.data()?.status !== 'approved') throw new WatchError(409, 'Publish ready content from an approved creator before enabling checkout.');
     }
     tx.set(productRef, { ...data, creatorId: video.data()!.creatorId, updatedAt: Date.now() });
     tx.set(privateRef, { playProductId: data.productId, playTestEnabled: data.enabled, playLiveEnabled: data.liveEnabled }, { merge: true });
@@ -45,27 +52,28 @@ export async function savePlayProduct(actor: AuthenticatedRequestUser, input: un
   });
   return { ok: true };
 }
-export async function getPlayOffer(actor: AuthenticatedRequestUser, videoId: string): Promise<PlayOffer | null> {
+export async function getPlayOffer(actor: AuthenticatedRequestUser, videoId: string, kind: ContentKind = 'video'): Promise<PlayOffer | null> {
   if (!playConfigured() || (!playTester(actor.uid) && !playLiveConfigured())) return null;
   const db = await getAdminDb();
-  const [video, secret, owned] = await Promise.all([db.doc(`watchVideos/${videoId}`).get(), db.doc(`watchPrivate/${videoId}`).get(), db.doc(`watchEntitlements/${actor.uid}/videos/${videoId}`).get()]);
+  const paths = contentPaths(kind);
+  const [video, secret, owned] = await Promise.all([db.doc(`${paths.titles}/${videoId}`).get(), db.doc(`${paths.private}/${videoId}`).get(), db.doc(`${paths.entitlements}/${actor.uid}/${paths.items}/${videoId}`).get()]);
   const productId = secret.data()?.playProductId;
   if (!video.exists || video.data()?.status !== 'published' || video.data()?.priceCents <= 0 || video.data()?.creatorId === actor.uid || owned.data()?.status === 'active' || !PLAY_PRODUCT_PATTERN.test(productId || '')) return null;
   const product = await db.doc(`watchPlayProducts/${productId}`).get();
-  if (product.data()?.videoId !== videoId) return null;
+  if (product.data()?.videoId !== videoId || (product.data()?.contentKind || 'video') !== kind) return null;
   const test = playTester(actor.uid) && secret.data()?.playTestEnabled === true && product.data()?.enabled === true;
-  const live = playLiveConfigured() && secret.data()?.playLiveEnabled === true && product.data()?.liveEnabled === true && secret.data()?.full?.ready === true;
+  const live = playLiveConfigured() && secret.data()?.playLiveEnabled === true && product.data()?.liveEnabled === true && (kind === 'audio' ? video.data()?.ready === true : secret.data()?.full?.ready === true);
   if (!test && !live) return null;
   if (live && (await db.doc(`watchCreators/${video.data()!.creatorId}`).get()).data()?.status !== 'approved') return null;
   return { productId, accountId: playAccountId(actor.uid), testOnly: !live };
 }
-export async function preparePlayPurchase(actor: AuthenticatedRequestUser, videoId: string) {
-  const offer = await getPlayOffer(actor, videoId);
+export async function preparePlayPurchase(actor: AuthenticatedRequestUser, videoId: string, kind: ContentKind = 'video') {
+  const offer = await getPlayOffer(actor, videoId, kind);
   if (!offer) throw new WatchError(409, 'This video is not available for checkout. If already purchased, use Restore purchases.');
   const db = await getAdminDb();
   const batch = db.batch();
   batch.set(db.doc(`watchPlayAccounts/${offer.accountId}`), { uid: actor.uid });
-  batch.set(db.doc(checkoutPath(offer.accountId, offer.productId)), { uid: actor.uid, videoId, productId: offer.productId, liveAuthorized: !offer.testOnly, platformBps: VIDEO_PLATFORM_BPS, preparedAt: Date.now() });
+  batch.set(db.doc(checkoutPath(offer.accountId, offer.productId)), { uid: actor.uid, videoId, contentKind: kind, productId: offer.productId, liveAuthorized: !offer.testOnly, platformBps: VIDEO_PLATFORM_BPS, preparedAt: Date.now() });
   await batch.commit();
   return offer;
 }
@@ -113,25 +121,28 @@ export async function syncPlayPurchase(db: Firestore, token: string, uid?: strin
   }
   const result = await db.runTransaction(async tx => {
     const earningRef = db.doc(`watchPlayEarnings/${purchaseId}`);
-    const [old, product, checkout, earning] = await Promise.all([tx.get(ref), tx.get(db.doc(`watchPlayProducts/${productId}`)), tx.get(db.doc(checkoutPath(accountId, productId))), tx.get(earningRef)]);
+    const [old, product, checkout, earning] = await tx.getAll(ref, db.doc(`watchPlayProducts/${productId}`), db.doc(checkoutPath(accountId, productId)), earningRef);
     const videoId = product.data()?.videoId;
+    const kind: ContentKind = product.data()?.contentKind === 'audio' ? 'audio' : 'video';
+    const paths = contentPaths(kind);
+    if (!productId.startsWith(`afrobooks_${kind}_`)) throw new WatchError(403, 'Purchase content type mismatch.');
     if (typeof videoId !== 'string' || !watchId.safeParse(videoId).success) throw new WatchError(409, 'This Play product is not linked to a video.');
     if (old.exists && (old.data()?.buyerId !== buyerId || old.data()?.videoId !== videoId || old.data()?.productId !== productId || old.data()?.testPurchase !== testPurchase)) throw new WatchError(403, 'Purchase ownership mismatch.');
-    const entitlementRef = db.doc(`watchEntitlements/${buyerId}/videos/${videoId}`);
-    const [video, entitlement] = await Promise.all([tx.get(db.doc(`watchVideos/${videoId}`)), tx.get(entitlementRef)]);
+    const entitlementRef = db.doc(`${paths.entitlements}/${buyerId}/${paths.items}/${videoId}`);
+    const [video, entitlement] = await tx.getAll(db.doc(`${paths.titles}/${videoId}`), entitlementRef);
     if (!old.exists && testPurchase && !playTester(buyerId) && !checkout.data()?.liveAuthorized) throw new WatchError(403, 'This account is not enabled for video purchase testing.');
     if (!old.exists && !testPurchase && (checkout.data()?.uid !== buyerId || checkout.data()?.videoId !== videoId || !checkout.data()?.liveAuthorized || checkout.data()?.platformBps !== VIDEO_PLATFORM_BPS)) throw new WatchError(403, 'Start this video purchase in AfroBooks before paying.');
     if (!video.exists || video.data()?.creatorId !== product.data()?.creatorId) throw new WatchError(409, 'Purchased content needs review.');
     const resolved = old.data()?.status === 'revoked' ? 'revoked' : old.data()?.status === 'active' && status === 'pending' ? 'active' : status;
     if (resolved === 'active' && entitlement.data()?.status === 'active' && entitlement.data()?.purchaseId !== purchaseId) throw new WatchError(409, 'This video is already owned. Contact support about the duplicate purchase.');
     const acknowledged = purchase.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED' || old.data()?.acknowledged === true;
-    tx.set(ref, { buyerId, videoId, creatorId: product.data()!.creatorId, productId, purchaseToken: token, status: resolved, acknowledged, testPurchase, platformBps: old.data()?.platformBps ?? VIDEO_PLATFORM_BPS, orderId: purchase.orderId || null, updatedAt: Date.now(), createdAt: old.data()?.createdAt || Date.now() });
+    tx.set(ref, { buyerId, videoId, contentKind: kind, creatorId: product.data()!.creatorId, productId, purchaseToken: token, status: resolved, acknowledged, testPurchase, platformBps: old.data()?.platformBps ?? VIDEO_PLATFORM_BPS, orderId: purchase.orderId || null, updatedAt: Date.now(), createdAt: old.data()?.createdAt || Date.now() });
     if (!testPurchase) {
       const previous = earning.data();
       const money = finances && finances.googleEventAt >= (previous?.googleEventAt || 0) ? finances : previous;
       const reversed = resolved === 'revoked' || previous?.status === 'reversed';
       tx.set(earningRef, {
-        videoId, videoTitle: video.data()!.title, creatorId: product.data()!.creatorId, buyerId, productId, orderId: purchase.orderId || null,
+        videoId, contentKind: kind, videoTitle: video.data()!.title, creatorId: product.data()!.creatorId, buyerId, productId, orderId: purchase.orderId || null,
         platformBps: VIDEO_PLATFORM_BPS, status: reversed ? 'reversed' : money?.status || 'pending',
         currency: money?.currency || null, googleRevenueNanos: money?.googleRevenueNanos ?? null,
         creatorEarningsNanos: reversed ? '0' : money?.creatorEarningsNanos ?? null,
@@ -143,7 +154,7 @@ export async function syncPlayPurchase(db: Firestore, token: string, uid?: strin
     }
     if (resolved === 'active') {
       tx.set(entitlementRef, { status: 'active', provider: 'google_play', purchaseId, productId, testPurchase, updatedAt: Date.now() });
-      tx.set(db.doc(`watchStates/${buyerId}/videos/${videoId}`), { saved: true, updatedAt: Date.now() }, { merge: true });
+      tx.set(db.doc(`${paths.states}/${buyerId}/${paths.items}/${videoId}`), { saved: true, updatedAt: Date.now() }, { merge: true });
     } else if (resolved === 'revoked' && entitlement.data()?.purchaseId === purchaseId) {
       tx.update(entitlementRef, { status: 'revoked', updatedAt: Date.now() });
     }
@@ -168,9 +179,10 @@ export async function syncPlayVoidedPurchase(db: Firestore, token: string, clien
   await syncPlayPurchase(db, token, undefined, undefined, client);
 }
 
-export async function verifyPlayPlayback(uid: string, videoId: string) {
+export async function verifyPlayPlayback(uid: string, videoId: string, kind: ContentKind = 'video') {
   const db = await getAdminDb();
-  const entitlement = await db.doc(`watchEntitlements/${uid}/videos/${videoId}`).get();
+  const paths = contentPaths(kind);
+  const entitlement = await db.doc(`${paths.entitlements}/${uid}/${paths.items}/${videoId}`).get();
   if (entitlement.data()?.provider !== 'google_play') return;
   const purchase = await db.doc(`watchPlayPurchases/${entitlement.data()!.purchaseId}`).get();
   if (!purchase.exists || purchase.data()?.buyerId !== uid || purchase.data()?.videoId !== videoId) throw new WatchError(403, 'Restore your video purchase before playing.');

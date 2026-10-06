@@ -38,7 +38,7 @@ export default function BuyerBottomNav() {
               label === 'Profile'
                 ? pathname.startsWith('/profile')
                 : isBuyerNavActive(pathname, item);
-            const active = installed && drawerOpen ? label === 'Account' : routeActive;
+            const active = routeActive;
 
             const content = (
               <>

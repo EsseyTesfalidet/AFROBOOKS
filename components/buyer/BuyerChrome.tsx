@@ -4,6 +4,8 @@ import { usePathname } from 'next/navigation';
 import { Suspense } from 'react';
 import ProfileLinkHandler from '@/components/shared/ProfileLinkHandler';
 import CatalogSync from '@/components/buyer/CatalogSync';
+import AudioPlayer from '@/components/listen/AudioPlayer';
+import { useAudioStore } from '@/store/audioStore';
 import BuyerBottomNav from '@/components/buyer/BuyerBottomNav';
 import BuyerFooter from '@/components/buyer/BuyerFooter';
 import BuyerProfileDrawer from '@/components/buyer/BuyerProfileDrawer';
@@ -14,13 +16,15 @@ import { useInstalledApp } from '@/hooks/useInstalledApp';
 export default function BuyerChrome() {
   const pathname = usePathname();
   const installed = useInstalledApp();
+  const audioPlaying = useAudioStore(s => !!s.playback);
   const routeState = getBuyerRouteState(pathname);
 
   return (
     <>
       <CatalogSync />
+      <AudioPlayer />
       <Suspense><ProfileLinkHandler /></Suspense>
-      {!pathname.startsWith('/watch') && pathname !== '/library/videos' && <ReaderResumeBar />}
+      {!audioPlaying && !pathname.startsWith('/listen') && !pathname.startsWith('/watch') && pathname !== '/library/videos' && <ReaderResumeBar />}
       {routeState.showFooter && !installed ? <BuyerFooter /> : null}
       {routeState.showBottomNav ? (
         <div className="buyer-nav-space h-[92px] sm:hidden" aria-hidden="true" />

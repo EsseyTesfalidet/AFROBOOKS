@@ -12,7 +12,7 @@ export default function WatchPayouts({ data, admin = false, refresh }: { data?: 
     try { await watchActionRequest(action, input); setMessage('Saved. The payout worker will check eligible transfers.'); }
     catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
-  return <section className="watch-review"><h2>Monthly video payouts</h2>
+  return <section className="watch-review"><h2>Monthly video &amp; audio payouts</h2>
     <p className="watch-muted">Completed months are paid to your Stripe account after Google settles and AfroBooks funds the payout balance. Refunds are deducted from future earnings. Small fractions carry forward; currencies are kept separate. A transfer to Stripe is followed by Stripe’s bank payout schedule.</p>
     {!admin && <Link href="/dashboard?profile=payout" className="watch-button">Set up or manage payout account</Link>}
     {admin && <><p className="watch-muted">Add funds in Stripe after receiving Google’s payment. Register the settled top-up below to authorize automatic payouts for that month. Use the sales currency; this tool does not estimate exchange rates or debit your bank. Keep that balance available in Stripe.</p>

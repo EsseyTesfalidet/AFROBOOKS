@@ -1,0 +1,77 @@
+import { test, before, beforeEach, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { initializeApp, deleteApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeTestEnvironment, type RulesTestEnvironment, assertFails } from '@firebase/rules-unit-testing';
+import { doc, setDoc } from 'firebase/firestore';
+import { configureMusic, prepareMusic, syncMusic, musicStatus, musicSession, recordMusicListening, reconcileMusicOrder, type MusicClient, type MusicSubscription } from '../lib/server/musicSubscriptions';
+import { playAccountId, playPurchaseId } from '../lib/server/watchPlay';
+import { MUSIC_PRODUCT, MUSIC_BASE_PLAN, musicActive, musicShares } from '../lib/music/policy';
+import type { AuthenticatedRequestUser } from '../lib/server/auth';
+import type { PlayOrder } from '../lib/server/watchPlayClient';
+import { audioAction, audioDetail, audioPlayback } from '../lib/server/audio';
+
+assert.match(process.env.FIRESTORE_EMULATOR_HOST || '', /^(127\.0\.0\.1|localhost):\d+$/);
+const projectId = 'demo-afrobooks-watch'; const app = initializeApp({ projectId }); const db = getFirestore(app); let env: RulesTestEnvironment;
+const reader: AuthenticatedRequestUser = { uid: 'reader', role: 'buyer', status: 'active', email: null }; const admin = { ...reader, uid: 'admin', role: 'admin' as const };
+const token = 'MUSIC-SUBSCRIPTION-TEST-TOKEN'; const now = Date.now(); let subscription: MusicSubscription, order: PlayOrder, acknowledges = 0;
+const client: MusicClient = { subscription: async () => structuredClone(subscription), acknowledge: async () => { acknowledges++; }, order: async () => structuredClone(order) };
+before(async () => { env = await initializeTestEnvironment({ projectId, firestore: { rules: readFileSync('firestore.rules', 'utf8') } }); });
+beforeEach(async () => {
+  await env.clearFirestore(); process.env.GOOGLE_PLAY_SERVICE_ACCOUNT = '{}'; process.env.WATCH_PLAY_TEST_UIDS = reader.uid; acknowledges = 0;
+  subscription = { subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE', acknowledgementState: 'ACKNOWLEDGEMENT_STATE_PENDING', startTime: new Date(now - 60000).toISOString(), testPurchase: {}, externalAccountIdentifiers: { obfuscatedExternalAccountId: playAccountId(reader.uid) }, lineItems: [{ productId: MUSIC_PRODUCT, expiryTime: new Date(now + 86400000).toISOString(), latestSuccessfulOrderId: 'GPA.music-cycle', autoRenewingPlan: { autoRenewEnabled: true }, offerDetails: { basePlanId: MUSIC_BASE_PLAN } }] };
+  order = { orderId: 'GPA.music-cycle', purchaseToken: token, lineItems: [{ productId: MUSIC_PRODUCT }], state: 'PROCESSED', lastEventTime: new Date(now).toISOString(), developerRevenueInBuyerCurrency: { currencyCode: 'USD', units: '2', nanos: 540000000 } };
+  await configureMusic(admin, { testEnabled: true, liveEnabled: false }); await prepareMusic(reader);
+});
+after(async () => { delete process.env.GOOGLE_PLAY_SERVICE_ACCOUNT; delete process.env.WATCH_PLAY_TEST_UIDS; await env.cleanup(); await deleteApp(app); });
+test('membership states and integer artist allocation conserve the creator pool', () => {
+  assert.ok(musicActive('SUBSCRIPTION_STATE_CANCELED', now + 1000, now)); assert.ok(musicActive('SUBSCRIPTION_STATE_IN_GRACE_PERIOD', now + 1000, now));
+  for (const state of ['SUBSCRIPTION_STATE_ON_HOLD', 'SUBSCRIPTION_STATE_PENDING', 'SUBSCRIPTION_STATE_PAUSED', 'SUBSCRIPTION_STATE_EXPIRED']) assert.equal(musicActive(state, now + 1000, now), false);
+  assert.equal(musicActive('SUBSCRIPTION_STATE_ACTIVE', now, now), false);
+  const shares = musicShares(BigInt(2032000001), [{ creatorId: 'b', seconds: 60 }, { creatorId: 'a', seconds: 120 }, { creatorId: 'skip', seconds: 29 }]);
+  assert.equal(shares.reduce((sum, row) => sum + BigInt(row.amount), BigInt(0)), BigInt(2032000001)); assert.equal(shares.length, 2);
+});
+test('membership binds to one account, requires verified active payment and survives cancellation until expiry', async () => {
+  await assert.rejects(configureMusic(reader, { testEnabled: true, liveEnabled: true }), /Administrator/);
+  await assert.rejects(syncMusic(token, 'stranger', client), /another AfroBooks/);
+  subscription.subscriptionState = 'SUBSCRIPTION_STATE_PENDING'; assert.equal((await syncMusic(token, reader.uid, client)).active, false); assert.equal(acknowledges, 0);
+  subscription.subscriptionState = 'SUBSCRIPTION_STATE_ACTIVE'; await syncMusic(token, reader.uid, client); await syncMusic(token, reader.uid, client); assert.equal(acknowledges, 1);
+  assert.ok((await musicStatus(reader)).active); await assert.rejects(prepareMusic(reader), /already active/);
+  subscription.subscriptionState = 'SUBSCRIPTION_STATE_CANCELED'; assert.ok((await syncMusic(token, reader.uid, client)).active);
+  subscription.subscriptionState = 'SUBSCRIPTION_STATE_ON_HOLD'; assert.equal((await syncMusic(token, reader.uid, client)).active, false);
+  subscription.subscriptionState = 'SUBSCRIPTION_STATE_EXPIRED'; await syncMusic(token, reader.uid, client);
+  subscription.subscriptionState = 'SUBSCRIPTION_STATE_ACTIVE'; assert.equal((await syncMusic(token, reader.uid, client)).active, false, 'Revoked/expired token cannot be replayed to reactivate access');
+  subscription.startTime = new Date(now).toISOString(); await syncMusic('NEW-MUSIC-SUBSCRIPTION-TOKEN', reader.uid, client); assert.ok((await musicStatus(reader)).active);
+  subscription.startTime = new Date(now - 60000).toISOString(); subscription.subscriptionState = 'SUBSCRIPTION_STATE_EXPIRED'; await syncMusic(token, reader.uid, client); assert.ok((await musicStatus(reader)).active, 'An older token cannot revoke the replacement');
+  await assertFails(setDoc(doc(env.authenticatedContext(reader.uid).firestore(), 'musicAccess/reader'), { state: 'SUBSCRIPTION_STATE_ACTIVE' }));
+});
+test('subscription-only music is not accidentally treated as free audio', async () => {
+  const creator = { ...reader, uid: 'creator', role: 'seller' as const };
+  const created = await audioAction(creator, { action: 'create', data: { title: 'Music pass original', description: 'An original recording included in the pass.', category: 'Music', language: 'Tigrinya', priceCents: 0, musicSubscription: true, rightsAccepted: true } }) as { id: string };
+  await db.doc(`audioTitles/${created.id}`).update({ status: 'published', ready: true, durationSeconds: 120 });
+  assert.equal((await audioDetail(reader, created.id)).canPlay, false);
+  await assert.rejects(audioPlayback(reader, created.id), /Subscribe to Music/);
+  await syncMusic(token, reader.uid, client); assert.ok((await audioDetail(reader, created.id)).canPlay);
+  subscription.subscriptionState = 'SUBSCRIPTION_STATE_ON_HOLD'; await syncMusic(token, reader.uid, client); assert.equal((await audioDetail(reader, created.id)).canPlay, false);
+});
+test('each subscriber funds only their listened artists, with bounded heartbeat accounting and reversible settled earnings', async () => {
+  delete subscription.testPurchase; await db.doc('musicCheckouts/reader').set({ liveAuthorized: true });
+  await syncMusic(token, reader.uid, client);
+  const orders = await db.collection('musicOrders').get(); const key = orders.docs[0].id;
+  const sessionId = await musicSession(reader, 'song', 'artist-a', 0); assert.ok(sessionId);
+  await db.doc('musicSessions/reader').update({ at: Date.now() - 31000 });
+  await recordMusicListening(reader, 'song', 'forged-session', 120); assert.equal((await db.collection(`musicOrders/${key}/listening`).get()).size, 0);
+  await recordMusicListening(reader, 'song', sessionId, 60);
+  const ledger = db.doc(`musicOrders/${key}/listening/artist-a`); const recorded = (await ledger.get()).data()!.seconds; assert.ok(recorded >= 30 && recorded <= 32);
+  await recordMusicListening(reader, 'song', sessionId, 60); assert.equal((await ledger.get()).data()!.seconds, recorded);
+  await db.doc(`musicOrders/${key}/listening/artist-b`).set({ seconds: 60 });
+  await reconcileMusicOrder(key, client); assert.equal((await db.collection('watchPlayEarnings').get()).size, 0, 'No royalties before the billing cycle closes');
+  await db.doc(`musicOrders/${key}`).update({ cycleEndsAt: now - 1000 }); await reconcileMusicOrder(key, client);
+  const earnings = (await db.collection('watchPlayEarnings').get()).docs.map(row => row.data()); assert.equal(earnings.length, 2);
+  assert.equal(earnings.reduce((sum, row) => sum + BigInt(row.creatorEarningsNanos), BigInt(0)), BigInt(2032000000));
+  const before = (await ledger.get()).data()!.seconds; await db.doc('musicSessions/reader').update({ at: Date.now() - 60000 }); await recordMusicListening(reader, 'song', sessionId, 120); assert.equal((await ledger.get()).data()!.seconds, before);
+  order.state = 'PENDING_REFUND'; order.lastEventTime = new Date(now + 1000).toISOString(); await reconcileMusicOrder(key, client); assert.ok((await db.collection('watchPlayEarnings').get()).docs.every(row => row.data().status === 'refund_pending'));
+  order.state = 'REFUNDED'; order.lastEventTime = new Date(now + 2000).toISOString(); await reconcileMusicOrder(key, client); assert.ok((await db.collection('watchPlayEarnings').get()).docs.every(row => row.data().creatorEarningsNanos === '0'));
+  assert.equal((await db.doc(`musicPurchases/${playPurchaseId(token)}`).get()).data()?.buyerId, reader.uid);
+});

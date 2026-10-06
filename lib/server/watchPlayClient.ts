@@ -72,6 +72,7 @@ async function request<T>(path: string, body?: object): Promise<T> {
     throw new WatchError(502, 'Google Play could not verify this purchase. Please restore purchases or try again shortly.');
   }
 }
+export const playApiRequest = request;
 export const googlePlay: PlayClient = {
   purchase: token => request<PlayPurchase>(`purchases/productsv2/tokens/${encodeURIComponent(token)}`),
   acknowledge: async (productId, token) => { await request(`purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(token)}:acknowledge`, {}); },

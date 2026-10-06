@@ -86,6 +86,17 @@ service firebase.storage {
       allow delete: if isAdmin();
     }
 
+    // Immutable audio originals: server-authorized, bounded uploads only.
+    match /audio/{creatorId}/{titleId}/{filename} {
+      allow read, update, delete: if false;
+      allow create: if filename == 'source.mp3' && resource == null && isOwner(creatorId) &&
+        firestore.get(/databases/(default)/documents/audioTitles/$(titleId)).data.creatorId == creatorId &&
+        firestore.get(/databases/(default)/documents/audioTitles/$(titleId)).data.status == 'draft' &&
+        firestore.get(/databases/(default)/documents/audioTitles/$(titleId)).data.ready == false &&
+        request.resource.size >= 128 && request.resource.size <= 250 * 1024 * 1024 &&
+        request.resource.contentType == 'audio/mpeg';
+    }
+
     // Deny everything else
     match /{allPaths=**} {
       allow read, write: if false;

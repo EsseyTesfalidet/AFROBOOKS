@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BookOpen, BarChart2, Megaphone, Users, Clapperboard } from 'lucide-react';
+import { LayoutDashboard, BookOpen, BarChart2, Megaphone, Users, Clapperboard, Headphones } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useAuthStore } from '@/store/authStore';
@@ -12,6 +12,7 @@ const NAV = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Books', href: '/listings', icon: BookOpen },
   { label: 'Videos', href: '/video-studio', icon: Clapperboard },
+  { label: 'Audio', href: '/audio-studio', icon: Headphones },
   { label: 'Promote', href: '/promotions', icon: Megaphone },
   { label: 'Earnings', href: '/analytics', icon: BarChart2 },
   { label: 'Community', href: '/community', icon: Users },

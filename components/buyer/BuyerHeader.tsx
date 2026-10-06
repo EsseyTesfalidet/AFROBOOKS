@@ -55,7 +55,7 @@ export default function BuyerHeader() {
             ) : null}
             <InstallPWA />
             <AppThemeToggle />
-            <Link href={pathname.startsWith('/watch') ? '/watch#watch-search' : '/search'} className="buyer-header-action" aria-label={pathname.startsWith('/watch') ? 'Search videos' : 'Search books'} title={pathname.startsWith('/watch') ? 'Search videos' : 'Search books'}>
+            <Link href={pathname.startsWith('/listen') ? '/listen#listen-search' : pathname.startsWith('/watch') ? '/watch#watch-search' : '/search'} className="buyer-header-action" aria-label={pathname.startsWith('/listen') ? 'Search audio' : pathname.startsWith('/watch') ? 'Search videos' : 'Search books'} title={pathname.startsWith('/listen') ? 'Search audio' : pathname.startsWith('/watch') ? 'Search videos' : 'Search books'}>
               <Search size={19} aria-hidden="true" />
             </Link>
             <Link href="/cart" className="buyer-header-action buyer-header-cart" aria-label={`Cart${cartCount ? `, ${cartCount} item${cartCount === 1 ? '' : 's'}` : ''}`} title="Cart">

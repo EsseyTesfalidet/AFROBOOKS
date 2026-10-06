@@ -14,6 +14,7 @@
     "test:integration": "tsx --test tests/firestore.integration.test.ts tests/destination.integration.test.ts tests/community.integration.test.ts",
     "test:community": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore --project demo-afrobooks-security --config firebase.test.json \"tsx --test tests/community.integration.test.ts\"",
     "test:rules": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore,storage --project demo-afrobooks-security --config firebase.test.json \"npm run test:integration\"",
+    "test:audio": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore,storage --project demo-afrobooks-watch --config firebase.test.json \"tsx --test --test-concurrency=1 tests/audio.integration.test.ts tests/music.integration.test.ts tests/watch-play.integration.test.ts tests/watch-payout.integration.test.ts\"",
     "test:watch": "npx --yes firebase-tools@13.35.1 emulators:exec --only firestore,storage --project demo-afrobooks-watch --config firebase.test.json \"tsx --test --test-concurrency=1 tests/watch.integration.test.ts tests/watch-play.integration.test.ts tests/watch-payout.integration.test.ts\""
   },
   "dependencies": {

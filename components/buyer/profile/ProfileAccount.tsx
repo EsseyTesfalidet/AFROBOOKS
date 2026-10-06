@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, BookOpen, Check, ChevronRight, Clapperboard, Pencil } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Check, ChevronRight, Clapperboard, Headphones, Pencil } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
 import { updateUserProfile } from '@/lib/firebase/auth';
@@ -104,6 +104,7 @@ export default function ProfileAccount() {
     </section>}
     {!editing && <nav aria-label="Account sections" className="divide-y divide-white/10 border-y border-white/10">
       {installed && <a href={authorWebsiteHref(android, 'video')} onClick={close} {...(!android ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className="flex min-h-16 items-center gap-4 rounded-lg px-1 py-4 text-[14px] transition-colors hover:text-[#c1a56c] focus-visible:outline focus-visible:outline-[#f5b800]"><Clapperboard size={18} className="text-[#a39f97]" /><span className="flex-1">Creator Studio<span className="mt-1 block text-[12px] text-[#a39f97]">Upload and manage your videos</span></span><ArrowUpRight size={16} className="text-[#8d897f]" /></a>}
+      {author && <Link href="/audio-studio" onClick={close} className="flex min-h-16 items-center gap-4 py-4 text-[14px]"><Headphones size={18} /><span className="flex-1">Audio Studio<span className="block text-[12px] text-[#a39f97]">Upload music, podcasts and audiobooks</span></span><ChevronRight size={16} /></Link>}
       <Link href="/library" onClick={close} className="flex min-h-16 items-center gap-4 rounded-lg px-1 py-4 text-[14px] transition-colors hover:text-[#c1a56c] focus-visible:outline focus-visible:outline-[#f5b800]"><BookOpen size={18} className="text-[#a39f97]" /><span className="flex-1">My library</span><ChevronRight size={16} className="text-[#8d897f]" /></Link>
       {PROFILE_SECTIONS.filter(item => item.id !== 'account').map(({ id, label, icon: Icon }) => <button type="button" key={id} onClick={() => setSection(id)} className="flex min-h-16 w-full items-center gap-4 rounded-lg px-1 py-4 text-left text-[14px] transition-colors hover:text-[#c1a56c] focus-visible:outline focus-visible:outline-[#f5b800]"><Icon size={18} className="text-[#a39f97]" /><span className="flex-1">{id === 'wishlist' ? 'Saved books' : id === 'reviews' ? 'My reviews' : id === 'settings' ? 'Reading & account settings' : label}</span><ChevronRight size={16} className="text-[#8d897f]" /></button>)}
     </nav>}

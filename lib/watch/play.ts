@@ -1,6 +1,6 @@
 export const PLAY_PACKAGE = 'com.afrobs.app';
 export const PLAY_METHOD = 'https://play.google.com/billing';
-export const PLAY_PRODUCT_PATTERN = /^afrobooks_video_[a-z0-9_]{1,100}$/;
+export const PLAY_PRODUCT_PATTERN = /^afrobooks_(?:video|audio)_[a-z0-9_]{1,100}$/;
 export interface PlayOffer {
   productId: string;
   accountId: string;
@@ -8,6 +8,7 @@ export interface PlayOffer {
 }
 export const VIDEO_PLATFORM_BPS = 2000;
 export interface VideoEarning {
+  contentKind?: 'video' | 'audio' | 'music_subscription';
   id: string;
   videoId: string;
   videoTitle: string;

@@ -11,12 +11,14 @@ import {
   Megaphone,
   Settings,
   Clapperboard,
+  Headphones,
 } from 'lucide-react';
 
 export const ADMIN_NAV = [
   { group: 'Workspace', label: 'Overview', href: '/admin', icon: LayoutDashboard },
   { group: 'Workspace', label: 'Books', href: '/admin/books', icon: BookOpen },
   { group: 'Workspace', label: 'Videos', href: '/admin/videos', icon: Clapperboard },
+  { group: 'Workspace', label: 'Audio', href: '/admin/audio', icon: Headphones },
   { group: 'Workspace', label: 'People', href: '/admin/users', icon: Users },
   { group: 'Review', label: 'Flagged books', href: '/admin/flagged', icon: Flag },
   { group: 'Review', label: 'Reports', href: '/admin/reports', icon: AlertTriangle },

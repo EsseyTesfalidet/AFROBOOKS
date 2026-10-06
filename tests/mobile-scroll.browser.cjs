@@ -26,6 +26,8 @@ const reader=path.startsWith('/read/');return <><Keyboard/><Shell><Experience/>{
 createRoot(document.getElementById('root')).render(<App/>);
 ` },
     plugins: [{ name: 'account-and-framework-fixtures', setup(b) {
+      b.onResolve({filter:/^@\/lib\/firebase\/request$/},()=>({path:'request',namespace:'request-fixture'}));
+      b.onLoad({filter:/.*/,namespace:'request-fixture'},()=>({contents:'export const authenticatedGet=async()=>({});export const authenticatedPost=async()=>({});'}));
       b.onResolve({ filter: /^(next\/navigation|next\/link|next\/image|@\/lib\/firebase\/auth)$/ }, a => ({ path: a.path, namespace: 'framework' }));
       b.onLoad({ filter: /.*/, namespace: 'framework' }, a => ({ resolveDir: process.cwd(), loader: 'jsx', contents: a.path === 'next/image'
         ? `import React from 'react';export default function Image({fill,priority,unoptimized,...p}){return <img {...p}/>} `
@@ -117,8 +119,9 @@ createRoot(document.getElementById('root')).render(<App/>);
           assert.ok(Math.abs((await page.locator('.app-header').boundingBox()).y) < 1, 'header stays fixed in rotation');
         }
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.getByRole('button', { name: 'Account', exact: true }).click(); await page.getByRole('dialog').waitFor();
-        assert.equal(await page.locator('.buyer-nav-item[data-active="true"]').innerText(),'Account');
+        await page.getByRole('button', { name: 'Open account', exact: true }).click(); await page.getByRole('dialog').waitFor();
+        assert.equal(await page.locator('.buyer-account-button').getAttribute('data-active'),'true');
+        assert.deepEqual(await page.locator('.buyer-nav-item').allTextContents(),['Browse','Screen','Listen','Library']);
         assert.ok(await shell.evaluate(el => Boolean(el.closest('[inert]'))));
         await page.keyboard.press('Escape'); assert.equal(await page.getByRole('dialog').count(), 0);
         assert.equal(await page.locator('.buyer-nav-item[data-active="true"]').innerText(),'Browse');

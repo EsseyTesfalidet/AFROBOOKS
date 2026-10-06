@@ -8,7 +8,7 @@ import { preparePlayPurchase, playProductId, playToken, syncPlayPurchase } from 
 import { watchActor, watchBody, watchFailure, watchJson } from '@/lib/server/watchHttp';
 export const runtime = 'nodejs';
 const bodySchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('prepare'), videoId: watchId }).strict(),
+  z.object({ action: z.literal('prepare'), videoId: watchId, contentKind: z.enum(['video', 'audio']).default('video') }).strict(),
   z.object({ action: z.literal('verify'), productId: playProductId, purchaseToken: playToken }).strict(),
   z.object({ action: z.literal('reconcile'), cursor: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
 ]);
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const actor = await watchActor(request, true);
     await watchRateLimit(actor, 'play', 60);
     const body = bodySchema.parse(await watchBody(request, 8000));
-    if (body.action === 'prepare') return watchJson(await preparePlayPurchase(actor, body.videoId));
+    if (body.action === 'prepare') return watchJson(await preparePlayPurchase(actor, body.videoId, body.contentKind));
     const db = await getAdminDb();
     if (body.action === 'verify') return watchJson(await syncPlayPurchase(db, body.purchaseToken, actor.uid, body.productId));
     // Recheck server-known purchases too: refunded tokens disappear from listPurchases.
