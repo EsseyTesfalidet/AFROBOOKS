@@ -8,7 +8,11 @@ These additions apply only in the installed mobile app. The website keeps its ex
 - Audio titles can be added to a playlist, placed at the front of the queue with **Play next**, or added to the queue. Queue order can be changed and queued titles can be removed.
 - Starting a playlist or queued title checks the normal audio playback endpoint. A playlist never grants access to a paid title; an unavailable or unpurchased title stays queued if playback is denied.
 - The player has a 15, 30, or 60 minute sleep timer and an end-of-chapter/recording timer. The timer survives navigation while the player remains open and is cleared when the account changes.
-- In the expanded player, pull the top handle down to minimize. Swipe the cover left to advance recordings or queued titles, and right to go back through recordings or the previous title. Title changes still use the authenticated playback endpoint; unavailable or unpurchased titles cannot be opened by swiping.
+- Swipe up on the compact player to expand it; pull the expanded player's top handle down to minimize it. Swipe the cover left to advance recordings or queued titles, and right to go back through recordings or the previous title. Title changes still use the authenticated playback endpoint; unavailable or unpurchased titles cannot be opened by swiping.
+
+## Reader touch controls
+
+In page mode, tap the left or right edge to turn a page, and tap the center to show or hide reader controls. Text selection, links, and buttons keep their normal behavior; scroll mode is unchanged.
 
 ## Read, Watch, Listen
 

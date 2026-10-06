@@ -97,6 +97,14 @@ export default function InAppReader({ book, userId, hasAccess }: Props) {
       onClick={event => {
         if (swiped.current) { swiped.current = false; return; }
         if ((event.target as HTMLElement).closest('a, button, input, select, dialog') || window.getSelection()?.toString()) return;
+        if (installed && paged && event.detail > 0) {
+          const bounds = scrollerRef.current?.getBoundingClientRect();
+          if (bounds?.width) {
+            const position = (event.clientX - bounds.left) / bounds.width;
+            if (position <= .2) { turn(-1); return; }
+            if (position >= .8) { turn(1); return; }
+          }
+        }
         if (installed) scrollerRef.current?.focus({ preventScroll: true });
         setControlsVisible(visible => !visible);
       }}

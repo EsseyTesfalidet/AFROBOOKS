@@ -57,6 +57,11 @@ createRoot(document.getElementById('root')).render(<Shell><Experience/><Reader b
     const during=await page.evaluate(()=>window.readState());
     await page.evaluate(()=>document.getAnimations().forEach(a=>a.play()));await settled();
     assert.equal(await page.locator('[data-reader-snapshot]').count(),0,'temporary sheet removed after the turn');
+    const pageBox=await page.locator('.reader-shell > .reader-viewport').boundingBox();
+    await page.locator('.reader-shell > .reader-viewport').click({position:{x:pageBox.width-4,y:pageBox.height/2}});
+    await page.waitForFunction(()=>window.readState().page===2);await settled();
+    await page.locator('.reader-shell > .reader-viewport').click({position:{x:4,y:pageBox.height/2}});
+    await page.waitForFunction(()=>window.readState().page===1);await settled();
     // Backward turns put the previous page on the moving sheet and retain the
     // outgoing page underneath until it lands.
     await page.getByRole('button',{name:'Previous page',exact:true}).click();
@@ -78,6 +83,10 @@ createRoot(document.getElementById('root')).render(<Shell><Experience/><Reader b
     const before=await geometry();
     await page.locator('.reader-shell > .reader-viewport').click({position:{x:100,y:100}});
     assert.equal(await page.locator('.reader-shell').getAttribute('data-reader-focus'),'true');
+    await page.locator('.reader-shell > .reader-viewport').click({position:{x:pageBox.width/2,y:pageBox.height/2}});
+    assert.equal(await page.locator('.reader-shell').getAttribute('data-reader-focus'),'false','a center tap brings reader controls back');
+    await page.locator('.reader-shell > .reader-viewport').click({position:{x:pageBox.width/2,y:pageBox.height/2}});
+    assert.equal(await page.locator('.reader-shell').getAttribute('data-reader-focus'),'true','a second center tap hides reader controls');
     assert.ok(await page.locator('.reader-toolbar').evaluate(el=>el.inert));
     assert.equal(await page.getByRole('button',{name:'Next page',exact:true}).count(),0,'hidden buttons are not accessible/focusable');
     const focused=await geometry();assert.equal(focused.height,before.height);assert.equal(focused.page,before.page);assert.deepEqual(focused.positionAnchor,before.positionAnchor);

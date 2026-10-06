@@ -17,7 +17,7 @@ test('audio player swipes need a clear direction and ignore short or diagonal ge
   assert.equal(classifyPlayerSwipe(-PLAYER_SWIPE_THRESHOLD, 0), 'next');
   assert.equal(classifyPlayerSwipe(PLAYER_SWIPE_THRESHOLD, 0), 'previous');
   assert.equal(classifyPlayerSwipe(0, PLAYER_SWIPE_THRESHOLD), 'collapse');
-  assert.equal(classifyPlayerSwipe(0, -PLAYER_SWIPE_THRESHOLD), null);
+  assert.equal(classifyPlayerSwipe(0, -PLAYER_SWIPE_THRESHOLD), 'expand');
   assert.equal(classifyPlayerSwipe(30, 30), null);
   assert.equal(classifyPlayerSwipe(PLAYER_SWIPE_THRESHOLD - 1, 0), null);
 });

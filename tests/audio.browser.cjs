@@ -89,6 +89,9 @@ async function main() {
     await page.getByRole('button', { name: 'Playback speed 1 times' }).click(); assert.equal(await page.locator('audio').evaluate(a => a.playbackRate), 1.25);
     await page.getByRole('slider', { name: 'Audio position' }).fill('5'); assert.ok((await page.locator('audio').evaluate(a => a.currentTime)) >= 5);
     await page.evaluate(() => window.navigate('/library/audio')); await page.getByRole('navigation', { name: 'Library format' }).waitFor(); assert.equal(await page.locator('.listen-player').count(), 1);
+    await page.locator('.listen-player-title').click();assert.equal(await page.locator('.listen-player').getAttribute('data-expanded'),'false');
+    await page.locator('.listen-player-title').evaluate(el=>{const r=el.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',clientX:x,clientY:y}));el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',clientX:x,clientY:y-90}));el.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));});
+    await page.waitForFunction(()=>document.querySelector('.listen-player')?.dataset.expanded==='true');
     for (const theme of ['light', 'dark']) { await page.evaluate(theme => document.documentElement.dataset.appTheme = theme, theme); for (const width of [320, 390, 844]) { await page.setViewportSize({ width, height: width === 844 ? 390 : 844 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)); } }
     await page.setViewportSize({ width: 390, height: 844 }); await page.evaluate(() => window.navigate('/listen')); await page.screenshot({ path: '.vercel/listen-mobile.png' });
     await page.getByRole('button',{name:'Close audio player'}).click();

@@ -20,7 +20,7 @@ function SoundBars({ playing, mini = false }: { playing: boolean; mini?: boolean
   return <span className={`listen-sound-bars${mini ? ' listen-sound-mini' : ''}`} data-playing={playing} aria-hidden="true">{(mini ? [45, 90, 65, 100] : [25, 48, 32, 76, 50, 93, 64, 100, 57, 83, 44, 95, 62, 78, 39, 59, 31, 44]).map((height, index) => <i key={index} style={{ '--bar-height': `${height}%`, '--bar-delay': `${-index * .17}s`, '--bar-speed': `${.65 + (index % 5) * .15}s` } as CSSProperties} />)}</span>;
 }
 function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
-  const ref = useRef<HTMLAudioElement>(null); const lastSaved = useRef(0); const changing = useRef(false); const alive = useRef(true); const gestureStart = useRef<{ x: number; y: number } | null>(null); const suppressHandleClick = useRef(false); const pathname = usePathname();
+  const ref = useRef<HTMLAudioElement>(null); const lastSaved = useRef(0); const changing = useRef(false); const alive = useRef(true); const gestureStart = useRef<{ x: number; y: number } | null>(null); const suppressHandleClick = useRef(false); const suppressMiniClick = useRef(false); const pathname = usePathname();
   const close = useAudioStore(s => s.close); const set = useAudioStore(s => s.set);
   const [playing, setPlaying] = useState(false); const [seconds, setSeconds] = useState(playback.seconds);
   const [expanded, setExpanded] = useState(!!playback.expanded); const [error, setError] = useState(''); const [rate, setRate] = useState(playback.rate || 1); const [loading, setLoading] = useState(false);
@@ -111,6 +111,22 @@ function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
     if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
     gestureStart.current = { x: event.clientX, y: event.clientY };
   }
+  function beginMiniExpandGesture(event: ReactPointerEvent<HTMLElement>) {
+    if (!expanded) beginGesture(event);
+  }
+  function endMiniExpandGesture(event: ReactPointerEvent<HTMLElement>) {
+    const start = gestureStart.current; gestureStart.current = null;
+    if (!start || expanded) return;
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (Math.abs(deltaX) >= 18 || Math.abs(deltaY) >= 18) {
+      suppressMiniClick.current = true;
+      window.setTimeout(() => { suppressMiniClick.current = false; }, 0);
+    }
+    if (classifyPlayerSwipe(deltaX, deltaY) === 'expand') {
+      appHaptic(); setExpanded(true);
+    }
+  }
   function endArtworkGesture(event: ReactPointerEvent<HTMLElement>) {
     const start = gestureStart.current; gestureStart.current = null;
     if (!start || loading || preview) return;
@@ -131,7 +147,7 @@ function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
     const deltaY = event.clientY - start.y;
     if (Math.abs(deltaX) >= 18 || Math.abs(deltaY) >= 18) {
       suppressHandleClick.current = true;
-      window.setTimeout(() => { suppressHandleClick.current = false; }, 500);
+      window.setTimeout(() => { suppressHandleClick.current = false; }, 0);
     }
     if (classifyPlayerSwipe(deltaX, deltaY) === 'collapse') {
       appHaptic(); setExpanded(false);
@@ -146,7 +162,7 @@ function Player({ playback, uid }: { playback: AudioPlayback; uid: string }) {
       onPlay={event => { if(stopForSleep(offset+event.currentTarget.currentTime))return; sleepStopped.current=false; document.querySelectorAll('audio,video').forEach(other => { if (other !== event.currentTarget) (other as HTMLMediaElement).pause(); }); setPlaying(true); setError(''); }} onPause={() => { setPlaying(false); save(true); }}
       onTimeUpdate={() => { const node = ref.current!; stopForSleep(offset+node.currentTime); if (preview && node.currentTime >= duration) node.pause(); setSeconds(Math.min(duration, offset + node.currentTime)); save(); }}
       onEnded={() => { setPlaying(false); save(true); if(sleepStopped.current||stopForSleep(offset+(ref.current?.duration||0)))return; const next = tracks[trackIndex + 1]; if (!preview && next) void load(next.startSeconds); else if(!preview)void nextTitle(); }} onError={() => setError('Playback stopped. Check your connection and try again.')} />
-    <div className="listen-player-row"><button className="listen-player-title" aria-label={expanded ? 'Collapse audio player' : 'Expand audio player'} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? <><ChevronDown size={20} /><span className="listen-player-heading"><small>AfroBooks Listen</small><strong>{preview ? 'Free sample' : 'Now playing'}</strong></span></> : <><AudioArtwork mini category={playback.title.category} coverUrl={playback.title.coverUrl} /><span><strong dir="auto">{playback.title.title}</strong><small dir="auto">{preview ? 'Free sample' : playback.title.creatorName}</small></span></>}</button>
+    <div className="listen-player-row"><button className="listen-player-title" aria-label={expanded ? 'Collapse audio player' : 'Expand audio player'} aria-expanded={expanded} onPointerDown={beginMiniExpandGesture} onPointerUp={endMiniExpandGesture} onPointerCancel={() => { gestureStart.current = null; suppressMiniClick.current = false; }} onClick={() => { if (suppressMiniClick.current) { suppressMiniClick.current = false; return; } setExpanded(!expanded); }}>{expanded ? <><ChevronDown size={20} /><span className="listen-player-heading"><small>AfroBooks Listen</small><strong>{preview ? 'Free sample' : 'Now playing'}</strong></span></> : <><AudioArtwork mini category={playback.title.category} coverUrl={playback.title.coverUrl} /><span><strong dir="auto">{playback.title.title}</strong><small dir="auto">{preview ? 'Free sample' : playback.title.creatorName}</small></span></>}</button>
       {!expanded && <button className="listen-round listen-primary" disabled={loading} aria-label={playing ? 'Pause audio' : 'Play audio'} onClick={toggle}>{playing ? <Pause size={21} /> : <Play size={21} />}</button>}
       <button className="listen-round" aria-label="Close audio player" onClick={() => { save(true); ref.current?.pause(); close(); }}><X size={20} /></button></div>
     {!expanded && <div className="listen-mini-progress" aria-hidden="true"><span style={{ width: `${Math.min(100, seconds / (duration || 1) * 100)}%` }} /></div>}
