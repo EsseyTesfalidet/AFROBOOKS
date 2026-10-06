@@ -67,7 +67,7 @@ export default function NotificationItem({ notification, onRead, onError }: Prop
         <p className="mt-1 text-xs text-[#6f6f78]">{timeAgo(date)}</p>
       </div>
       {!notification.isRead && (
-        <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: '#e8442a' }} />
+        <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: 'var(--app-action, #e8442a)' }} />
       )}
       </button>
       <DeleteNotificationButton id={notification.id} title={notification.title} onError={onError} />

@@ -229,9 +229,9 @@ function CheckoutForm({ gift }: { gift?: GiftCheckout }) {
         type="submit"
         disabled={loading || !stripe || !restored || pendingOrders.length > 0}
         className="app-primary-action w-full py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-        style={{ background: '#e8442a', color: '#fff' }}
+        style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
       >
-        {loading && <LoadingSpinner size={16} color="#fff" />}
+        {loading && <LoadingSpinner size={16} color="var(--app-on-action, #fff)" />}
         {gift ? 'Send gift for' : 'Pay'} {centsToDisplay(total)}
       </button>
 

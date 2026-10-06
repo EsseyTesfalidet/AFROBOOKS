@@ -143,7 +143,7 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
               <div className="mb-4 flex items-center justify-between">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-2xl"
-                  style={{ background: `${card.accent}22`, color: card.accent }}
+                  style={{ background: `var(--app-accent-surface, ${card.accent}22)`, color: `var(--app-accent, ${card.accent})` }}
                 >
                   <Icon size={18} />
                 </span>
@@ -158,7 +158,7 @@ export default function ReaderMomentum({ userId, favoriteGenre, subscriptionActi
               <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--app-muted, #666)' }}>
                 {card.body}
               </p>
-              <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium" style={{ color: card.accent }}>
+              <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium" style={{ color: `var(--app-accent, ${card.accent})` }}>
                 {card.cta} <ArrowRight size={14} />
               </div>
             </Link>

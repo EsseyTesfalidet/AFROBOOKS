@@ -6,8 +6,12 @@ html[data-app-mode='installed'] {
   --app-line: #ffffff12;
   --app-text: #f5f3ef;
   --app-muted: #a8abb5;
-  --app-accent: #ffa18b;
-  --app-action: #c9442c;
+  --app-accent: #e9bd73;
+  --app-action: #e9bd73;
+  --app-on-action: #241a0e;
+  --app-action-hover: #f1cd91;
+  --app-action-gradient: linear-gradient(180deg, #f1cd91, #e9bd73);
+  --app-action-shadow: 0 12px 24px #bf8d4d20;
 }
 
 /* Hide the initial server-rendered app screen until Firebase restores the user.
@@ -89,10 +93,10 @@ html[data-app-mode='installed'] :is(.buyer-header-action, .buyer-header-actions 
 }
 html[data-app-mode='installed'] :is(.buyer-header-action, .buyer-header-actions .icon-button):hover { background: #ffffff08; }
 html[data-app-mode='installed'] .buyer-account-button {
-  background: #ff977e12; color: var(--app-accent); border-color: #ff977e38;
+  background: var(--app-accent-surface); color: var(--app-accent); border-color: var(--app-line);
   box-shadow: inset 0 0 0 3px #141519;
 }
-html[data-app-mode='installed'] .buyer-cart-count { background: var(--app-action); color: white; }
+html[data-app-mode='installed'] .buyer-cart-count { background: var(--app-action); color: var(--app-on-action); }
 html[data-app-mode='installed'] .buyer-header-actions svg { stroke-width: 1.8; }
 
 html[data-app-mode='installed'] .buyer-bottom-nav-shell {
@@ -105,7 +109,7 @@ html[data-app-mode='installed'] .buyer-nav-icon { height: 34px; width: 48px; bor
 html[data-app-mode='installed'] .buyer-nav-icon svg { width: 21px; height: 21px; stroke-width: 1.9; }
 html[data-app-mode='installed'] .buyer-nav-item > span { font-size: 11px; font-weight: 600; letter-spacing: .01em; }
 html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] { color: var(--app-accent); }
-html[data-app-mode='installed'] .buyer-nav-item[data-active='true'] .buyer-nav-icon { background: #ff977e18; }
+html[data-app-mode='installed'] .buyer-nav-item[data-active='true'] .buyer-nav-icon { background: var(--app-accent-surface); }
 html[data-app-mode='installed'] .seller-bottom-nav { background: #191b20f5; border-color: var(--app-line); }
 html[data-app-mode='installed'] .seller-bottom-nav a { font-weight: 600; color: #a7aab5; }
 html[data-app-mode='installed'] .seller-bottom-nav a[aria-current='page'] { color: var(--app-accent); }
@@ -145,7 +149,7 @@ html[data-app-mode='installed'] .app-catalog-filters input:focus-visible,
 html[data-app-mode='installed'] .field-input:focus-visible { outline-color: var(--app-accent); }
 html[data-app-mode='installed'] :is(.app-primary-action, .button-primary) {
   min-height: 48px; border-radius: 15px; background: var(--app-action) !important;
-  color: white; font-weight: 650; box-shadow: 0 5px 14px #c9442c1a;
+  color: var(--app-on-action); font-weight: 650; box-shadow: 0 5px 14px #bf8d4d20;
 }
 html[data-app-mode='installed'] .button-secondary { border-radius: 15px; box-shadow: none; background: #ffffff05; }
 
@@ -180,11 +184,11 @@ html[data-app-mode='installed'] .reader-resume-bar > div { background: #1a1c21f5
 html[data-app-mode='installed'] .reader-resume-bar p + p { color: var(--app-muted) !important; }
 
 html[data-app-mode='installed'] .app-community-invitation {
-  border-radius: 22px; border-color: #ffa18b20;
-  background: linear-gradient(125deg, #30211f, #1c1c22 75%); padding: 24px;
+  border-radius: 22px; border-color: color-mix(in srgb, var(--app-accent) 20%, transparent);
+  background: linear-gradient(125deg, var(--app-accent-surface), var(--app-surface) 75%); padding: 24px;
 }
-html[data-app-mode='installed'] .app-community-invitation > p:first-child { color: #e9b59c; }
-html[data-app-mode='installed'] .app-community-invitation > a { color: #ffc0ab; }
+html[data-app-mode='installed'] .app-community-invitation > p:first-child { color: var(--app-accent); }
+html[data-app-mode='installed'] .app-community-invitation > a { color: var(--app-accent); }
 
 /* Account sheets use the same surfaces as the feed, with visible dividers. */
 html[data-app-mode='installed'] .profile-panel {

@@ -74,9 +74,13 @@ module.exports = async function verifyThemeSurfaces(page) {
     await page.locator('#account-settings summary').filter({ hasText: 'Change password' }).click();
     await surface(page.locator('#buyer-password-current'), theme, 'Account password field');
     await readable(page.locator('#buyer-password-current'), 'Account password text');
+    const update = page.getByRole('button', { name: 'Update password', exact: true });
+    await readable(update, 'Primary account action');
+    assert.equal((await colors(update)).bg, 'rgb(233, 189, 115)', 'Account action uses mobile gold in both themes');
     await surface(page.locator('#review-form form'), theme, 'Review form');
     await surface(page.locator('#review-title'), theme, 'Review input');
     await readable(page.locator('#review-title'), 'Review input text');
+    await readable(page.getByRole('button', { name: 'Submit Review', exact: true }), 'Primary review action');
     await surface(page.locator('#review-card > div'), theme, 'Review card');
     await readable(page.getByText('Verified Purchase', { exact: true }), 'Verified badge');
 

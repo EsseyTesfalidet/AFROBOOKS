@@ -2,8 +2,8 @@
 .mobile-signin {
   --signin-field: #ffffff05;
   --signin-track: #101114;
-  --signin-primary: #e9bd73;
-  --signin-primary-text: #211a10;
+  --signin-primary: var(--app-action, #e9bd73);
+  --signin-primary-text: var(--app-on-action, #211a10);
   height:100%; min-height:0; display:grid;
   grid-template-rows:minmax(64px,1fr) minmax(0,auto);
   padding:16px 20px max(24px,env(safe-area-inset-bottom));
@@ -13,8 +13,8 @@
 html[data-app-theme='light'] .mobile-signin {
   --signin-field: #f7f7f5;
   --signin-track: #eeefec;
-  --signin-primary: #25272c;
-  --signin-primary-text: #ffffff;
+  --signin-primary: var(--app-action, #e9bd73);
+  --signin-primary-text: var(--app-on-action, #211a10);
 }
 .signin-hero { position:relative; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px 12px 28px; }
 .signin-brand { animation:signin-rise .4s ease-out both; }

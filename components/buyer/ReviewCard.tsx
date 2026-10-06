@@ -61,7 +61,7 @@ export default function ReviewCard({ review, isSeller, currentUserId }: Props) {
         <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-full flex items-center justify-center font-display text-sm"
-            style={{ background: '#e8442a', color: '#fff' }}
+            style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
           >
             {review.reviewerInitials}
           </div>

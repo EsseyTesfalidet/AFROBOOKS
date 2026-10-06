@@ -81,7 +81,7 @@ export default function ChapterEditor({ chapterNumber, onSave, onCancel, onDraft
           <button type="button" onClick={onCancel} className="px-3 py-1.5 rounded-lg border text-xs" style={{ borderColor: "var(--app-line, #333)", color: "var(--app-muted, #888)" }}>
             Cancel
           </button>
-          <button type="button" onClick={handleSave} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: '#e8442a', color: '#fff' }}>
+          <button type="button" onClick={handleSave} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
             Save Chapter
           </button>
         </div>

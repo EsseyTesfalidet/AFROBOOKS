@@ -245,7 +245,7 @@ export default function SearchPage() {
               <SlidersHorizontal size={16} />
               Filters
               {activeFilterCount > 0 ? (
-                <span className="rounded-full px-1.5 text-[11px] font-bold" style={{ background: '#e8442a', color: '#fff' }}>
+                <span className="rounded-full px-1.5 text-[11px] font-bold" style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
                   {activeFilterCount}
                 </span>
               ) : null}
@@ -266,7 +266,7 @@ export default function SearchPage() {
                 type="button"
                 onClick={resetFilters}
                 className="inline-flex flex-shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
-                style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: '#e8442a' }}
+                style={{ background: 'var(--app-field, #171717)', borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-accent, #e8442a)' }}
               >
                 Reset
               </button>
@@ -281,7 +281,7 @@ export default function SearchPage() {
                   type="button"
                   onClick={() => removeAppliedGenre(genre)}
                   className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium"
-                  style={{ background: 'var(--app-accent-surface, #1f0e0c)', borderColor: '#e8442a', color: 'var(--app-text, #fff)' }}
+                  style={{ background: 'var(--app-accent-surface, #1f0e0c)', borderColor: 'var(--app-accent, #e8442a)', color: 'var(--app-text, #fff)' }}
                 >
                   {genre} <X size={12} />
                 </button>
@@ -512,9 +512,9 @@ export default function SearchPage() {
                         <span
                           className="flex h-6 w-6 items-center justify-center rounded-full border"
                           style={{
-                            background: checked ? '#e8442a' : 'transparent',
-                            borderColor: checked ? '#e8442a' : 'var(--app-line, #333)',
-                            color: '#fff',
+                            background: checked ? 'var(--app-action, #e8442a)' : 'transparent',
+                            borderColor: checked ? 'var(--app-accent, #e8442a)' : 'var(--app-line, #333)',
+                            color: 'var(--app-on-action, #fff)',
                           }}
                         >
                           {checked ? <Check size={14} /> : null}
@@ -541,7 +541,7 @@ export default function SearchPage() {
                     type="button"
                     onClick={applyFilters}
                     className="flex-1 rounded-2xl py-3 text-sm font-medium"
-                    style={{ background: '#e8442a', color: '#fff' }}
+                    style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
                   >
                     Apply filters
                   </button>
@@ -562,12 +562,12 @@ export default function SearchPage() {
                       className="flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-medium"
                       style={{
                         background: active ? 'var(--app-accent-surface, #1f0e0c)' : 'var(--app-field, #171717)',
-                        borderColor: active ? '#e8442a' : 'var(--app-line, #2a2a2a)',
+                        borderColor: active ? 'var(--app-accent, #e8442a)' : 'var(--app-line, #2a2a2a)',
                         color: active ? 'var(--app-text, #fff)' : 'var(--app-text, #ddd)',
                       }}
                     >
                       {option.label}
-                      {active ? <Check size={16} style={{ color: '#e8442a' }} /> : null}
+                      {active ? <Check size={16} style={{ color: 'var(--app-accent, #e8442a)' }} /> : null}
                     </button>
                   );
                 })}

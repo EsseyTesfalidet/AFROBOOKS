@@ -54,15 +54,15 @@ export default function FollowButton({ sellerId, initialFollowerCount = 0, size 
       style={{
         padding: isMd ? '8px 16px' : '5px 10px',
         fontSize: isMd ? 13 : 11,
-        background: following ? 'var(--app-field, #1a1a1a)' : '#e8442a',
-        borderColor: following ? 'var(--app-line, #333)' : '#e8442a',
-        color: following ? 'var(--app-muted, #888)' : '#fff',
+        background: following ? 'var(--app-field, #1a1a1a)' : 'var(--app-action, #e8442a)',
+        borderColor: following ? 'var(--app-line, #333)' : 'var(--app-action, #e8442a)',
+        color: following ? 'var(--app-muted, #888)' : 'var(--app-on-action, #fff)',
       }}
     >
       {following ? <UserCheck size={isMd ? 15 : 12} /> : <UserPlus size={isMd ? 15 : 12} />}
       {following ? 'Following' : 'Follow'}
       {count > 0 && (
-        <span style={{ color: following ? 'var(--app-muted, #555)' : 'rgba(255,255,255,0.65)', marginLeft: 2 }}>
+        <span style={{ color: following ? 'var(--app-muted, #555)' : 'var(--app-on-action, rgba(255,255,255,0.65))', marginLeft: 2 }}>
           {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
         </span>
       )}

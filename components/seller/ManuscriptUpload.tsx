@@ -57,7 +57,7 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
       <label className="block text-sm text-[#ddd]">Language in the scan<select aria-label="OCR language" value={ocrLanguage} disabled={busy} onChange={event => setOcrLanguage(event.target.value as OcrLanguage)} className="mt-2 min-h-11 w-full rounded-lg border border-[#555] bg-[#222] px-3 text-white">{OCR_LANGUAGES.map(item => <option key={item.code} value={item.code}>{item.label}{item.code === 'tir' ? ' (ትግርኛ)' : ''}</option>)}</select></label>
       <p className="text-xs leading-relaxed text-[#ccc]">OCR reads words from scanned pages on your device. Use clear, upright printed pages in the selected language, up to 20 MB / 50 pages. Keep this tab open; recognition may take several minutes and downloads language tools on first use. Review the result for mistakes. Handwriting and mixed-language pages may need manual correction.</p>
     </div>}
-    <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-[#e8442a] px-4 py-2.5 text-sm font-medium text-white">
+    <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-[var(--app-action,#e8442a)] px-4 py-2.5 text-sm font-medium text-[var(--app-on-action,#fff)]">
       <input aria-label="Upload manuscript" type="file" accept={mode === 'ocr' ? '.pdf,application/pdf' : '.pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown'} disabled={busy} className="hidden" onChange={event => { const file = event.target.files?.[0]; event.currentTarget.value = ''; void select(file); }} />
       {busy ? 'Importing…' : 'Upload manuscript'}
     </label>
@@ -71,7 +71,7 @@ export default function ManuscriptUpload({ chapterCount, fileName, language = 'E
         {pending.chapters.map(chapter => <section key={chapter.chapterNumber}><h4 dir="auto" className="mb-2 font-semibold">{chapter.title}</h4><div dir="auto" dangerouslySetInnerHTML={{ __html: chapter.content }} /></section>)}
       </div>
       <p className="text-xs text-[#ccc]">{chapterCount ? `Using this import replaces your ${chapterCount} current chapter(s).` : 'Use this import to add your chapters.'} Nothing is published until you save or publish.</p>
-      <div className="flex flex-wrap gap-3"><button type="button" className="min-h-11 rounded-lg bg-[#e8442a] px-3 text-sm text-white" onClick={() => { onImport(pending); setPending(null); }}>Use these chapters</button><button type="button" className="min-h-11 px-3 text-sm text-[#ccc]" onClick={() => setPending(null)}>Discard import</button></div>
+      <div className="flex flex-wrap gap-3"><button type="button" className="min-h-11 rounded-lg bg-[var(--app-action,#e8442a)] px-3 text-sm text-[var(--app-on-action,#fff)]" onClick={() => { onImport(pending); setPending(null); }}>Use these chapters</button><button type="button" className="min-h-11 px-3 text-sm text-[#ccc]" onClick={() => setPending(null)}>Discard import</button></div>
     </div>}
     {fileName && <p className="break-words text-xs text-[#4ade80]">Imported {fileName} into {chapterCount} reading section(s). You can edit the chapters below.</p>}
   </div>;

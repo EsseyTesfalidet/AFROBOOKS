@@ -24,7 +24,7 @@ export default function Toggle({ checked, onChange, label, disabled = false }: T
       >
         <span
           className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"
-          style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
+          style={{ background: checked ? 'var(--app-on-action, #fff)' : '#fff', transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
         />
       </button>
       {label && <span className="text-sm text-[#aaa]">{label}</span>}

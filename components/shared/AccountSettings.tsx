@@ -77,7 +77,7 @@ export default function AccountSettings({ seller = false }: { seller?: boolean }
           </div>)}
           {error && <p role="alert" className="text-[14px] text-red-300">{error}</p>}
           {success && <p role="status" className="flex items-center gap-2 text-[14px] text-emerald-300"><Check size={16} />Password updated</p>}
-          <button type="submit" disabled={busy} className={`${buttonClass} bg-[#e8442a] text-white hover:bg-[#ce3a23]`}>{busy ? 'Updating…' : 'Update password'}</button>
+          <button type="submit" disabled={busy} className={`${buttonClass} bg-[var(--app-action,#e8442a)] text-[var(--app-on-action,#fff)] hover:bg-[var(--app-action-hover,#ce3a23)]`}>{busy ? 'Updating…' : 'Update password'}</button>
         </form>
       </details> : <p className="text-[14px] leading-relaxed text-[#a39f97]">You sign in through a linked provider. Manage your password with that provider.</p>}
     </section>

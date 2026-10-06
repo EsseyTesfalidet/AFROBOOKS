@@ -9,7 +9,7 @@ const postcss = require('postcss');
 
 async function main() {
   const result = await build({ bundle: true, write: false, outfile: 'appearance.js', platform: 'browser', format: 'iife',
-    define: { 'process.env.NODE_ENV': '"test"', 'process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY': '"pk_test_fixture"' },
+    define: { 'process.env': '{}', 'process.env.NODE_ENV': '"test"', 'process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY': '"pk_test_fixture"' },
     stdin: { resolveDir: process.cwd(), loader: 'tsx', contents: `
 import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
 import Shell from './components/shared/MobileAppShell';import Experience from './components/shared/AppExperience';
@@ -54,6 +54,7 @@ createRoot(document.getElementById('root')).render(<App/>);
         `import React from 'react';const router={push:p=>window.navigate(p),replace:p=>window.navigate(p)};export const usePathname=()=>window.path;export const useParams=()=>({id:window.path.split('/').pop()});export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>router;export default function Link({children,href,onClick,...p}){return <a href={href} {...p} onClick={e=>{e.preventDefault();onClick?.(e);window.navigate(href)}}>{children}</a>}` }));
       b.onResolve({ filter: /^(@\/lib\/firebase\/(firestore|config|auth)|@\/hooks\/(useCatalog|useBookOwnership|useBookPreview|useOwnedCart))$/ }, a => ({ path: a.path, namespace: 'data' }));
       b.onResolve({ filter: /^@\/lib\/firebase\/syncLibrary$/ }, a => ({ path: a.path, namespace: 'data' }));
+      b.onResolve({ filter: /^@\/lib\/firebase\/(mobileAuth|recoveryPhone)$/ }, a => ({ path: a.path, namespace: 'data' }));
       b.onResolve({ filter: /^@\/lib\/firebase\/request$/ }, a => ({ path: a.path, namespace: 'data' }));
       b.onResolve({ filter: /^@\/hooks\/useDeleteAccount$/ }, a => ({ path: a.path, namespace: 'data' }));
       b.onLoad({ filter: /.*/, namespace: 'data' }, () => ({ contents: `
@@ -62,6 +63,8 @@ export const getBook=async id=>window.books.find(b=>b.id===id);export const getB
 export const getChapters=async()=>window.chapters;export const getPreviewChapters=getChapters;export const getReadingProgress=async()=>window.path==='/library'?{percentComplete:42,currentChapter:1}:null;export const saveReadingProgress=async()=>{};
 export const getUserLibrary=async()=>window.books.map(b=>({bookId:b.id}));export const subscribeUserLibrary=(uid,cb)=>{getUserLibrary().then(cb);return()=>{}};export const syncPurchasedLibrary=async()=>({pendingOrderIds:[]});
 export const useDeleteAccount=()=>({deletingAccount:false,deleteError:'',handleDeleteAccount:()=>{throw Error('Unexpected delete')}});export const changePassword=()=>{throw Error('Unexpected password change')};
+export const getRecoveryPhone=async()=>({uid:'fixture',phoneNumber:null,profileSynced:false,providers:['password']});export const createPhoneVerifier=()=>{throw Error('Unexpected SMS')};export const confirmRecoveryIdentity=createPhoneVerifier;export const requestRecoveryCode=createPhoneVerifier;export const confirmRecoveryCode=createPhoneVerifier;
+export const authenticatedGet=async()=>({videos:[],titles:[],items:[]});
 export const authenticatedPost=()=>{throw Error('Unexpected authenticated request')};
 export const createReview=()=>{throw Error('Unexpected review')};export const deleteNotification=()=>{throw Error('Unexpected deletion')};export const markNotificationRead=async()=>{};export const markAllNotificationsRead=async()=>{};
 export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export const updateUserProfile=()=>{throw Error('Unexpected profile change')};
@@ -88,7 +91,7 @@ export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export co
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
     await context.addInitScript(() => { Object.defineProperty(navigator, 'standalone', { value: true }); window.testHour = 12; Date.prototype.getHours = function() { return window.testHour; }; });
-    const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    const page = await context.newPage(); const errors = []; page.on('pageerror', e => { errors.push(e.message); console.error(e.stack); });
     await page.goto(base + '/browse'); await page.getByRole('heading', { name: 'Stories to get lost in.' }).waitFor();
     await page.waitForFunction(() => document.documentElement.dataset.appTheme === 'light');
     for (const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390}]) {
@@ -110,6 +113,7 @@ export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export co
     await page.evaluate(() => window.navigate('/book/one')); await page.getByRole('heading', { name: 'Ada’s Rain', exact:true }).waitFor();
     await page.waitForFunction(() => document.querySelector('.app-book-scene')?.getAttribute('style')?.includes('#b85a3c'));
     assert.notEqual(await page.locator('.app-detail-cover').evaluate(el=>getComputedStyle(el).boxShadow),'none');
+    assert.deepEqual(await page.getByRole('button', {name:'View cart',exact:true}).evaluate(el=>({bg:getComputedStyle(el).backgroundColor,text:getComputedStyle(el).color})), {bg:'rgb(233, 189, 115)',text:'rgb(36, 26, 14)'}, 'Mobile purchase action has readable gold branding');
     assert.match(await page.locator('.app-book-scene').evaluate(el=>getComputedStyle(el).backgroundImage),/linear-gradient/);
     if(process.env.SCREENSHOT_DIR){await page.evaluate(()=>document.fonts.ready);await page.screenshot({animations:'disabled',path:process.env.SCREENSHOT_DIR+'/book-light.png'});}
     await page.getByRole('button', { name: /App theme:/ }).click(); await page.getByRole('button', { name: /App theme:/ }).click();
@@ -156,7 +160,7 @@ export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export co
     const legacy=await browser.newContext({viewport:{width:390,height:844}});
     await legacy.addInitScript(()=>{Object.defineProperty(navigator,'standalone',{value:true});localStorage.setItem('afrobooks-reader',JSON.stringify({state:{theme:'sepia'},version:0}));localStorage.setItem('afrobooks-app-appearance',JSON.stringify({state:{themeMode:'dark'},version:0}));});
     const old=await legacy.newPage();await old.goto(base+'/read/one');await old.getByRole('main',{name:'Book reader'}).waitFor();assert.equal(await old.locator('.reader-shell').evaluate(el=>el.style.getPropertyValue('--reader-bg')),'#f3e7d0');await legacy.close();
-    const website=await browser.newContext({viewport:{width:390,height:844}});const web=await website.newPage();await web.goto(base+'/book/one');await web.getByRole('heading',{name:'Ada’s Rain',exact:true}).waitFor();assert.equal(await web.locator('.app-theme-toggle').count(),0);assert.equal(await web.locator('html').getAttribute('data-app-theme'),null);assert.equal(await web.locator('.app-book-scene').getAttribute('style'),null);assert.equal(await web.evaluate(()=>window.tap()),false);await website.close();
+    const website=await browser.newContext({viewport:{width:390,height:844}});const web=await website.newPage();await web.goto(base+'/book/one');await web.getByRole('heading',{name:'Ada’s Rain',exact:true}).waitFor();assert.equal(await web.locator('.app-theme-toggle').count(),0);assert.equal(await web.locator('html').getAttribute('data-app-theme'),null);assert.equal(await web.locator('.app-book-scene').getAttribute('style'),null);assert.equal(await web.evaluate(()=>window.tap()),false);assert.deepEqual(await web.getByRole('button',{name:'View cart',exact:true}).evaluate(el=>({bg:getComputedStyle(el).backgroundColor,text:getComputedStyle(el).color})),{bg:'rgb(232, 68, 42)',text:'rgb(255, 255, 255)'},'Website purchase action retains its original colors');await website.close();
     const webSearchContext=await browser.newContext({viewport:{width:390,height:844}});const webSearch=await webSearchContext.newPage();
     await webSearch.goto(base+'/search');const webInput=webSearch.getByPlaceholder('Search books, authors, or topics...');await webInput.waitFor();
     assert.equal(await webInput.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(23, 23, 23)','website field keeps original dark color');

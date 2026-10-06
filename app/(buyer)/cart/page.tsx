@@ -36,7 +36,7 @@ export default function CartPage() {
           <p className="text-lg font-display text-white mb-2">Your cart is empty</p>
           <p className="text-sm text-[#555] mb-6">Browse books to get started.</p>
           <Link href="/library" className="mb-4 text-sm text-[#f5b800] underline">Already purchased? Open your library</Link>
-          <Link href="/browse" className="px-6 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
+          <Link href="/browse" className="px-6 py-2.5 rounded-lg text-sm font-medium" style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
             Browse Books
           </Link>
         </div>
@@ -109,7 +109,7 @@ export default function CartPage() {
                 disabled={minimum.remaining > 0 || items.length > 20}
                 onClick={() => router.push('/checkout')}
                 className="app-primary-action w-full py-3 rounded-xl text-sm font-medium disabled:opacity-50"
-                style={{ background: '#e8442a', color: '#fff' }}
+                style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
               >
                 Checkout — {centsToDisplay(tot)}
               </button>

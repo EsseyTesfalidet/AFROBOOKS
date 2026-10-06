@@ -97,7 +97,7 @@ export default function BuyerProfileDrawer() {
             {user ? <ProfileAccount key={user.uid} /> : <section className="space-y-4">
               <h2 className="text-xl font-semibold">Your stories, all in one place</h2>
               <p className="text-sm leading-relaxed text-[#a39f97]">Sign in to open your library, manage purchases and save your reading progress.</p>
-              <div className="flex flex-wrap gap-3"><Link href="/login" onClick={close} className={`${buttonClass} bg-[#e8442a] text-white`}>Sign in</Link><Link href="/signup" onClick={close} className={`${buttonClass} border border-white/15`}>Create account</Link></div>
+              <div className="flex flex-wrap gap-3"><Link href="/login" onClick={close} className={`${buttonClass} bg-[var(--app-action,#e8442a)] text-[var(--app-on-action,#fff)]`}>Sign in</Link><Link href="/signup" onClick={close} className={`${buttonClass} border border-white/15`}>Create account</Link></div>
             </section>}
             <AccountLinks onNavigate={close} />
           </>}

@@ -291,7 +291,7 @@ export default function NotificationsPage() {
                           </p>
                         </div>
                         {!notification.isRead ? (
-                          <span className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: '#e8442a' }} />
+                          <span className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: 'var(--app-action, #e8442a)' }} />
                         ) : null}
                       </div>
                       <div className="mt-3 flex items-center justify-between gap-3">

@@ -444,14 +444,14 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                   <div className="flex items-center gap-1.5">
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{ background: done || active ? '#e8442a' : "var(--app-field, #1a1a1a)", color: done || active ? '#fff' : "var(--app-muted, #555)" }}
+                      style={{ background: done || active ? 'var(--app-action, #e8442a)' : "var(--app-field, #1a1a1a)", color: done || active ? 'var(--app-on-action, #fff)' : "var(--app-muted, #555)" }}
                     >
                       {done ? <Check size={12} /> : i + 1}
                     </div>
                     <span className="text-xs" style={{ color: active ? "var(--app-text, #f5f2eb)" : "var(--app-muted, #555)" }}>{s}</span>
                   </div>
                   {i < STEPS.length - 1 && (
-                    <div className="mx-2 h-px w-8" style={{ background: done ? '#e8442a' : "var(--app-track, #222)" }} />
+                    <div className="mx-2 h-px w-8" style={{ background: done ? 'var(--app-action, #e8442a)' : "var(--app-track, #222)" }} />
                   )}
                 </div>
               );
@@ -492,7 +492,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
               <Link
                 href="/seller/profile/verification"
                 className="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap"
-                style={{ background: '#e8442a', color: '#fff' }}
+                style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
               >
                 Verification
               </Link>
@@ -535,7 +535,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                     {GENRES.map((g) => (
                       <button key={g} type="button" onClick={() => setGenre(g)}
                         className="px-3 py-1.5 rounded-lg text-sm transition-all"
-                        style={{ background: genre === g ? '#e8442a' : "var(--app-field, #1a1a1a)", color: genre === g ? '#fff' : "var(--app-muted, #888)", border: `1px solid ${genre === g ? '#e8442a' : "var(--app-line, #333)"}` }}>
+                        style={{ background: genre === g ? 'var(--app-action, #e8442a)' : "var(--app-field, #1a1a1a)", color: genre === g ? 'var(--app-on-action, #fff)' : "var(--app-muted, #888)", border: `1px solid ${genre === g ? 'var(--app-action, #e8442a)' : "var(--app-line, #333)"}` }}>
                         {g}
                       </button>
                     ))}
@@ -570,7 +570,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                         key={option.value}
                         className="flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all"
                         style={{
-                          border: copyrightBasis === option.value ? '1.5px solid #e8442a' : '1.5px solid var(--app-line, #2a2a2a)',
+                          border: copyrightBasis === option.value ? '1.5px solid var(--app-accent, #e8442a)' : '1.5px solid var(--app-line, #2a2a2a)',
                           background: copyrightBasis === option.value ? "var(--app-accent-surface, #1f0e0c)" : "var(--app-field, #1a1a1a)",
                         }}
                       >
@@ -580,7 +580,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                           value={option.value}
                           checked={copyrightBasis === option.value}
                           onChange={() => setCopyrightBasis(option.value)}
-                          className="mt-0.5 accent-[#e8442a]"
+                          className="mt-0.5 accent-[var(--app-accent,#e8442a)]"
                         />
                         <div>
                           <p className="text-sm font-medium text-white">{option.label}</p>
@@ -607,7 +607,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                       type="checkbox"
                       checked={copyrightAttested}
                       onChange={(e) => setCopyrightAttested(e.target.checked)}
-                      className="mt-1 accent-[#e8442a]"
+                      className="mt-1 accent-[var(--app-accent,#e8442a)]"
                     />
                     <span className="text-sm text-[#aaa]">
                       I confirm that I own the rights to this book or I have explicit permission to publish it on AfroBooks.
@@ -638,7 +638,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                     {ACCENT_COLORS.map((c) => (
                       <button key={c} type="button" onClick={() => setAccentColor(c)}
                         className="w-8 h-8 rounded-full border-2 transition-all"
-                        style={{ background: c, borderColor: accentColor === c ? '#fff' : 'transparent' }} />
+                        style={{ background: c, borderColor: accentColor === c ? 'var(--app-on-action, #fff)' : 'transparent' }} />
                     ))}
                   </div>
                 </div>
@@ -648,7 +648,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                     {BG_COLORS.map((c) => (
                       <button key={c} type="button" onClick={() => setBgColor(c)}
                         className="w-8 h-8 rounded-full border-2 transition-all"
-                        style={{ background: c, borderColor: bgColor === c ? '#fff' : "var(--app-line, #444)" }} />
+                        style={{ background: c, borderColor: bgColor === c ? 'var(--app-on-action, #fff)' : "var(--app-line, #444)" }} />
                     ))}
                   </div>
                 </div>
@@ -701,7 +701,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                         style={{ background: ch.isPreview ? "var(--app-success-surface, #0f2e1a)" : "var(--app-info-surface, #1a1a2e)", color: ch.isPreview ? '#4ade80' : "var(--app-muted, #555)" }}>
                         {ch.isPreview ? 'FREE PREVIEW' : 'LOCKED'}
                       </button>
-                      <button type="button" disabled={editingChapter !== null && editingChapter !== ch.chapterNumber} onClick={() => setEditingChapter(ch.chapterNumber)} className="min-h-11 text-xs text-[#e8442a] disabled:opacity-40">Edit</button>
+                      <button type="button" disabled={editingChapter !== null && editingChapter !== ch.chapterNumber} onClick={() => setEditingChapter(ch.chapterNumber)} className="min-h-11 text-xs text-[var(--app-accent,#e8442a)] disabled:opacity-40">Edit</button>
                     </div>
                   </div>
                 ))}
@@ -818,7 +818,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
               {step < 4 && (
                 <button type="button" onClick={nextStep} disabled={manuscriptImporting || (step === 3 && (!pricingValid || directSaleFee === null))}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
-                  style={{ background: '#e8442a', color: '#fff' }}>
+                  style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
                   Next <ArrowRight size={14} />
                 </button>
               )}

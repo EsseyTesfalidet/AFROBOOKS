@@ -29,7 +29,7 @@ export default function ReadingSectionSplitter({ chapters, onApply }: { chapters
         {sections.map(section => <section key={section.chapterNumber}><h4 className="text-sm font-medium text-white">{section.title} · {section.wordCount.toLocaleString()} words</h4><p className="text-xs text-[#bbb]">{section.isPreview ? 'Free preview' : 'Locked'}</p><div className="manuscript-preview mt-2 text-sm leading-relaxed text-[#ddd]" dir="auto" dangerouslySetInnerHTML={{ __html: sanitizeChapter(section.content) }} /></section>)}
       </div>
       <p className="text-xs leading-relaxed text-[#bbb]">{original.isPreview ? 'Only the first section keeps free-preview access. Review the preview buttons below.' : 'All sections stay locked.'} Applying changes your editing draft; saving or publishing updates the book. Existing reading positions may move when its chapter structure changes.</p>
-      <div className="flex flex-wrap gap-3"><button type="button" className="min-h-11 rounded-lg bg-[#e8442a] px-3 text-sm text-white" onClick={() => { onApply(sections); setPreview(null); }}>Use these sections</button><button type="button" className="min-h-11 px-3 text-sm text-[#ccc]" onClick={() => setPreview(null)}>Cancel split</button></div>
+      <div className="flex flex-wrap gap-3"><button type="button" className="min-h-11 rounded-lg bg-[var(--app-action,#e8442a)] px-3 text-sm text-[var(--app-on-action,#fff)]" onClick={() => { onApply(sections); setPreview(null); }}>Use these sections</button><button type="button" className="min-h-11 px-3 text-sm text-[#ccc]" onClick={() => setPreview(null)}>Cancel split</button></div>
     </div>}
   </section>;
 }

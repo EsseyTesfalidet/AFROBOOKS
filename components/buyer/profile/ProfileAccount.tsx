@@ -89,14 +89,14 @@ export default function ProfileAccount() {
         <textarea id="buyer-bio" rows={3} maxLength={500} value={form.bio} disabled={busy} onChange={e => setForm({ ...form, bio: e.target.value })} placeholder="What do you like to read?" className={`${inputClass} resize-y`} />
       </div>
       <div className="flex flex-wrap gap-2 pt-1">
-        <button type="submit" disabled={busy} className={`${buttonClass} bg-[#e8442a] text-white hover:bg-[#ce3a23]`}>{busy ? 'Saving…' : 'Save changes'}</button>
+        <button type="submit" disabled={busy} className={`${buttonClass} bg-[var(--app-action,#e8442a)] text-[var(--app-on-action,#fff)] hover:bg-[var(--app-action-hover,#ce3a23)]`}>{busy ? 'Saving…' : 'Save changes'}</button>
         <button type="button" disabled={busy} onClick={() => { setEditing(false); setError(''); }} className={`${buttonClass} text-[#c6c2b8] hover:bg-white/5`}>Cancel</button>
       </div>
     </form> : <section className="space-y-4">
       <h3 className="sr-only">Personal details</h3>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0"><p className="mb-1.5 text-[12px] text-[#a39f97]">Email</p><p className="break-all text-[14px]">{user.email}</p></div>
-        <button type="button" onClick={editProfile} className={`${buttonClass} !px-3 text-[#ff977f] hover:bg-white/5`}><Pencil size={14} />Edit profile</button>
+        <button type="button" onClick={editProfile} className={`${buttonClass} !px-3 text-[var(--app-accent,#ff977f)] hover:bg-white/5`}><Pencil size={14} />Edit profile</button>
       </div>
       {user.bio && <p className="whitespace-pre-wrap break-words text-[14px] leading-relaxed text-[#a39f97]">{user.bio}</p>}
     </section>}

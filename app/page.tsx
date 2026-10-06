@@ -54,7 +54,7 @@ export default function LandingPage() {
           </Link>
           <Link href="/signup"
             className="text-xs px-3 py-2 rounded-lg font-semibold transition-all sm:text-sm sm:px-4"
-            style={{ background: '#e8442a', color: '#fff' }}>
+            style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
             Get Started
           </Link>
         </div>
@@ -92,7 +92,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
             <Link href="/browse"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-opacity hover:opacity-90"
-              style={{ background: '#e8442a', color: '#fff' }}>
+              style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
               Browse Books <ArrowRight size={18} />
             </Link>
             <Link href="/signup?role=seller"
@@ -279,7 +279,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/signup"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-opacity hover:opacity-90"
-              style={{ background: '#e8442a', color: '#fff' }}>
+              style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
               Create Free Account <ArrowRight size={18} />
             </Link>
             <Link href="/browse"

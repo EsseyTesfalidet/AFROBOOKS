@@ -123,7 +123,7 @@ export default function ReaderResumeBar() {
           <Link
             href={`/read/${book.id}`}
             className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium"
-            style={{ background: '#e8442a', color: '#fff' }}
+            style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
           >
             <Play size={14} />
             Resume

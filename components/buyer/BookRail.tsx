@@ -34,7 +34,7 @@ export default function BookRail({
             {badge ? (
               <span
                 className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                style={{ background: '#1f0e0c', color: '#e8442a' }}
+                style={{ background: 'var(--app-accent-surface, #1f0e0c)', color: 'var(--app-accent, #e8442a)' }}
               >
                 {badge}
               </span>

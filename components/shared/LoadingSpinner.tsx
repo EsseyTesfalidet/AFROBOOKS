@@ -6,7 +6,7 @@ interface LoadingSpinnerProps {
 
 export default function LoadingSpinner({
   size = 32,
-  color = '#e8442a',
+  color = 'var(--app-accent, #e8442a)',
   fullPage = false,
 }: LoadingSpinnerProps) {
   const spinner = (

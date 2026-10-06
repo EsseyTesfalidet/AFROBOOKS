@@ -59,10 +59,10 @@ export default function WorkspaceSwitcher({
               {...(appAuthor ? { href: AUTHOR_APP_START, title: 'Open your author space' } : { type: 'button' as const, onClick: () => { if (!active) onChange(id); } })}
               className={`${styles.button} ${fullWidth ? 'flex-1 justify-center' : ''} inline-flex items-center font-medium transition-all`}
               style={{
-                background: active ? 'linear-gradient(180deg, #f05b43 0%, #e8442a 100%)' : 'transparent',
-                border: `1px solid ${active ? '#e8442a' : 'transparent'}`,
-                color: active ? '#fff' : 'var(--app-muted, #a1a1aa)',
-                boxShadow: active ? '0 12px 24px rgba(232,68,42,0.18)' : 'none',
+                background: active ? 'var(--app-action-gradient, linear-gradient(180deg, #f05b43 0%, #e8442a 100%))' : 'transparent',
+                border: `1px solid ${active ? 'var(--app-action, #e8442a)' : 'transparent'}`,
+                color: active ? 'var(--app-on-action, #fff)' : 'var(--app-muted, #a1a1aa)',
+                boxShadow: active ? 'var(--app-action-shadow, 0 12px 24px rgba(232,68,42,0.18))' : 'none',
               }}
             >
               <Icon size={styles.icon} />

@@ -104,7 +104,7 @@ export default function LibraryPage() {
           return (
             <div className="mb-7">
               <div className="flex items-center gap-2 mb-3">
-                <PlayCircle size={14} style={{ color: '#e8442a' }} />
+                <PlayCircle size={14} style={{ color: 'var(--app-accent, #e8442a)' }} />
                 <p className="text-sm font-medium text-white">Continue Reading</p>
               </div>
               <SwipeShelf label="Continue reading in your library"
@@ -121,7 +121,7 @@ export default function LibraryPage() {
                     {book && <BookCover book={book} />}
                     <p className="px-2 pt-2 text-[12px] font-medium text-white line-clamp-2">{book?.title ?? bookId}</p>
                     <div className="px-2.5 pt-2 pb-2.5 space-y-1">
-                      <ProgressBar value={progress} color="#e8442a" height={3} />
+                      <ProgressBar value={progress} color="var(--app-action, #e8442a)" height={3} />
                       <p className="text-xs" style={{ color: 'var(--app-muted, #555)' }}>{progress}% · Ch. {currentChapter}</p>
                     </div>
                   </Link>
@@ -135,7 +135,7 @@ export default function LibraryPage() {
           <div className="text-center py-20">
             <BookOpen size={48} style={{ color: 'var(--app-line, #2a2a2a)' }} className="mx-auto mb-4" />
             <p className="text-[#555] mb-4">Your library is empty.</p>
-            <Link href="/browse" className="px-5 py-2.5 rounded-lg text-sm font-medium" style={{ background: '#e8442a', color: '#fff' }}>
+            <Link href="/browse" className="px-5 py-2.5 rounded-lg text-sm font-medium" style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
               Browse Books
             </Link>
           </div>
@@ -152,7 +152,7 @@ export default function LibraryPage() {
                   {book?.publicationType === 'magazine' && <p className="text-xs text-[#dec18e]">{publicationLabel(book)}</p>}
                   <p className="text-xs text-[#666] mb-2">{book?.authorName}</p>
                   <div className="flex items-center gap-2">
-                    <ProgressBar value={progress} color="#e8442a" height={3} />
+                    <ProgressBar value={progress} color="var(--app-action, #e8442a)" height={3} />
                     <span className="text-xs text-[#555] flex-shrink-0">{progress}%</span>
                   </div>
                   {progress > 0 && (
@@ -164,7 +164,7 @@ export default function LibraryPage() {
                 {book ? <Link
                   href={`/read/${bookId}`}
                   className="app-library-action px-4 py-2 rounded-lg text-xs font-medium flex-shrink-0"
-                  style={{ background: progress > 0 ? 'var(--app-field, #1a1a1a)' : '#e8442a', color: progress > 0 ? 'var(--app-muted, #aaa)' : '#fff', border: progress > 0 ? '1px solid var(--app-line, #333)' : 'none' }}
+                  style={{ background: progress > 0 ? 'var(--app-field, #1a1a1a)' : 'var(--app-action, #e8442a)', color: progress > 0 ? 'var(--app-muted, #aaa)' : 'var(--app-on-action, #fff)', border: progress > 0 ? '1px solid var(--app-line, #333)' : 'none' }}
                 >
                   {progress >= 95 ? 'Re-read' : progress > 0 ? 'Continue' : 'Read'}
                 </Link> : <span className="text-xs text-[#aaa]">Currently unavailable</span>}

@@ -58,7 +58,7 @@ export default function AvatarUpload({ size = 56 }: Props) {
         ) : (
           <div
             className="rounded-full flex items-center justify-center font-display w-full h-full"
-            style={{ background: '#e8442a', color: '#fff', fontSize: size * 0.35 }}
+            style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)', fontSize: size * 0.35 }}
           >
             {initials}
           </div>

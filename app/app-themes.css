@@ -7,10 +7,10 @@ html[data-app-mode='installed'] {
   --app-nav: #1a1c21f5;
   --app-field: #1a1c21;
   --app-soft: #ffffff08;
-  --app-price: #f1c4a6;
+  --app-price: #e9bd73;
   --app-success: #4ade80;
   --app-success-surface: #0f2e1a;
-  --app-subtle-accent: #d8b68b;
+  --app-subtle-accent: #e9bd73;
   --app-track: #333;
   --app-inverse: #f5f2eb;
   --app-on-inverse: #101114;
@@ -20,7 +20,7 @@ html[data-app-mode='installed'] {
   --app-info-surface: #1a1a2e;
   --app-danger: #ff977f;
   --app-danger-surface: #1f0e0c;
-  --app-accent-surface: #30211f;
+  --app-accent-surface: #2d251a;
 }
 html[data-app-mode='installed'][data-app-theme='light'] {
   color-scheme: light;
@@ -29,16 +29,16 @@ html[data-app-mode='installed'][data-app-theme='light'] {
   --app-line: #25272c22;
   --app-text: #25272c;
   --app-muted: #616672;
-  --app-accent: #a53724;
-  --app-action: #b83d28;
+  --app-accent: #805a23;
+  --app-action: #e9bd73;
   --app-header: #f7f5f1f2;
   --app-nav: #fffffff5;
   --app-field: #eeede9;
   --app-soft: #25272c08;
-  --app-price: #884523;
+  --app-price: #805a23;
   --app-success: #21723f;
   --app-success-surface: #e5f1e7;
-  --app-subtle-accent: #934326;
+  --app-subtle-accent: #805a23;
   --app-track: #c4c6cc;
   --app-inverse: #25272c;
   --app-on-inverse: #fff;
@@ -48,7 +48,7 @@ html[data-app-mode='installed'][data-app-theme='light'] {
   --app-info-surface: #e6f3fa;
   --app-danger: #b1252d;
   --app-danger-surface: #fce9e7;
-  --app-accent-surface: #f9e9e1;
+  --app-accent-surface: #f5e9d5;
 }
 html[data-app-mode='installed'] { background: var(--app-canvas); color: var(--app-text); }
 html[data-app-mode='installed'] body { background: var(--app-canvas); color: var(--app-text); }
@@ -64,7 +64,7 @@ html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-icon {
   transition:transform .24s cubic-bezier(.2,.8,.3,1.35), background-color .18s, color .18s, box-shadow .18s;
 }
 html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] .buyer-nav-icon {
-  transform:translateY(-15px) scale(1.08); background:var(--app-action); color:#fff;
+  transform:translateY(-15px) scale(1.08); background:var(--app-action); color:var(--app-on-action);
   box-shadow:0 0 0 4px var(--app-nav), 0 8px 20px color-mix(in srgb,var(--app-action) 30%,transparent);
 }
 html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item[data-active='true'] > span { color:var(--app-accent); font-weight:750; }
@@ -108,7 +108,7 @@ html[data-app-mode='installed'] .app-theme-choices input { position: absolute; o
 html[data-app-mode='installed'] .app-theme-choices span { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid var(--app-line); border-radius: 12px; }
 html[data-app-mode='installed'] .app-theme-choices input:checked + span { background: var(--app-soft); border-color: var(--app-accent); color: var(--app-accent); }
 html[data-app-mode='installed'] .app-theme-choices input:focus-visible + span { outline: 2px solid var(--app-accent); outline-offset: 3px; }
-html[data-app-mode='installed'] input[role='switch'] { width: 22px; height: 22px; accent-color: var(--app-action); }
+html[data-app-mode='installed'] input[role='switch'] { width: 22px; height: 22px; accent-color: var(--app-accent); }
 
 /* Soft cover tint sits behind content; text always uses a tested neutral palette. */
 html[data-app-mode='installed'] .app-book-scene {
@@ -144,7 +144,9 @@ html[data-app-mode='installed'][data-app-theme='light'] :is([class~="hover:bg-wh
 html[data-app-mode='installed'][data-app-theme='light'] :is(.app-community-invitation, .surface-card, .surface-panel, .surface-panel-muted, .surface-glass, .app-sponsored-book) { background: var(--app-surface); border-color: var(--app-line); box-shadow: 0 8px 24px #00000012; }
 html[data-app-mode='installed'][data-app-theme='light'] .surface-panel-muted { background: var(--app-field); }
 html[data-app-mode='installed'][data-app-theme='light'] :is(.eyebrow-chip, .app-community-invitation > :is(p, a), .app-page-intro > p:first-child, .profile-panel > header p) { color: var(--app-accent); }
-html[data-app-mode='installed'][data-app-theme='light'] :is(.app-primary-action, .button-primary, .bg-\[\#e8442a\], .bg-\[\#c9442c\]) { color: white; }
+html[data-app-mode='installed'][data-app-theme='light'] :is(.app-primary-action, .button-primary) { color: var(--app-on-action); }
+/* Legacy destructive actions keep their own fill and contrasting label. */
+html[data-app-mode='installed'][data-app-theme='light'] :is(.bg-\[\#e8442a\], .bg-\[\#c9442c\]) { color: white; }
 html[data-app-mode='installed'][data-app-theme='light'] .app-book-card:hover { background: var(--app-field); border-color: var(--app-line); }
 html[data-app-mode='installed'][data-app-theme='light'] :is(input, textarea)::placeholder { color: var(--app-muted); }
 html[data-app-mode='installed'][data-app-theme='light'] :is(.icon-button, .button-ghost) { color: var(--app-text); background: var(--app-soft); border-color: var(--app-line); }

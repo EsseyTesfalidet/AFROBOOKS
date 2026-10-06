@@ -119,9 +119,9 @@ export default function ReviewForm({ bookId, user, onSuccess }: Props) {
         type="submit"
         disabled={isSubmitting}
         className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium"
-        style={{ background: '#e8442a', color: '#fff' }}
+        style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
       >
-        {isSubmitting && <LoadingSpinner size={14} color="#fff" />}
+        {isSubmitting && <LoadingSpinner size={14} color="var(--app-on-action, #fff)" />}
         Submit Review
       </button>
     </form>

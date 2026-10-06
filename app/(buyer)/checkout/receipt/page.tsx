@@ -78,7 +78,7 @@ function ReceiptContent() {
 
   if (loading) return (
     <div className="flex flex-col items-center gap-4 px-4 pt-16 text-center text-sm text-[#bbb]">
-      <div className="animate-spin w-8 h-8 border-2 rounded-full" style={{ borderColor: 'var(--app-line, #222)', borderTopColor: '#e8442a' }} />
+      <div className="animate-spin w-8 h-8 border-2 rounded-full" style={{ borderColor: 'var(--app-line, #222)', borderTopColor: 'var(--app-accent, #e8442a)' }} />
       <p role="status">{confirmationError || 'Checking your order. Please do not pay again.'}</p>
       <button type="button" onClick={() => setAttempt(value => value + 1)} className="min-h-11 text-[#f5b800]">Retry status check</button>
     </div>
@@ -138,7 +138,7 @@ function ReceiptContent() {
               <Link
                 href={`/read/${orders[0].bookId}`}
                 className="flex-1 py-3 rounded-xl text-sm font-medium text-center"
-                style={{ background: '#e8442a', color: '#fff' }}
+                style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}
               >
                 Start Reading
               </Link>
@@ -163,7 +163,7 @@ export default function ReceiptPage() {
       <BuyerHeader />
       <Suspense fallback={
         <div className="flex justify-center pt-16">
-          <div className="animate-spin w-8 h-8 border-2 rounded-full" style={{ borderColor: 'var(--app-line, #222)', borderTopColor: '#e8442a' }} />
+          <div className="animate-spin w-8 h-8 border-2 rounded-full" style={{ borderColor: 'var(--app-line, #222)', borderTopColor: 'var(--app-accent, #e8442a)' }} />
         </div>
       }>
         <ReceiptContent />

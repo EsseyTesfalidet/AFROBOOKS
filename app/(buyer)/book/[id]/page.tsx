@@ -274,8 +274,8 @@ export default function BookDetailPage() {
                 </button>
                 <button type="button" onClick={() => setSelectedOption('buy')}
                   className="p-4 rounded-xl border text-left transition-all"
-                  style={{ border: selectedOption === 'buy' ? '1.5px solid #e8442a' : '1.5px solid var(--app-line, #2a2a2a)', background: selectedOption === 'buy' ? 'var(--app-field, #1f0e0c)' : 'var(--app-surface, #111)' }}>
-                  <p className="text-xs text-[#e8442a] font-medium uppercase tracking-wider mb-1">Buy to Own</p>
+                  style={{ border: selectedOption === 'buy' ? '1.5px solid var(--app-accent, #e8442a)' : '1.5px solid var(--app-line, #2a2a2a)', background: selectedOption === 'buy' ? 'var(--app-field, #1f0e0c)' : 'var(--app-surface, #111)' }}>
+                  <p className="text-xs text-[var(--app-accent,#e8442a)] font-medium uppercase tracking-wider mb-1">Buy to Own</p>
                   <p className="font-display text-white text-xl">{centsToDisplay(effectivePrice)}</p>
                   <p className="text-xs text-[#666] mt-1">Yours forever</p>
                 </button>
@@ -284,7 +284,7 @@ export default function BookDetailPage() {
 
             <button type="button" onClick={handleBuy} disabled={isPreorder}
               className="hidden w-full py-3.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-90 sm:block"
-              style={{ background: isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a', color: '#fff' }}>
+              style={{ background: `var(--app-action, ${isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a'})`, color: 'var(--app-on-action, #fff)' }}>
               {primaryCtaLabel}
             </button>
 
@@ -319,7 +319,7 @@ export default function BookDetailPage() {
         {(owned || canSubRead) && !isPreorder && (
           <button type="button" onClick={() => router.push(`/read/${book.id}`)}
             className="hidden w-full py-3.5 rounded-xl text-sm font-medium sm:block"
-            style={{ background: owned ? '#e8442a' : '#7c3aed', color: '#fff' }}>
+            style={{ background: `var(--app-action, ${owned ? '#e8442a' : '#7c3aed'})`, color: 'var(--app-on-action, #fff)' }}>
             {canSubRead && !owned ? 'Read Now (Included in your plan)' : 'Read Now'}
           </button>
         )}
@@ -462,7 +462,7 @@ export default function BookDetailPage() {
                   type="button"
                   onClick={() => router.push(`/read/${book.id}`)}
                   className="rounded-2xl px-4 py-3 text-sm font-medium"
-                  style={{ background: owned ? '#e8442a' : '#7c3aed', color: '#fff' }}
+                  style={{ background: `var(--app-action, ${owned ? '#e8442a' : '#7c3aed'})`, color: 'var(--app-on-action, #fff)' }}
                 >
                   Read now
                 </button>
@@ -472,8 +472,8 @@ export default function BookDetailPage() {
                   onClick={handleBuy} disabled={isPreorder}
                   className="rounded-2xl px-4 py-3 text-sm font-medium"
                   style={{
-                    background: isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a',
-                    color: '#fff',
+                    background: `var(--app-action, ${isPreorder ? '#0ea5e9' : selectedOption === 'subscribe' ? '#7c3aed' : '#e8442a'})`,
+                    color: 'var(--app-on-action, #fff)',
                   }}
                 >
                   {isPreorder ? 'Available on release' : isInCart(book.id) ? 'View cart' : 'Buy now'}
@@ -520,16 +520,16 @@ export default function BookDetailPage() {
                 <div className="space-y-2">
                   {REPORT_REASONS.map((r) => (
                     <label key={r} className="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
-                      style={{ border: reportReason === r ? '1.5px solid #e8442a' : '1.5px solid var(--app-line, #2a2a2a)', background: reportReason === r ? 'var(--app-soft, #1f0e0c)' : 'var(--app-field, #1a1a1a)' }}>
+                      style={{ border: reportReason === r ? '1.5px solid var(--app-accent, #e8442a)' : '1.5px solid var(--app-line, #2a2a2a)', background: reportReason === r ? 'var(--app-soft, #1f0e0c)' : 'var(--app-field, #1a1a1a)' }}>
                       <input type="radio" name="reportReason" value={r} checked={reportReason === r}
-                        onChange={() => setReportReason(r)} className="accent-[#e8442a]" />
+                        onChange={() => setReportReason(r)} className="accent-[var(--app-accent,#e8442a)]" />
                       <span className="text-sm text-[#aaa]">{r}</span>
                     </label>
                   ))}
                 </div>
                 <button type="button" onClick={handleReport} disabled={!reportReason || reportSubmitting}
                   className="w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-40"
-                  style={{ background: '#e8442a', color: '#fff' }}>
+                  style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
                   {reportSubmitting ? 'Submitting…' : 'Submit Report'}
                 </button>
               </>

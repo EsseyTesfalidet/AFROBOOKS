@@ -2,11 +2,13 @@
 
 ## Brand accents
 
-The mobile video pages use the logo's gold (`#E9BD73`) for selected filters,
-primary actions and viewing progress. Accent text becomes dark bronze (`#805A23`)
+The installed mobile app shares the logo's gold (`#E9BD73`) across Browse,
+Screen, Listen, Library, account/sign-in controls, primary actions and progress. Accent text becomes dark bronze (`#805A23`)
 in light mode, and filled gold controls use dark text for contrast. Backgrounds,
-body text and secondary controls keep their neutral theme colors. These page
-tokens are scoped away from the shared audio UI, app headers and admin palette.
+body text and secondary controls keep their neutral theme colors. The shared action/foreground/accent tokens live under
+`html[data-app-mode='installed']`; components retain their original website
+colors through CSS variable fallbacks. Error/success states, artwork and the
+reader's chosen page theme keep their own colors.
 The shared video player uses gold for its timeline, central play control and
 keyboard focus ring, including creator/admin previews; the video and other
 controls retain their dark cinematic treatment.

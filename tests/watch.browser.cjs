@@ -114,7 +114,7 @@ async function main() {
         const raised = await page.locator('.buyer-nav-item[data-active="true"] .buyer-nav-icon').boundingBox();
         const dock = await page.locator('.buyer-bottom-nav-shell').boundingBox();
         assert.ok(raised.y < dock.y,'The selected Screen icon rises above the floating dock');
-        assert.equal(await page.locator('.buyer-nav-item[data-active="true"] .buyer-nav-icon').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');
+        assert.equal(await page.locator('.buyer-nav-item[data-active="true"] .buyer-nav-icon').evaluate(el=>getComputedStyle(el).color),'rgb(36, 26, 14)');
         await page.getByRole('searchbox').focus();
         await page.screenshot({ path: `.vercel/watch-${theme}-integrated.png` });
       }

@@ -81,14 +81,14 @@ export default function ContinueReadingShelf({ userId }: { userId: string }) {
                     <span className="text-xs" style={{ color: 'var(--app-muted, #555)' }}>
                       {progress.percentComplete > 0 ? `${Math.round(progress.percentComplete)}%` : 'Just started'}
                     </span>
-                    <span className="flex items-center gap-0.5 text-xs" style={{ color: '#e8442a' }}>
+                    <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--app-accent, #e8442a)' }}>
                       <BookOpen size={9} /> Continue
                     </span>
                   </div>
                   <div className="h-1 rounded-full" style={{ background: 'var(--app-line, #222)' }}>
                     <div
                       className="h-full rounded-full"
-                      style={{ width: `${Math.max(3, progress.percentComplete)}%`, background: '#e8442a' }}
+                      style={{ width: `${Math.max(3, progress.percentComplete)}%`, background: 'var(--app-action, #e8442a)' }}
                     />
                   </div>
                 </div>

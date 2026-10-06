@@ -89,7 +89,7 @@ export default function ProfileCollections({ section }: { section: Section }) {
       : !count ? <div className={`${panelClass} flex flex-col items-center py-12 text-center`}>
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#c1a56c]/10 text-[#c1a56c]"><Icon size={26} strokeWidth={1.5} /></div>
         <h3 className="text-[20px] font-semibold tracking-tight">{copy.empty}</h3><p className="mb-6 mt-3 max-w-[280px] text-[14px] leading-relaxed text-[#a39f97]">{copy.detail}</p>
-        <Link href="/browse" onClick={close} className={`${buttonClass} bg-[#e8442a] text-white hover:bg-[#ce3a23]`}>Explore books<ArrowUpRight size={16} /></Link>
+        <Link href="/browse" onClick={close} className={`${buttonClass} bg-[var(--app-action,#e8442a)] text-[var(--app-on-action,#fff)] hover:bg-[var(--app-action-hover,#ce3a23)]`}>Explore books<ArrowUpRight size={16} /></Link>
       </div> : <div className="space-y-3">
         {section === 'wishlist' && saved.map(item => <article key={item.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-3 sm:p-4">
           <div className="flex h-[84px] w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg text-[20px] font-semibold tracking-tight" style={{ background: item.book?.coverBgColor || '#252322', color: item.book?.coverAccentColor || '#c1a56c' }}>
