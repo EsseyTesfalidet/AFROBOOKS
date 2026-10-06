@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Headphones, Play, Bookmark, Search } from 'lucide-react';
 import BuyerHeader from '@/components/buyer/BuyerHeader';
@@ -14,17 +15,24 @@ import WatchPlayPurchase, { RestoreVideoPurchases } from '@/components/watch/Wat
 import type { PlayOffer } from '@/lib/watch/play';
 import MusicPass from './MusicPass';
 import AudioArtwork from './AudioArtwork';
+import Playlists, { AddToPlaylist } from './Playlists';
+import LanguageChoices from '@/components/experience/LanguageChoices';
+import { StoryCollections, ContinueEnjoying } from '@/components/experience/MediaShelves';
+import { useDiscoveryLanguages } from '@/hooks/useDiscoveryLanguages';
+import { preferLanguages } from '@/lib/utils/languagePreference';
 import './listen.css';
 interface Page { entries: AudioEntry[]; next: string | null; limited?: boolean }
 interface Detail { title: AudioTitle; canPlay: boolean; offer: PlayOffer | null }
 
 function Catalog({ library = false }: { library?: boolean }) {
+  const languages=useDiscoveryLanguages();const params=useSearchParams();const linkedTitle=params.get('title');const resumeLinked=params.get('resume')==='1';
   const resource = useWatchResource<Page>(`/api/audio?view=${library ? 'library' : 'catalog'}`); const uid = useAuthStore(s => s.firebaseUser?.uid);
   const [extra, setExtra] = useState<AudioEntry[]>([]); const [cursor, setCursor] = useState<string | null | undefined>();
   const [category, setCategory] = useState('All'); const [search, setSearch] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState<Detail | null>(null); const [notice, setNotice] = useState('');
   const entries = [...(resource.data?.entries || []), ...extra]; const next = cursor === undefined ? resource.data?.next : cursor;
-  const filtered = entries.filter(({ title }) => (category === 'All' || title.category === category) && `${title.title} ${title.creatorName} ${title.language}`.toLocaleLowerCase().includes(search.toLocaleLowerCase().trim()));
+  const filtered = preferLanguages(entries,languages,entry=>entry.title.language).filter(({ title }) => (category === 'All' || title.category === category) && `${title.title} ${title.creatorName} ${title.language}`.toLocaleLowerCase().includes(search.toLocaleLowerCase().trim()));
+  useEffect(()=>{let active=true;if(linkedTitle&&uid)authenticatedGet<Detail>(`/api/audio?view=detail&id=${encodeURIComponent(linkedTitle)}`).then(async value=>{if(!active)return;if(resumeLinked&&value.canPlay){try{const playback=await authenticatedGet<AudioPlayback>(`/api/audio?view=playback&id=${encodeURIComponent(linkedTitle)}`);if(active&&useAuthStore.getState().firebaseUser?.uid===uid)useAudioStore.getState().set({...playback,expanded:true},uid);}catch(e){if(active){setDetail(value);setError((e as Error).message);}}}else setDetail(value);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[linkedTitle,uid,resumeLinked]);
   async function open(id: string) {
     if (busy) return; setBusy(true); setError('');
     try { const result = await authenticatedGet<Detail>(`/api/audio?view=detail&id=${id}`); if (useAuthStore.getState().firebaseUser?.uid === uid) setDetail(result); }
@@ -37,6 +45,7 @@ function Catalog({ library = false }: { library?: boolean }) {
   }
   return <><BuyerHeader /><main className="listen-page app-page"><header className="listen-heading"><div><p className="listen-eyebrow">AfroBooks</p><h1>{library ? 'Your library' : 'Listen'}</h1><p>{library ? 'Your audio, ready when you are.' : 'Music. Conversations. Stories told aloud.'}</p></div><Headphones size={36} /></header>
     {library ? <LibraryFormatTabs active="audio" /> : <section className="listen-hero"><span className="listen-hero-mark" aria-hidden="true"><Headphones size={70} strokeWidth={1} /></span><p>Find your next favourite voice.</p><span>Discover African music, podcasts and audiobooks.</span></section>}
+    {library&&<ContinueEnjoying/>}<Playlists/><LanguageChoices/>
     <label className="listen-search"><Search size={19} /><input id="listen-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search audio, creators or languages" aria-label="Search loaded audio" /></label>
     <div className="listen-chips" aria-label="Audio categories">{['All', ...AUDIO_CATEGORIES].map(value => <button key={value} aria-pressed={category === value} onClick={() => setCategory(value)}>{value}</button>)}</div>
     {(category === 'Music' || library) && <MusicPass onChanged={resource.retry} />}
@@ -48,11 +57,12 @@ function Catalog({ library = false }: { library?: boolean }) {
     {resource.data?.limited && <p>Showing your 100 most recent listening entries and purchases.</p>}
     {entries.length > 0 && <p className="listen-muted">Search filters the titles loaded so far. Paid audio uses Google Play’s local checkout price.</p>}
     {library && <RestoreVideoPurchases onRestored={resource.retry} contentKind="audio" />}
-    {detail && <WatchSheet title={detail.title.title} close={() => setDetail(null)}><div className="listen-detail"><AudioArtwork category={detail.title.category} coverUrl={detail.title.coverUrl} /><p>{detail.title.creatorName} · {audioTime(detail.title.durationSeconds)}</p><p dir="auto" className="listen-description">{detail.title.description}</p>{detail.title.previewReady && <button className="watch-button" disabled={busy} onClick={() => void play(true)}><Play size={18} />Free sample · {audioTime(detail.title.previewSeconds || 60)}</button>}{audioTracks(detail.title).length > 1 && <p className="listen-muted">{audioTracks(detail.title).length} recordings included. {detail.title.priceCents > 0 ? 'One purchase unlocks every part.' : 'Listen in order or choose a recording.'}</p>}{(audioTracks(detail.title).length > 1 || !!detail.title.chapters?.length) && <details><summary>Chapters & recordings</summary><div className="listen-track-list">{audioTracks(detail.title).length > 1 && audioTracks(detail.title).map(track => <button key={track.id} disabled={busy || !detail.canPlay} onClick={() => void play(false, track.startSeconds)}><span dir="auto">{track.title}</span><small>{audioTime(track.durationSeconds)}</small></button>)}{detail.title.chapters?.map((chapter, index) => <button key={index} disabled={busy || !detail.canPlay} onClick={() => void play(false, chapter.startSeconds)}><span dir="auto">{chapter.title}</span><small>{audioTime(chapter.startSeconds)}</small></button>)}</div></details>}{detail.canPlay ? <button className="watch-button watch-primary" disabled={busy} onClick={() => void play()}><Play size={18} />{busy ? 'Opening audio…' : 'Listen now'}</button> : detail.title.musicSubscription ? <MusicPass onChanged={() => void open(detail.title.id)} /> : detail.offer ? <WatchPlayPurchase videoId={detail.title.id} offer={detail.offer} contentKind="audio" onPurchased={() => void open(detail.title.id)} /> : <><p>Purchases for this title are not available yet. Please check again later.</p><RestoreVideoPurchases contentKind="audio" onRestored={() => void open(detail.title.id)} /></>}{error && <p role="alert">{error}</p>}</div></WatchSheet>}
+    {!library&&<StoryCollections/>}
+    {detail && <WatchSheet title={detail.title.title} close={() => setDetail(null)}><div className="listen-detail"><AudioArtwork category={detail.title.category} coverUrl={detail.title.coverUrl} /><p>{detail.title.creatorName} · {audioTime(detail.title.durationSeconds)}</p><p dir="auto" className="listen-description">{detail.title.description}</p><AddToPlaylist title={detail.title}/>{detail.title.previewReady && <button className="watch-button" disabled={busy} onClick={() => void play(true)}><Play size={18} />Free sample · {audioTime(detail.title.previewSeconds || 60)}</button>}{audioTracks(detail.title).length > 1 && <p className="listen-muted">{audioTracks(detail.title).length} recordings included. {detail.title.priceCents > 0 ? 'One purchase unlocks every part.' : 'Listen in order or choose a recording.'}</p>}{(audioTracks(detail.title).length > 1 || !!detail.title.chapters?.length) && <details><summary>Chapters & recordings</summary><div className="listen-track-list">{audioTracks(detail.title).length > 1 && audioTracks(detail.title).map(track => <button key={track.id} disabled={busy || !detail.canPlay} onClick={() => void play(false, track.startSeconds)}><span dir="auto">{track.title}</span><small>{audioTime(track.durationSeconds)}</small></button>)}{detail.title.chapters?.map((chapter, index) => <button key={index} disabled={busy || !detail.canPlay} onClick={() => void play(false, chapter.startSeconds)}><span dir="auto">{chapter.title}</span><small>{audioTime(chapter.startSeconds)}</small></button>)}</div></details>}{detail.canPlay ? <button className="watch-button watch-primary" disabled={busy} onClick={() => void play()}><Play size={18} />{busy ? 'Opening audio…' : 'Listen now'}</button> : detail.title.musicSubscription ? <MusicPass onChanged={() => void open(detail.title.id)} /> : detail.offer ? <WatchPlayPurchase videoId={detail.title.id} offer={detail.offer} contentKind="audio" onPurchased={() => void open(detail.title.id)} /> : <><p>Purchases for this title are not available yet. Please check again later.</p><RestoreVideoPurchases contentKind="audio" onRestored={() => void open(detail.title.id)} /></>}{error && <p role="alert">{error}</p>}</div></WatchSheet>}
   </main></>;
 }
 export default function ListenCatalog({ library = false }: { library?: boolean }) {
   const installed = useInstalledApp(); const uid = useAuthStore(s => s.firebaseUser?.uid);
   if (!installed) return <><BuyerHeader /><main className="listen-page"><h1>AfroBooks Listen is in the app</h1><p>Open AfroBooks on your phone for music, podcasts and audiobooks.</p><Link href="/browse">Back to books</Link></main></>;
-  return <Catalog key={uid} library={library} />;
+  return <Suspense fallback={<p>Loading Listen…</p>}><Catalog key={uid} library={library} /></Suspense>;
 }

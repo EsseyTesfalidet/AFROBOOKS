@@ -56,6 +56,7 @@ async function main() {
       await context.addInitScript(installed => { if (installed) { const mm = window.matchMedia.bind(window); window.matchMedia = q => q.includes('display-mode') ? { matches: true, addEventListener() {}, removeEventListener() {} } : mm(q); } }, installed);
       const page = await context.newPage(); const errors = []; let calls = []; let saved = false, following = false, seconds = 0; let outage = false;
       page.on('pageerror', error => errors.push(error.message));
+      await page.route('**/api/experience**',route=>route.fulfill({json:{languages:[],playlists:[],collections:[],items:[]}}));
       await page.route('**/api/watch**', async route => {
         const request = route.request(); const url = new URL(request.url()); calls.push({ url: url.pathname, body: request.postData() });
         if (outage) return route.fulfill({ status: 503, json: { error: 'Test connection lost. Try again.' } });

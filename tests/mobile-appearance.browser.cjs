@@ -64,7 +64,7 @@ export const getChapters=async()=>window.chapters;export const getPreviewChapter
 export const getUserLibrary=async()=>window.books.map(b=>({bookId:b.id}));export const subscribeUserLibrary=(uid,cb)=>{getUserLibrary().then(cb);return()=>{}};export const syncPurchasedLibrary=async()=>({pendingOrderIds:[]});
 export const useDeleteAccount=()=>({deletingAccount:false,deleteError:'',handleDeleteAccount:()=>{throw Error('Unexpected delete')}});export const changePassword=()=>{throw Error('Unexpected password change')};
 export const getRecoveryPhone=async()=>({uid:'fixture',phoneNumber:null,profileSynced:false,providers:['password']});export const createPhoneVerifier=()=>{throw Error('Unexpected SMS')};export const confirmRecoveryIdentity=createPhoneVerifier;export const requestRecoveryCode=createPhoneVerifier;export const confirmRecoveryCode=createPhoneVerifier;
-export const authenticatedGet=async()=>({videos:[],titles:[],items:[]});
+export const authenticatedGet=async()=>({videos:[],titles:[],items:[],languages:[],playlists:[],collections:[]});
 export const authenticatedPost=()=>{throw Error('Unexpected authenticated request')};
 export const createReview=()=>{throw Error('Unexpected review')};export const deleteNotification=()=>{throw Error('Unexpected deletion')};export const markNotificationRead=async()=>{};export const markAllNotificationsRead=async()=>{};
 export const logOutAndRedirect=()=>{throw Error('Unexpected signout')};export const updateUserProfile=()=>{throw Error('Unexpected profile change')};

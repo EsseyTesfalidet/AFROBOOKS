@@ -96,6 +96,10 @@
 .listen-playback-options button { border:1px solid var(--app-line,#ffffff20); padding:8px 14px; border-radius:20px; min-height:44px; }
 .listen-player-contents { margin-top:14px; border-top:1px solid var(--app-line,#ffffff20); padding-top:6px; font-size:13px; }
 .listen-player-contents summary { display:flex; gap:9px; align-items:center; min-height:46px; cursor:pointer; }
+.listen-sleep { grid-column:1/-1; margin-block:10px; }
+.listen-sleep label { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:var(--app-muted,#aaa); }
+.listen-sleep select { min-height:44px; max-width:100%; padding:8px 12px; border:1px solid var(--app-line,#ffffff25); border-radius:14px; background:var(--app-field,#25272c); color:var(--app-text,#fff); font-size:14px; }
+.listen-title-queue { grid-column:1/-1; padding:10px; }
 .listen-player button:disabled { opacity:.4; }
 .listen-player :is(button,input):focus-visible,.listen-track-list button:focus-visible { outline:2px solid var(--app-accent,#c94a35); outline-offset:3px; }
 /* Now Playing keeps a quiet header and one main set of playback controls. */

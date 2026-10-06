@@ -1,4 +1,6 @@
 'use client';
+import { ContinueEnjoying } from '@/components/experience/MediaShelves';
+import { useInstalledApp } from '@/hooks/useInstalledApp';
 import { publicationTitle, publicationLabel } from '@/lib/utils/publication';
 
 import { useEffect, useState } from 'react';
@@ -24,6 +26,7 @@ interface LibraryEntry {
 }
 
 export default function LibraryPage() {
+  const installed=useInstalledApp();
   const user = useAuthStore((s) => s.firebaseUser);
   const authLoading = useAuthStore((s) => s.loading);
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
@@ -97,10 +100,11 @@ export default function LibraryPage() {
         {syncError && <div role="alert" className="mb-6 rounded-xl border border-amber-800 p-4 text-sm text-amber-200">{syncError}<button className="ml-3 min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>}
         {pendingOrders.length > 0 && <div role="status" className="mb-6 rounded-xl border border-amber-800 p-4 text-sm text-amber-200">A previous payment needs checking. Please review your receipt before paying again. <Link className="underline" href={`/checkout/receipt?orders=${pendingOrders.slice(0, 20).map(encodeURIComponent).join(',')}`}>View receipt</Link></div>}
 
+        <ContinueEnjoying/>
         {/* Continue Reading — swipe carousel */}
         {(() => {
           const inProgress = entries.filter((e) => e.book && e.progress > 0 && e.progress < 95);
-          if (inProgress.length === 0) return null;
+          if (installed || inProgress.length === 0) return null;
           return (
             <div className="mb-7">
               <div className="flex items-center gap-2 mb-3">

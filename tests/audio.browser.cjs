@@ -7,12 +7,13 @@ async function main() {
   const bundle = await build({ bundle: true, write: false, platform: 'browser', format: 'iife', loader: { '.css': 'empty' }, define: { 'process.env.NODE_ENV': '"test"' }, stdin: { resolveDir: process.cwd(), loader: 'tsx', contents: `
     import React,{useState} from 'react';import{createRoot}from'react-dom/client';
     import Catalog from './components/listen/ListenCatalog';import Player from './components/listen/AudioPlayer';import Studio from './components/listen/AudioStudio';import Nav from './components/buyer/BuyerBottomNav';import Shell from './components/shared/MobileAppShell';
+    import {useAudioStore} from './store/audioStore';window.audioPrefs=useAudioStore;
     import{useAuthStore}from'./store/authStore';import{APP_MODE_BOOTSTRAP}from'./lib/app/installed';
     window.path=location.pathname;new Function(APP_MODE_BOOTSTRAP)();window.setUser=(uid='reader',role='buyer')=>useAuthStore.setState({loading:false,firebaseUser:{uid},userProfile:{uid,role,status:'active',firstName:'Test',lastName:'Reader'}});window.setUser();
     function App(){const[path,setPath]=useState(window.path);window.navigate=p=>{history.pushState(null,'',p);window.path=p;setPath(p)};return <Shell><div key={path}>{path==='/audio-studio'?<Studio/>:path==='/admin/audio'?<Studio admin/>:path==='/browse'?<h1>Browse</h1>:<Catalog library={path==='/library/audio'}/>}</div><Player/><Nav/></Shell>};createRoot(document.getElementById('root')).render(<App/>);
   ` }, plugins: [{ name: 'boundaries', setup(b) {
     b.onResolve({ filter: /^next\/(navigation|link|image)$/ }, a => ({ path: a.path, namespace: 'next' }));
-    b.onLoad({ filter: /.*/, namespace: 'next' }, a => ({ loader: 'jsx', resolveDir: process.cwd(), contents: a.path === 'next/image' ? `import React from 'react';export default function Image({unoptimized,...p}){return <img {...p}/>} ` : `import React from 'react';export const usePathname=()=>window.path;export const useRouter=()=>({push:window.navigate,replace:window.navigate});export default function Link({href,onClick,children,...p}){return <a {...p} href={href} onClick={e=>{e.preventDefault();onClick?.(e);window.navigate(href)}}>{children}</a>}` }));
+    b.onLoad({ filter: /.*/, namespace: 'next' }, a => ({ loader: 'jsx', resolveDir: process.cwd(), contents: a.path === 'next/image' ? `import React from 'react';export default function Image({unoptimized,...p}){return <img {...p}/>} ` : `import React from 'react';export const usePathname=()=>window.path;export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>({push:window.navigate,replace:window.navigate});export default function Link({href,onClick,children,...p}){return <a {...p} href={href} onClick={e=>{e.preventDefault();onClick?.(e);window.navigate(href)}}>{children}</a>}` }));
     b.onResolve({ filter: /^@\/lib\/firebase\/(request|auth|config)$/ }, a => ({ path: a.path, namespace: 'firebase' }));
     b.onLoad({ filter: /.*/, namespace: 'firebase' }, a => ({ contents: a.path.endsWith('config') ? 'export const storage={};export const auth={currentUser:{getIdToken:async()=>"test-token"}};' : a.path.endsWith('auth') ? 'export const updateUserProfile=async()=>{};' : `async function call(path,init){const r=await fetch(path,init);const value=await r.json();if(!r.ok)throw Error(value.error);return value}export const authenticatedGet=p=>call(p);export const authenticatedPost=(p,body)=>call(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});` }));
     b.onResolve({ filter: /^firebase\/storage$/ }, () => ({ path: 'storage', namespace: 'storage' }));
@@ -39,6 +40,12 @@ async function main() {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
     await context.addInitScript(() => { const mm = matchMedia.bind(window); window.matchMedia = q => q.includes('display-mode') ? { matches: true, addEventListener() {}, removeEventListener() {} } : mm(q); });
     const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    let preferences={languages:[],playlists:[]};
+    await page.route('**/api/experience**',async route=>{
+      const req=route.request(),view=new URL(req.url()).searchParams.get('view');
+      if(req.method()==='POST'){const {action,data}=req.postDataJSON();if(action==='languages')preferences.languages=data.languages;if(action==='playlist'){const item={...data,id:data.id||'list-'+(preferences.playlists.length+1)};preferences.playlists=[...preferences.playlists.filter(p=>p.id!==item.id),item];}if(action==='delete_playlist')preferences.playlists=preferences.playlists.filter(p=>p.id!==data.id);return route.fulfill({json:preferences});}
+      return route.fulfill({json:view==='collections'?{collections:[]}:view==='continue'?{items:[]}:view==='playlist_titles'?{items:titles.map(t=>({id:t.id,title:t.title,creator:t.creatorName,kind:'audio',href:'/listen?title='+t.id}))}:preferences});
+    });
     await page.route('**/api/music**', async route=>{const body=route.request().method()==='POST'?route.request().postDataJSON():null;if(body){musicCalls.push(body);if(body.action==='verify')musicActive=true;}await route.fulfill({json:{active:musicActive,available:musicEnabled,autoRenew:true,expiresAt:Date.now()+86400000,testOnly:true,productId:'afrobooks_music_monthly',accountId:'fixture-account',settings:{testEnabled:false,liveEnabled:false},orders:[]}})});
     await page.route('**/api/audio**', async route => {
       const request = route.request(), url = new URL(request.url()); let value;
@@ -61,6 +68,7 @@ async function main() {
         else value={ok:true};
       } else {
         const view=url.searchParams.get('view'),item=titles.find(t=>t.id===url.searchParams.get('id')),position=Number(url.searchParams.get('position')??2);
+        if(view==='playback'&&item?.priceCents)return route.fulfill({status:403,json:{error:'Purchase this audio to listen.'}});
         value=view==='finances'?{earnings:[],payouts:{payouts:[],funding:[],stripeReady:false}}:view==='detail'?{title:item,canPlay:!item.priceCents,offer:null}:view==='preview'?{title:item,url:base+'/audio.mp3?sample='+item.id,seconds:0,preview:true,expiresAt:Date.now()+60000}:view==='playback'?{title:item,url:base+'/audio.mp3?part='+(position>=13?'two':'main')+'&id='+item.id,seconds:position,partId:position>=13?'part-two':'main',partStartSeconds:position>=13?13:0,expiresAt:Date.now()+60000}:{entries:titles.map(title=>({title,saved:true,seconds:2})),next:null};
       }
       await route.fulfill({ json: value });
@@ -124,6 +132,30 @@ async function main() {
     assert.ok(Math.abs((await page.locator('.listen-player').boundingBox()).y+(await page.locator('.listen-player').boundingBox()).height-832)<1, 'Mini-player drops to the safe bottom when the page has no dock');
     await page.evaluate(()=>window.navigate('/listen'));
     console.log('PASS player/dock alignment, raised-icon clearance, compact/expanded layouts, four viewport sizes and pages without navigation');
+    await page.getByRole('button',{name:'Close audio player'}).click();
+    await page.getByRole('button',{name:'Music',exact:true}).click();await page.getByRole('button',{name:/Music.*ሙዚቃ/}).click();
+    await page.getByText('Playlists & queue',{exact:true}).click();
+    await page.getByLabel('Playlist name',{exact:true}).fill('Evening voices');await page.getByRole('button',{name:'Save to playlist',exact:true}).click();await page.getByText('Added to playlist.',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Play next',exact:true}).click();await page.getByText('Added to Play next.',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Listen now',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.currentTime>0);
+    await page.locator('.listen-player-title').click();
+    await page.getByLabel('Sleep timer',{exact:true}).selectOption('15');
+    assert.equal(await page.evaluate(()=>window.audioPrefs.getState().sleep.mode),'time');
+    await page.evaluate(()=>window.audioPrefs.getState().setSleep({mode:'time',deadline:Date.now()+100}));
+    await page.getByText('Sleep timer finished.',{exact:false}).waitFor();assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+    await page.getByRole('button',{name:'Play next title',exact:true}).click();await page.waitForFunction(()=>window.audioPrefs.getState().queue.length===0);
+    await page.getByLabel('Sleep timer',{exact:true}).selectOption('chapter');
+    assert.equal(await page.evaluate(()=>window.audioPrefs.getState().sleep.mode),'chapter');
+    await page.evaluate(()=>{const a=document.querySelector('audio');a.currentTime=a.duration-.1;a.play()});
+    await page.getByText('Sleep timer finished.',{exact:false}).waitFor();assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+    await page.evaluate(()=>window.audioPrefs.getState().enqueue({id:'book',title:'Paid book',creator:'Creator'},'reader',true));
+    await page.getByRole('button',{name:'Play next title',exact:true}).click();await page.getByText(/Purchase this audio to listen.*still in your queue/).waitFor();
+    assert.equal(await page.evaluate(()=>window.audioPrefs.getState().queue[0].id),'book');assert.ok(!(await page.locator('audio').getAttribute('src')).includes('id=book'));
+    await page.getByRole('button',{name:'Close audio player'}).click();
+    await page.getByText('My playlists & queue',{exact:true}).click();await page.getByText('Evening voices · 1 titles',{exact:true}).click();
+    await page.getByLabel('Rename Evening voices').fill('Night listening');await page.getByRole('button',{name:'Rename',exact:true}).click();await page.getByText('Night listening · 1 titles',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Play playlist',exact:true}).click();await page.waitForFunction(()=>document.querySelector('audio')?.currentTime>0);
+    console.log('PASS saved/renamed playlists, Play Next, wall-clock and recording sleep timers, automatic playback authorization failures preserve queued titles');
     await page.evaluate(() => window.setUser('another')); await page.waitForFunction(() => !document.querySelector('audio'));
     await page.evaluate(() => { window.setUser('creator', 'seller'); window.navigate('/audio-studio'); }); await page.getByRole('button', { name: 'Upload audio', exact: true }).click();
     await page.getByLabel('Title', { exact: true }).fill('Our first music release'); await page.getByRole('combobox', { name: 'Format', exact: true }).selectOption('Music'); await page.getByLabel('Language', { exact: true }).fill('Tigrinya'); await page.getByLabel('Description', { exact: true }).fill('Original music recorded by our own studio.'); await page.getByLabel('MP3 file').setInputFiles({ name: 'test.mp3', mimeType: 'audio/mpeg', buffer: mp3 }); await page.getByLabel('Add tracks, episodes or parts').setInputFiles({name:'Episode two.mp3',mimeType:'audio/mpeg',buffer:mp3});

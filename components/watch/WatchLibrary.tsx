@@ -9,6 +9,7 @@ import { appHaptic } from '@/lib/app/haptics';
 import { RestoreVideoPurchases } from './WatchPlayPurchase';
 import type { WatchState, WatchVideo } from '@/types/video';
 import { LibraryFormatTabs, useWatchResource, WatchAppGate, WatchCard, WatchEmpty, WatchFeedback } from './WatchUI';
+import { ContinueEnjoying } from '@/components/experience/MediaShelves';
 import WatchPoster from './WatchPoster';
 type Entry = { video: WatchVideo; state: WatchState };
 const unfinished = ({ video, state }: Entry) => state.seconds > 0 && state.seconds < video.durationSeconds - Math.min(5, video.durationSeconds * .05);
@@ -24,6 +25,7 @@ function LibraryContent() {
   return <><BuyerHeader /><main className="app-page watch-page watch-library">
     <header className="watch-intro"><div className="watch-discovery-heading"><span className="watch-screen-mark" aria-hidden="true"><LibraryBig size={23} /></span><div><p className="watch-eyebrow">Made for your moments</p><h1>My Library</h1></div></div></header>
     <LibraryFormatTabs active="videos" />
+    <ContinueEnjoying/>
     {resume && filter !== 'Continue watching' && !search && <section className="watch-resume-section" aria-label="Pick up where you left off"><p className="watch-eyebrow">Pick up where you left off</p><Link href={`/watch/${resume.video.id}`} className="watch-resume-card"><div className="watch-art"><WatchPoster video={resume.video} /><span className="watch-play"><Play size={18} fill="currentColor" /></span><span className="watch-progress" aria-hidden="true"><i style={{ width: `${Math.min(100, resume.state.seconds / resume.video.durationSeconds * 100)}%` }} /></span></div><div><strong dir="auto">{resume.video.title}</strong><p>{videoDuration(resume.video.durationSeconds - resume.state.seconds)} left</p><span>Resume watching</span></div></Link></section>}
     <div className="watch-library-filters" aria-label="Video library filter">{filters.map(({ label, icon: Icon }) => <button key={label} aria-label={label} aria-pressed={label === filter} onClick={() => { setFilter(label); appHaptic(); }}><span><Icon size={18} /><b aria-hidden="true">{all.filter(entry => matches(entry, label)).length}</b></span><span>{label}</span></button>)}</div>
     {!!all.length && <div className="watch-search watch-library-search"><Search size={18} aria-hidden="true" /><input type="search" aria-label="Search your videos" placeholder="Search your videos" value={search} onChange={event => setSearch(event.target.value)} />{search && <button aria-label="Clear library search" onClick={() => setSearch('')}><X size={18} /></button>}</div>}

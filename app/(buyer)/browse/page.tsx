@@ -16,11 +16,16 @@ import { useAuthStore } from '@/store/authStore';
 import { useRecentlyViewedStore } from '@/store/recentlyViewedStore';
 import { useCatalog } from '@/hooks/useCatalog';
 import { catalogShelves, filterCatalog } from '@/lib/utils/catalog';
+import LanguageChoices from '@/components/experience/LanguageChoices';
+import { StoryCollections } from '@/components/experience/MediaShelves';
+import { useDiscoveryLanguages } from '@/hooks/useDiscoveryLanguages';
+import { preferLanguages } from '@/lib/utils/languagePreference';
 import type { Book } from '@/types/book';
 import { useCartStore } from '@/store/cartStore';
 
 export default function BrowsePage() {
   const router = useRouter();
+  const languages=useDiscoveryLanguages();
   const userProfile = useAuthStore(state => state.userProfile);
   const recentBookIds = useRecentlyViewedStore(state => state.bookIds);
   const { books: allBooks, loading, error, retry } = useCatalog();
@@ -40,7 +45,7 @@ export default function BrowsePage() {
 
   const genres = useMemo(() => Array.from(new Set(allBooks.map(book => book.genre).filter(Boolean))).sort(), [allBooks]);
   const shelves = useMemo(() => catalogShelves(allBooks, userProfile?.favoriteGenre), [allBooks, userProfile?.favoriteGenre]);
-  const filteredBooks = useMemo(() => filterCatalog(allBooks, search, genre, publicationType), [allBooks, genre, search, publicationType]);
+  const filteredBooks = useMemo(() => preferLanguages(filterCatalog(allBooks, search, genre, publicationType),languages,book=>book.language), [allBooks, languages, genre, search, publicationType]);
   const recentlyViewed = recentBookIds.map(id => allBooks.find(book => book.id === id)).filter((book): book is Book => !!book).slice(0, 8);
   const followedBooks = followed?.uid === userProfile?.uid ? allBooks.filter(book => followed?.ids.includes(book.sellerId)).slice(0, 8) : [];
   const filtering = !!search.trim() || genre !== 'All' || publicationType !== 'all';
@@ -53,6 +58,7 @@ export default function BrowsePage() {
     <BuyerHeader />
     <main className="app-page mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
       <header className="app-page-intro"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">The AfroBooks collection</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Stories to get lost in.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">Explore books and magazines, discover creators, and open your next read.</p></header>
+      <LanguageChoices/>
       <div className="app-catalog-filters grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
         <div><label htmlFor="catalog-search" className="sr-only">Search the catalog</label><div className="relative"><Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 text-[#96938b]" /><input id="catalog-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search title, author, or genre" className="min-h-11 w-full rounded-lg border border-white/15 bg-white/[0.03] pl-10 pr-3 text-[16px] placeholder:text-[#96938b]" /></div></div>
         <div><label htmlFor="catalog-genre" className="sr-only">Filter by genre</label><select id="catalog-genre" value={genre} onChange={event=>setGenre(event.target.value)} className="min-h-11 w-full rounded-lg border border-white/15 bg-[#181816] px-3 text-[16px]"><option value="All">All genres</option>{genres.map(item=><option key={item}>{item}</option>)}</select></div>
@@ -63,7 +69,7 @@ export default function BrowsePage() {
         : error ? <div role="alert" className="py-8"><p className="text-[14px] text-[#ffc2ad]">{error}</p><button type="button" onClick={retry} className="mt-3 min-h-11 text-[14px] text-[#ffad91] underline">Try again</button></div>
         : allBooks.length === 0 ? <div className="border-t border-white/10 py-10"><h2 className="text-[22px] font-semibold">New stories are on the way.</h2><p className="mt-3 text-[14px] text-[#a8a49c]">There are no published books in the catalog yet.</p></div>
         : <>
-          {!filtering && <BookRail title={shelves.genre.length ? 'Recommended for you' : 'Discover a new favorite'} subtitle={shelves.genre.length ? `Based on your interest in ${userProfile?.favoriteGenre}.` : 'A few stories to start exploring.'} books={shelves.recommended} actionHref="/discover" actionLabel="Discover more" />}
+          {!filtering && <BookRail title={shelves.genre.length ? 'Recommended for you' : 'Discover a new favorite'} subtitle={shelves.genre.length ? `Based on your interest in ${userProfile?.favoriteGenre}.` : 'A few stories to start exploring.'} books={preferLanguages(shelves.recommended,languages,book=>book.language)} actionHref="/discover" actionLabel="Discover more" />}
           {!filtering && userProfile && <ContinueReadingShelf key={userProfile.uid} userId={userProfile.uid} />}
           {!filtering && followedBooks.length > 0 && <BookRail title="Authors you follow" books={followedBooks} />}
           <section className="space-y-5">
@@ -73,6 +79,7 @@ export default function BrowsePage() {
           </section>
           {!filtering && recentlyViewed.length > 0 && <BookRail title="Recently viewed" books={recentlyViewed} />}
         </>}
+      {!filtering&&<StoryCollections/>}
       {!filtering && <CommunityInvitation />}
     </main>
   </div>;

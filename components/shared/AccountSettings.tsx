@@ -1,5 +1,6 @@
 'use client';
 
+import LanguageChoices from '@/components/experience/LanguageChoices';
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { Check, ChevronDown, LockKeyhole, Trash2 } from 'lucide-react';
@@ -66,6 +67,7 @@ export default function AccountSettings({ seller = false }: { seller?: boolean }
         <p style={{ fontSize: FONT_SIZE_PX[prefs.fontSize], lineHeight: LINE_SPACING_VALUE[prefs.lineSpacing], fontFamily: FONT_FAMILIES[prefs.fontFamily] }}>A good story begins with a moment of curiosity. Turn the page, and find a world of your own.</p>
       </div>
     </section>}
+    <LanguageChoices/>
     <section className={`${panelClass} space-y-3`} aria-labelledby="security-settings-title">
       <h3 id="security-settings-title" className="flex items-center gap-2 font-semibold"><LockKeyhole size={17} className="text-[#c1a56c]" />Account security</h3>
       {usesPassword ? <details className="group">

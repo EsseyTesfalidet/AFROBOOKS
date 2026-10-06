@@ -27,6 +27,7 @@ export const ADMIN_NAV = [
   { group: 'Finance', label: 'Author payouts', href: '/admin/payouts', icon: CreditCard },
   { group: 'Finance', label: 'Subscriptions', href: '/admin/subscriptions', icon: Radio },
   { group: 'Manage', label: 'Announcements', href: '/admin/announcements', icon: Megaphone },
+  { group: 'Manage', label: 'Story collections', href: '/admin/collections', icon: BookOpen },
   { group: 'Manage', label: 'Community', href: '/admin/community', icon: Users },
   { group: 'Manage', label: 'Promotions', href: '/admin/promotions', icon: Megaphone },
   { group: 'Manage', label: 'Settings', href: '/admin/settings', icon: Settings },
