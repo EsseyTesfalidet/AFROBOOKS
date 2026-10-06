@@ -12,6 +12,11 @@ html[data-app-mode='installed'] {
   --app-action-hover: #f1cd91;
   --app-action-gradient: linear-gradient(180deg, #f1cd91, #e9bd73);
   --app-action-shadow: 0 12px 24px #bf8d4d20;
+  --app-dock-width: 448px;
+  --app-dock-height: 73px;
+  --app-dock-bottom: max(12px, env(safe-area-inset-bottom));
+  --app-dock-left: max(12px, env(safe-area-inset-left));
+  --app-dock-right: max(12px, env(safe-area-inset-right));
 }
 
 /* Hide the initial server-rendered app screen until Firebase restores the user.
@@ -99,7 +104,11 @@ html[data-app-mode='installed'] .buyer-account-button {
 html[data-app-mode='installed'] .buyer-cart-count { background: var(--app-action); color: var(--app-on-action); }
 html[data-app-mode='installed'] .buyer-header-actions svg { stroke-width: 1.8; }
 
+html[data-app-mode='installed'] .buyer-bottom-nav {
+  bottom: var(--app-dock-bottom); padding-left: var(--app-dock-left); padding-right: var(--app-dock-right);
+}
 html[data-app-mode='installed'] .buyer-bottom-nav-shell {
+  max-width: var(--app-dock-width);
   padding: 7px 10px; border-radius: 27px; border-color: #ffffff1a;
   background: #1a1c21f5; box-shadow: 0 10px 32px #0006, inset 0 1px 0 #ffffff06;
   backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
@@ -220,6 +229,7 @@ html[data-app-mode='installed'] .profile-panel nav > :is(a, button):hover { back
   html[data-app-mode='installed'] .app-catalog-filters select { padding-inline: 10px; }
 }
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+  html[data-app-mode='installed'] { --app-dock-width: 640px; --app-dock-height: 54px; }
   html[data-app-mode='installed'] .buyer-header-inner { padding-block: 6px; }
   html[data-app-mode='installed'] .buyer-bottom-nav .buyer-nav-item { min-height: 44px; gap: 6px; }
   html[data-app-mode='installed'] .buyer-bottom-nav-shell { padding-block: 4px; border-radius: 20px; }

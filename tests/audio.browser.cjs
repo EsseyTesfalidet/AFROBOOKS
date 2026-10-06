@@ -96,8 +96,34 @@ async function main() {
     await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.listen-sound-bars i').first().evaluate(e=>getComputedStyle(e).animationName),'none');await page.emulateMedia({reducedMotion:'no-preference'});
     await page.getByRole('slider',{name:'Volume',exact:true}).fill('0.4');assert.equal(await page.locator('audio').evaluate(a=>a.volume),.4);await page.locator('.listen-expanded').evaluate(e=>e.scrollTop=0);await page.screenshot({path:'.vercel/audio-player-upgraded.png'});
     assert.equal(await page.locator('.listen-now-playing .listen-art img').count(),1);await page.locator('.listen-player-atmosphere').waitFor();
-    for(const theme of ['light','dark']){await page.evaluate(t=>document.documentElement.dataset.appTheme=t,theme);for(const width of [320,390,844]){await page.setViewportSize({width,height:width===844?390:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}}
+    for (const theme of ['light','dark']) {
+      await page.evaluate(t=>document.documentElement.dataset.appTheme=t,theme);
+      for (const size of [{width:320,height:568},{width:390,height:844},{width:768,height:1024},{width:844,height:390}]) {
+        await page.setViewportSize(size);
+        for (const expanded of [true,false]) {
+          if ((await page.locator('.listen-player').getAttribute('data-expanded')) !== String(expanded)) await page.locator('.listen-player-title').click();
+          await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+          const layout=await page.evaluate(()=>{
+            const player=document.querySelector('.listen-player'),dock=document.querySelector('.buyer-bottom-nav-shell'),icon=document.querySelector('.buyer-nav-item[aria-current="page"] .buyer-nav-icon');
+            const p=player.getBoundingClientRect(),d=dock.getBoundingClientRect(),i=icon.getBoundingClientRect();
+            const body=player.querySelector('.listen-expanded');
+            return {left:p.left,right:p.right,top:p.top,bottom:p.bottom,dockLeft:d.left,dockRight:d.right,iconTop:i.top,overflow:body ? body.scrollWidth-body.clientWidth : 0,viewportOverflow:document.documentElement.scrollWidth>innerWidth};
+          });
+          assert.ok(Math.abs(layout.left-layout.dockLeft)<1 && Math.abs(layout.right-layout.dockRight)<1, 'Player aligns with dock: '+JSON.stringify({theme,size,expanded,layout}));
+          assert.ok(layout.top>=64 && layout.bottom<=layout.iconTop-6, 'Player fits above raised navigation: '+JSON.stringify(layout));
+          assert.ok(layout.overflow<=1 && !layout.viewportOverflow, 'Player controls do not overflow: '+JSON.stringify(layout));
+        }
+      }
+    }
+    await page.locator('.listen-player-title').click();
+    await page.setViewportSize({width:844,height:390});await page.screenshot({path:'.vercel/audio-player-landscape.png'});
     await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.documentElement.dataset.appTheme='light');await page.screenshot({path:'.vercel/audio-player-light.png'});await page.evaluate(()=>document.documentElement.dataset.appTheme='dark');
+    await page.locator('.listen-player-title').click();
+    await page.evaluate(()=>window.navigate('/book/example'));
+    await page.waitForFunction(()=>!document.querySelector('.buyer-bottom-nav'));
+    assert.ok(Math.abs((await page.locator('.listen-player').boundingBox()).y+(await page.locator('.listen-player').boundingBox()).height-832)<1, 'Mini-player drops to the safe bottom when the page has no dock');
+    await page.evaluate(()=>window.navigate('/listen'));
+    console.log('PASS player/dock alignment, raised-icon clearance, compact/expanded layouts, four viewport sizes and pages without navigation');
     await page.evaluate(() => window.setUser('another')); await page.waitForFunction(() => !document.querySelector('audio'));
     await page.evaluate(() => { window.setUser('creator', 'seller'); window.navigate('/audio-studio'); }); await page.getByRole('button', { name: 'Upload audio', exact: true }).click();
     await page.getByLabel('Title', { exact: true }).fill('Our first music release'); await page.getByRole('combobox', { name: 'Format', exact: true }).selectOption('Music'); await page.getByLabel('Language', { exact: true }).fill('Tigrinya'); await page.getByLabel('Description', { exact: true }).fill('Original music recorded by our own studio.'); await page.getByLabel('MP3 file').setInputFiles({ name: 'test.mp3', mimeType: 'audio/mpeg', buffer: mp3 }); await page.getByLabel('Add tracks, episodes or parts').setInputFiles({name:'Episode two.mp3',mimeType:'audio/mpeg',buffer:mp3});

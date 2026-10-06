@@ -47,6 +47,10 @@ The mobile player provides play/pause, seeking, 15-second skips, speed, volume,
 global resume, chapter selection, next/previous recordings and automatic
 continuation. Its mini-player persists across buyer pages. Expanded artwork
 grows during playback; a cover-colored background blends with AfroBooks accents.
+The player shares the floating dock’s width and safe-area spacing, measures its
+height, and fits above it even with larger text or after rotation. Now Playing
+uses a single main transport, larger artwork, the current recording title and
+a compact two-column landscape layout. Chapters and Up next remain scrollable.
 Sound bars and the current Up next indicator animate with playback state (they
 are decorative indicators, not a measured waveform). Reduced-motion preferences
 disable animation. Devices that reject software volume changes show a device

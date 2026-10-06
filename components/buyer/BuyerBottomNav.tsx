@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useLayoutEffect, useRef } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { useBuyerDrawerStore } from '@/store/profileDrawerStore';
 import { useInstalledApp } from '@/hooks/useInstalledApp';
@@ -21,6 +22,19 @@ export default function BuyerBottomNav() {
   const openDrawer = useBuyerDrawerStore((state) => state.open);
   const drawerOpen = useBuyerDrawerStore((state) => state.isOpen);
   const routeState = getBuyerRouteState(pathname);
+  const dock = useRef<HTMLDivElement>(null);
+
+  // The player follows the actual dock height, including rotation and larger text.
+  useLayoutEffect(() => {
+    const element = dock.current;
+    if (!installed || !routeState.showBottomNav || !element) return;
+    const root = document.documentElement;
+    const measure = () => root.style.setProperty('--app-dock-height', `${element.getBoundingClientRect().height}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => { observer.disconnect(); root.style.removeProperty('--app-dock-height'); };
+  }, [installed, routeState.showBottomNav]);
 
   if (!routeState.showBottomNav) {
     return null;
@@ -29,6 +43,7 @@ export default function BuyerBottomNav() {
   return (
     <nav aria-label="Reader navigation" className="buyer-bottom-nav sm:hidden fixed inset-x-0 bottom-3 z-50 px-3">
       <div
+        ref={dock}
         className="buyer-bottom-nav-shell mx-auto max-w-md rounded-[24px] p-2"
       >
         <div className={`grid ${installed ? 'grid-cols-4' : 'grid-cols-5'} gap-1`}>
