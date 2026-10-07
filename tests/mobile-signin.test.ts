@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
 import type { UserRecord } from 'firebase-admin/auth';
 import type { Firestore } from 'firebase-admin/firestore';
-import { isSupportedSmsNumber, normalizePhone, signInError } from '../lib/auth/mobileSignIn';
+import { isPhoneSignInProvider, isSupportedSmsNumber, normalizePhone, signInError } from '../lib/auth/mobileSignIn';
 import { ensureMobileAuthProfile } from '../lib/server/mobileAuthProfile';
 import { POST } from '../app/api/auth/mobile-profile/route';
 
@@ -21,6 +21,14 @@ test('SMS rollout accepts only allowed countries, including pasted international
   assert.match(signInError(new Error('sms-region-not-allowed')), /email or Google/);
 });
 
+test('phone verification is recovery-only and cannot remain an app session', () => {
+  assert.equal(isPhoneSignInProvider('phone'), true);
+  assert.equal(isPhoneSignInProvider('password'), false);
+  assert.equal(isPhoneSignInProvider('google.com'), false);
+  assert.equal(isPhoneSignInProvider('apple.com'), false);
+  assert.equal(isPhoneSignInProvider(null), false);
+});
+
 function fixture(data?: Record<string, unknown>) {
   const writes: Record<string, unknown>[] = [];
   const db = { collection: () => ({ doc: (uid: string) => { assert.equal(uid, 'verified-uid'); return { id: uid }; } }),
@@ -29,8 +37,8 @@ function fixture(data?: Record<string, unknown>) {
       create: (_ref: unknown, value: Record<string, unknown>) => writes.push(value),
     }),
   } as unknown as Firestore;
-  const identity = { uid: 'verified-uid', disabled: false, email: undefined, phoneNumber: '+12025550123',
-    metadata: { creationTime: new Date().toUTCString() }, providerData: [{ providerId: 'phone' }] } as UserRecord;
+  const identity = { uid: 'verified-uid', disabled: false, email: 'reader@example.test', phoneNumber: undefined,
+    metadata: { creationTime: new Date().toUTCString() }, providerData: [{ providerId: 'google.com' }] } as UserRecord;
   return { db, writes, identity };
 }
 
@@ -38,8 +46,8 @@ test('mobile profile creation trusts Firebase identity and gives only the buyer 
   const { db, identity, writes } = fixture();
   assert.deepEqual(await ensureMobileAuthProfile(db, identity), { isNewUser: true });
   assert.equal(writes.length, 1);
-  assert.equal(writes[0].uid, identity.uid); assert.equal(writes[0].phone, identity.phoneNumber);
-  assert.equal(writes[0].email, ''); assert.equal(writes[0].role, 'buyer');
+  assert.equal(writes[0].uid, identity.uid); assert.equal(writes[0].phone, '');
+  assert.equal(writes[0].email, identity.email); assert.equal(writes[0].role, 'buyer');
   assert.equal(writes[0].stripeCustomerId, null); assert.equal(writes[0].subscriptionStatus, 'none');
 });
 
@@ -60,6 +68,7 @@ test('restricted accounts and missing old profiles cannot be recreated', async (
   await assert.rejects(ensureMobileAuthProfile(db, { ...identity, disabled: true } as UserRecord), /ACCOUNT_/);
   await assert.rejects(ensureMobileAuthProfile(db, { ...identity, metadata: { ...identity.metadata, creationTime: new Date(0).toUTCString() } } as UserRecord), /ACCOUNT_/);
   await assert.rejects(ensureMobileAuthProfile(db, { ...identity, providerData: [] } as unknown as UserRecord), /ACCOUNT_/);
+  await assert.rejects(ensureMobileAuthProfile(db, { ...identity, providerData: [{ providerId: 'phone' }] } as unknown as UserRecord), /ACCOUNT_/);
   assert.deepEqual(writes, []);
 });
 

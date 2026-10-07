@@ -31,7 +31,7 @@ export async function requireRequestUser(
   const adminAuth = await getAdminAuth();
   const adminDb = await getAdminDb();
 
-  let decodedToken: { uid: string; email?: string | null } | null = null;
+  let decodedToken: { uid: string; email?: string | null; firebase?: { sign_in_provider?: string } } | null = null;
 
   try {
     if (bearerToken) {
@@ -48,6 +48,9 @@ export async function requireRequestUser(
   }
 
   if (!decodedToken) {
+    throw new Error('Unauthorized');
+  }
+  if (decodedToken.firebase?.sign_in_provider === 'phone') {
     throw new Error('Unauthorized');
   }
 

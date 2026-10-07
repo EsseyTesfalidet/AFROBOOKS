@@ -6,9 +6,13 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp as clientApp, deleteApp as deleteClient } from 'firebase/app';
 import { getAuth as clientAuth, connectAuthEmulator, signInWithEmailAndPassword, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { recoveryPhoneStatus } from '../lib/server/recoveryPhone';
-import { ensureMobileAuthProfile } from '../lib/server/mobileAuthProfile';
+import { phoneRecoveryAccount } from '../lib/server/accountRecovery';
 import { NextRequest } from 'next/server';
 import { GET, POST } from '../app/api/auth/recovery-phone/route';
+import { POST as recoverAccount } from '../app/api/auth/account-recovery/route';
+import { POST as mobileProfile } from '../app/api/auth/mobile-profile/route';
+import { POST as createSession } from '../app/api/auth/session/route';
+import { requireRequestUser } from '../lib/server/auth';
 
 for (const key of ['FIREBASE_AUTH_EMULATOR_HOST', 'FIRESTORE_EMULATOR_HOST']) assert.match(process.env[key] || '', /^(127\.0\.0\.1|localhost):\d+$/, 'Local emulators are required.');
 const projectId = 'demo-afrobooks-recovery';
@@ -30,7 +34,7 @@ async function verifyPhone(phone: string, idToken?: string) {
   if (!verified.ok || !result.localId || result.temporaryProof) throw new Error(result.error?.message || 'PHONE_COLLISION');
   return result as { localId: string; idToken: string };
 }
-test('real Firebase linking and later phone sign-in retain the same UID, purchased books and video access', async () => {
+test('real Firebase phone verification recovers the linked email but never creates an app session or profile', async () => {
   const original = await auth.createUser({ email: 'original@example.test', password: 'Test-password-123' });
   await db.doc(`users/${original.uid}`).set({ uid: original.uid, status: 'active', role: 'both', firstName: 'Original', phone: '', stripeCustomerId: 'saved-customer', referralCredits: 123 });
   await db.doc(`library/owned-book`).set({ userId: original.uid, bookId: 'purchased-book', status: 'purchased' });
@@ -41,15 +45,50 @@ test('real Firebase linking and later phone sign-in retain the same UID, purchas
   assert.equal(linked.localId, original.uid);
   const status = await recoveryPhoneStatus(db, await auth.getUser(original.uid), true);
   assert.equal(status.phoneNumber, '+12025550123'); assert.equal(status.profileSynced, true);
+  const account = await phoneRecoveryAccount(db, await auth.getUser(original.uid));
+  assert.deepEqual(account, { account: { email: 'original@example.test', providers: ['password'] }, safeToDelete: false });
   await signOut(browserAuth);
   const recovered = await verifyPhone('+12025550123');
   assert.equal(recovered.localId, original.uid);
-  assert.deepEqual(await ensureMobileAuthProfile(db, await auth.getUser(original.uid)), { isNewUser: false });
+  assert.deepEqual(await phoneRecoveryAccount(db, await auth.getUser(original.uid)), account);
+  const recoveredResponse = await recoverAccount(new NextRequest('https://afrobs.com/api/auth/account-recovery', {
+    method: 'POST', headers: { authorization: 'Bearer ' + recovered.idToken, origin: 'https://afrobs.com', 'content-type': 'application/json' }, body: '{}',
+  }));
+  assert.equal(recoveredResponse.status, 200);
+  assert.deepEqual(await recoveredResponse.json(), { email: 'original@example.test', providers: ['password'] });
+  const phoneProfile = await mobileProfile(new NextRequest('https://afrobs.com/api/auth/mobile-profile', {
+    method: 'POST', headers: { authorization: 'Bearer ' + recovered.idToken, origin: 'https://afrobs.com', 'content-type': 'application/json' }, body: '{}',
+  }));
+  assert.equal(phoneProfile.status, 403);
+  const sessionResponse = await createSession(new NextRequest('https://afrobs.com/api/auth/session', {
+    method: 'POST', headers: { origin: 'https://afrobs.com', 'content-type': 'application/json' }, body: JSON.stringify({ idToken: recovered.idToken }),
+  }));
+  assert.equal(sessionResponse.status, 403);
+  assert.equal(sessionResponse.headers.get('set-cookie'), null);
+  const legacyPhoneSession = await auth.createSessionCookie(recovered.idToken, { expiresIn: 5 * 60_000 });
+  await assert.rejects(requireRequestUser(new NextRequest('https://afrobs.com/api/library/sync', {
+    headers: { cookie: '__session=' + legacyPhoneSession, origin: 'https://afrobs.com' },
+  })), /Unauthorized/);
   assert.equal((await db.doc('library/owned-book').get()).data()?.userId, recovered.localId);
   assert.equal((await db.doc(`watchEntitlements/${recovered.localId}/videos/purchased-video`).get()).data()?.status, 'active');
   const profile = (await db.doc(`users/${original.uid}`).get()).data();
   assert.equal(profile?.role, 'both'); assert.equal(profile?.stripeCustomerId, 'saved-customer'); assert.equal(profile?.referralCredits, 123);
   assert.equal((await auth.listUsers()).users.length, 1);
+});
+test('verifying an unlinked number does not leave a new phone-only reader account behind', async () => {
+  const usersBefore = (await auth.listUsers()).users.length;
+  const profilesBefore = (await db.collection('users').get()).size;
+  const temporary = await verifyPhone('+12025550124');
+  const identity = await auth.getUser(temporary.localId);
+  assert.deepEqual(await phoneRecoveryAccount(db, identity), { account: null, safeToDelete: true });
+  const rejected = await recoverAccount(new NextRequest('https://afrobs.com/api/auth/account-recovery', {
+    method: 'POST', headers: { authorization: 'Bearer ' + temporary.idToken, origin: 'https://afrobs.com', 'content-type': 'application/json' }, body: '{}',
+  }));
+  assert.equal(rejected.status, 404);
+  assert.equal((await rejected.json()).safeToDelete, true);
+  await auth.deleteUser(temporary.localId);
+  assert.equal((await auth.listUsers()).users.length, usersBefore);
+  assert.equal((await db.collection('users').get()).size, profilesBefore);
 });
 test('Firebase rejects linking a phone owned by another account without changing either identity', async () => {
   const other = await auth.createUser({ email: 'other@example.test', password: 'Test-password-123' });
@@ -64,7 +103,10 @@ test('Firebase rejects linking a phone owned by another account without changing
 test('authenticated recovery API ignores contact text, rejects foreign identities and syncs only its token owner', async () => {
   const recovered = await verifyPhone('+12025550123');
   const url = 'https://afrobs.com/api/auth/recovery-phone';
-  const headers = { authorization: `Bearer ${recovered.idToken}`, origin: 'https://afrobs.com', 'content-type': 'application/json' };
+  const phoneRequest = new NextRequest(url, { headers: { authorization: 'Bearer ' + recovered.idToken, origin: 'https://afrobs.com', 'content-type': 'application/json' } });
+  assert.equal((await GET(phoneRequest)).status, 401, 'a phone verification token cannot access account APIs');
+  const owner = await signInWithEmailAndPassword(browserAuth, 'original@example.test', 'Test-password-123');
+  const headers = { authorization: 'Bearer ' + await owner.user.getIdToken(), origin: 'https://afrobs.com', 'content-type': 'application/json' };
   const get = await GET(new NextRequest(url, { headers }));
   assert.equal(get.status, 200); assert.equal((await get.json()).uid, recovered.localId);
   assert.match(get.headers.get('cache-control') || '', /no-store/);

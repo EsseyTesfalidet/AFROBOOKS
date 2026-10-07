@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await getAdminAuth();
     const token = await auth.verifyIdToken(bearer.slice(7), true);
-    if (!['phone', 'apple.com', 'google.com'].includes(token.firebase.sign_in_provider)) {
+    if (!['apple.com', 'google.com'].includes(token.firebase.sign_in_provider)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     const identity = await auth.getUser(token.uid);

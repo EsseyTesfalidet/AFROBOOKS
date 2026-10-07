@@ -1,10 +1,9 @@
 import {
-  GoogleAuthProvider, OAuthProvider, RecaptchaVerifier, signInWithPhoneNumber,
-  signInWithPopup, browserPopupRedirectResolver, type ConfirmationResult, type User,
+  GoogleAuthProvider, OAuthProvider, signInWithPopup, browserPopupRedirectResolver, type User,
 } from 'firebase/auth';
 import { auth } from './config';
 import { authenticatedPost } from './request';
-import { isSupportedSmsNumber, mobileProviders } from '@/lib/auth/mobileSignIn';
+import { mobileProviders } from '@/lib/auth/mobileSignIn';
 
 export async function finishMobileIdentity(user: User) {
   if (auth.currentUser?.uid !== user.uid) throw new Error('ACCOUNT_NOT_AVAILABLE');
@@ -21,14 +20,4 @@ export async function mobileSocialSignIn(providerName: 'google' | 'apple') {
   const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
   const profile = await finishMobileIdentity(result.user);
   return { user: result.user, ...profile };
-}
-
-export function createPhoneVerifier(container: HTMLElement) {
-  return new RecaptchaVerifier(auth, container, { size: 'invisible' });
-}
-
-export function sendPhoneCode(number: string, verifier: RecaptchaVerifier): Promise<ConfirmationResult> {
-  if (!mobileProviders.phone) return Promise.reject(new Error('provider-disabled'));
-  if (!isSupportedSmsNumber(number)) return Promise.reject(new Error('sms-region-not-allowed'));
-  return signInWithPhoneNumber(auth, number, verifier);
 }

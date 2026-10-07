@@ -15,6 +15,8 @@ createRoot(document.getElementById('root')).render(<><Keyboard/><Shell><Experien
     b.onLoad({filter:/.*/,namespace:'framework'},a=>({loader:'jsx',resolveDir:process.cwd(),contents:a.path==='next/image'?`import React from 'react';export default function Image({priority,fill,...p}){return <img {...p}/>} `:`import React from 'react';const router={replace:p=>{window.destination=p}};export const useRouter=()=>router;export const usePathname=()=>'/login';export default function Link({children,href,...p}){return <a href={href} {...p}>{children}</a>}`}));
     b.onResolve({filter:/^@\/lib\/firebase\/(auth|session|mobileAuth)$/},a=>({path:a.path,namespace:'auth'}));
     b.onLoad({filter:/.*/,namespace:'auth'},()=>({contents:`const user={uid:'reader',getIdToken:async()=>'fake-token'};export const logIn=async()=>{window.loginCalls++;throw Error('auth/invalid-credential')};export const logOut=async()=>{};export const signInWithGoogle=async()=>{throw Error('auth/network-request-failed')};export const getUserProfile=async()=>({uid:'reader',status:'active',role:'buyer',activeRole:'buyer'});export const clearAuthSession=async()=>{};export const setClientAuthHints=()=>{};export const syncAuthSession=async()=>true;export const createPhoneVerifier=()=>({clear(){}});export const sendPhoneCode=async number=>{window.smsCalls++;window.sentNumber=number;return {confirm:async code=>{window.verifyCalls++;if(code!=='123456')throw Error('auth/invalid-verification-code');return {user}}}};export const finishMobileIdentity=async()=>({isNewUser:false});export const mobileSocialSignIn=async provider=>{window.socialCalls.push(provider);return {user,isNewUser:false}};`}));
+    b.onResolve({filter:/^@\/lib\/firebase\/recoveryPhone$/},a=>({path:a.path,namespace:'recovery'}));
+    b.onLoad({filter:/.*/,namespace:'recovery'},()=>({contents:`export const createRecoveryPhoneVerifier=()=>({clear(){}});export const sendAccountRecoveryCode=async number=>{window.smsCalls++;window.sentNumber=number;return {}};export const resolveAccountRecovery=async(_confirmation,code)=>{window.verifyCalls++;if(code!=='123456')throw Error('auth/invalid-verification-code');return {email:'reader@example.com',providers:['password']}};export const sendAccountPasswordReset=async email=>{window.resetCalls++;window.resetEmail=email};`}));
   }}]});
   const css=(await postcss([require('tailwindcss')({content:['components/auth/**/*.tsx','components/shared/**/*.tsx'],theme:require('../tailwind.config.js').theme})]).process(fs.readFileSync('app/globals.css','utf8'),{from:undefined})).css
     +fs.readFileSync('app/app-appearance.css','utf8')+fs.readFileSync('app/app-themes.css','utf8')+(bundle.outputFiles.find(f=>f.path.endsWith('.css'))?.text||'');
@@ -68,13 +70,15 @@ createRoot(document.getElementById('root')).render(<><Keyboard/><Shell><Experien
       const end=await page.getByRole('link',{name:'Sign up',exact:true}).boundingBox();assert.ok(end.y>=0&&end.y+end.height<=568,'enlarged text remains reachable');assert.equal(await page.evaluate(()=>scrollY),0);
       console.log('PASS '+mode+' stationary sign-in, six portrait/landscape sizes, validation, password reveal, return links, keyboard and enlarged text');
       await page.reload();await page.getByRole('heading',{name:'Welcome back'}).waitFor();await page.setViewportSize({width:390,height:844});
-      await page.getByRole('button',{name:'Phone',exact:true}).click();
+      assert.equal(await page.getByRole('button',{name:'Phone',exact:true}).count(),0,'phone must not be a direct sign-in option');
+      await page.getByRole('button',{name:'Forgot email or password?',exact:true}).click();
+      await page.getByRole('heading',{name:'Recover your account'}).waitFor();
       assert.deepEqual(await page.getByLabel('Country code',{exact:true}).locator('option').evaluateAll(options=>options.map(o=>o.value)),['GH','NG','US']);
-      await page.getByLabel('Phone number',{exact:true}).fill('+2917123456');await page.getByRole('button',{name:'Continue',exact:true}).click();
+      await page.getByLabel('Recovery phone number',{exact:true}).fill('+2917123456');await page.getByRole('button',{name:'Continue',exact:true}).click();
       await page.getByRole('alert').filter({hasText:'Please use email or Google for other countries.'}).waitFor();assert.equal(await page.evaluate(()=>window.smsCalls),0);
       await page.getByLabel('Country code',{exact:true}).selectOption('NG');
-      await page.getByLabel('Phone number',{exact:true}).fill('08031234567');await page.getByRole('button',{name:'Continue',exact:true}).click();
-      await page.getByRole('heading',{name:'Check your phone'}).waitFor();assert.equal(await page.evaluate(()=>window.sentNumber),'+2348031234567');
+      await page.getByLabel('Recovery phone number',{exact:true}).fill('08031234567');await page.getByRole('button',{name:'Continue',exact:true}).click();
+      await page.getByRole('heading',{name:'Verify your number'}).waitFor();assert.equal(await page.evaluate(()=>window.sentNumber),'+2348031234567');
       assert.ok(await page.getByRole('button',{name:/Resend in/}).isDisabled());
       await page.getByLabel('Digit 1',{exact:true}).fill('1');await page.getByLabel('Digit 2',{exact:true}).fill('2');
       assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Digit 3');
@@ -85,12 +89,17 @@ createRoot(document.getElementById('root')).render(<><Keyboard/><Shell><Experien
       await page.getByRole('button',{name:'Resend code',exact:true}).click();assert.equal(await page.evaluate(()=>window.smsCalls),2);
       if(process.env.SCREENSHOT_DIR&&mode==='standalone')await page.screenshot({path:process.env.SCREENSHOT_DIR+'/signin-code.png',animations:'disabled'});
       await page.getByLabel('Digit 1',{exact:true}).evaluate(el=>{const data=new DataTransfer();data.setData('text','123456');el.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,clipboardData:data}))});
-      await page.getByRole('status').filter({hasText:'You’re in.'}).waitFor();await page.waitForFunction(()=>window.destination==='/library');
-      assert.equal(await page.evaluate(()=>window.verifyCalls),2);
+      await page.getByRole('heading',{name:'Account recovered'}).waitFor();
+      assert.equal(await page.getByText('reader@example.com',{exact:true}).isVisible(),true);
+      assert.equal(await page.evaluate(()=>window.verifyCalls),2);assert.equal(await page.evaluate(()=>window.destination),undefined);
+      await page.evaluate(()=>{window.resetCalls=0});
+      await page.getByRole('button',{name:'Send password reset link',exact:true}).click();
+      await page.getByRole('status').filter({hasText:'Password reset instructions were sent'}).waitFor();
+      assert.equal(await page.evaluate(()=>window.resetCalls),1);assert.equal(await page.evaluate(()=>window.resetEmail),'reader@example.com');
       await page.reload();await page.getByRole('heading',{name:'Welcome back'}).waitFor();await page.getByRole('button',{name:'Continue with Apple',exact:true}).click();await page.waitForFunction(()=>window.destination==='/library');assert.deepEqual(await page.evaluate(()=>window.socialCalls),['apple']);
       await page.reload();await page.getByRole('heading',{name:'Welcome back'}).waitFor();await page.getByRole('button',{name:'Continue with Google',exact:true}).click();await page.waitForFunction(()=>window.destination==='/library');assert.deepEqual(await page.evaluate(()=>window.socialCalls),['google']);
       await page.reload();await page.getByRole('heading',{name:'Welcome back'}).waitFor();await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.signin-brand').evaluate(el=>getComputedStyle(el).animationName),'none');
-      console.log('PASS '+mode+' phone country selection, auto-advance/backspace/paste, failed code retry, cooldown/resend, success navigation, social providers and reduced motion (mocked providers)');
+      console.log('PASS '+mode+' phone-only recovery (no direct phone sign-in), code retry/paste, cooldown/resend, password reset, social providers and reduced motion (mocked providers)');
     }
     assert.deepEqual(errors,[]);await context.close();
   }}finally{await browser.close();await new Promise(r=>server.close(r));}

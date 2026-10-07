@@ -41,6 +41,13 @@ html[data-app-theme='light'] .mobile-signin {
 .mobile-signin button { -webkit-tap-highlight-color:transparent; transition:transform .12s,opacity .12s; }.mobile-signin button:active:not(:disabled) { transform:scale(.975); }.mobile-signin button:disabled { opacity:.55; cursor:default; }.mobile-signin :is(button,a,select):focus-visible { outline:2px solid var(--app-accent); outline-offset:3px; }
 .signin-divider { display:flex; align-items:center; gap:12px; margin:18px 0 14px; font-size:11px; color:var(--app-muted); }.signin-divider span { height:1px; flex:1; background:var(--app-line); }
 .signin-social { display:grid; grid-template-columns:1fr 1fr; gap:10px; }.signin-social button { display:flex; align-items:center; justify-content:center; gap:8px; min-height:50px; border:1px solid var(--app-line); border-radius:13px; font-size:13px; font-weight:650; background:var(--signin-field); }.signin-social button > span { display:grid; place-items:center; width:24px; height:24px; }.signin-social button[aria-disabled='true'] { opacity:.5; }
+.signin-recovery-link { display:block; min-height:40px; margin:2px auto 0; padding:6px 10px; color:var(--app-accent); font-size:12px; font-weight:650; }
+.signin-recovery-back { display:grid; justify-items:center; gap:6px; margin-top:4px; text-align:center; }
+.signin-recovery-back button { display:flex; align-items:center; justify-content:center; gap:6px; min-height:40px; padding:4px 10px; color:var(--app-accent); font-size:12px; font-weight:650; }
+.signin-recovery-back p,.signin-recovery-result p { color:var(--app-muted); font-size:11px; line-height:1.45; text-align:center; }
+.signin-recovery-result { display:grid; justify-items:center; gap:12px; padding:18px 2px 8px; }
+.signin-recovery-result > strong { max-width:100%; overflow-wrap:anywhere; color:var(--app-text); font-size:17px; text-align:center; }
+.signin-recovery-label { color:var(--app-muted); font-size:12px; }
 .signin-signup { margin-top:9px; text-align:center; font-size:12px; color:var(--app-muted); }.signin-signup a { display:inline-flex; align-items:center; min-height:44px; color:var(--app-accent); font-weight:700; }
 .signin-legal { display:flex; justify-content:center; align-items:center; gap:14px; color:var(--app-muted); font-size:10px; }.signin-legal a { min-height:28px; display:inline-flex; align-items:center; }
 .signin-error { color:#ec9b8e; font-size:11px; line-height:1.5; margin-top:3px; }.signin-form > .signin-error { margin:0; }html[data-app-theme='light'] .signin-error { color:#aa3024; }
@@ -82,7 +89,7 @@ html[data-app-theme='light'] .mobile-signin {
   .mobile-signin { padding:0 12px; gap:12px; }
   .signin-panel { padding-top:6px; padding-bottom:3px; }.signin-intro h1 { font-size:20px; }.signin-methods button { min-height:30px; }.signin-methods { margin:6px 0; }
   .signin-form,.signin-fields { gap:6px; }.signin-form { margin-top:6px; }.signin-field input { height:44px; }.signin-social { margin-top:7px; }
-  .signin-signup { text-align:left; }.signin-signup > span { display:none; }.signin-legal { position:absolute; right:18px; bottom:3px; font-size:10px; gap:10px; }.signin-legal a { min-height:44px; }
+  .signin-signup { text-align:left; }.signin-signup > span { display:none; }.signin-recovery-link { min-height:28px; margin:0 auto -5px; padding-block:0; }.signin-legal { position:absolute; right:18px; bottom:3px; font-size:10px; gap:10px; }.signin-legal a { min-height:44px; }
 }
 html[data-app-mode='installed'][data-keyboard-open='true'] .mobile-signin { display:block; padding:0; }
 html[data-app-mode='installed'][data-keyboard-open='true'] .signin-hero { display:none; }

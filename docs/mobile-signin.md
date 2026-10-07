@@ -1,5 +1,9 @@
 # Installed app sign-in
 
+**Source update (2026-10-07; pending deployment):** Phone has been removed from normal sign-in. The app keeps email/password and the configured social providers. **Forgot email or password?** starts an SMS recovery check for a number already linked to an existing account; after verification it shows the account email and offers a password-reset email when appropriate. The recovery uses a separate in-memory Firebase Auth instance and never creates an AfroBooks profile or opens a library session. An unlinked number cannot create a buyer account through the mobile profile API. Current user steps are documented in recovery-phone.md.
+
+The remaining design, test, and deployment notes below document earlier phone-as-sign-in behavior and are historical. Production keeps the previously deployed behavior until this source change is deployed.
+
 `LoginForm` selects `MobileSignIn` after installed mode has hydrated. The normal browser website keeps its existing email/password and Google layout. `/login` uses a fixed, scrollbar-free app frame. Typical phone sizes fit the screen, and landscape uses a two-column layout. The form panel can scroll internally when the keyboard, enlarged text or unusually long errors need room. At the owner's request, installed app page zoom is now locked; normal website zoom is unchanged.
 
 The revised screen centers the existing AfroBooks logo and wordmark above a rounded form card. It uses a subtle warm background, clearer spacing, floating labels, Email/Phone selection, Google/Apple buttons, password reveal, a brief button sheen, press feedback, inline error shake, supported optional haptics and a drawn success check. The full screen follows light/dark mode. Book illustrations and the diamond-pattern hero were removed at the owner's request. Reduced motion disables decorative effects. Small portrait screens use a compact horizontal logo; landscape places the logo beside the form.

@@ -2,15 +2,20 @@ import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/
 import { loginDestination } from '@/lib/utils/loginDestination';
 import { mobileAuthDestination } from './mobileAccess';
 
-// Deployment switches: turn on only after configuring and testing each provider.
+// Phone verification is used for account recovery and linking a recovery phone.
+// It is deliberately not an independent sign-in method in the mobile app.
 export const mobileProviders = {
-  phone: process.env.NEXT_PUBLIC_AUTH_PHONE_ENABLED === 'true',
+  phoneRecovery: process.env.NEXT_PUBLIC_AUTH_PHONE_ENABLED === 'true',
   apple: process.env.NEXT_PUBLIC_AUTH_APPLE_ENABLED === 'true',
 };
 
 // Keep this presentation list aligned with Firebase's enforced SMS allowlist.
 // Initial rollout follows countries recorded in existing user profiles.
 export const mobileSmsCountries: readonly CountryCode[] = ['GH', 'NG', 'US'];
+
+export function isPhoneSignInProvider(provider: string | null | undefined): boolean {
+  return provider === 'phone';
+}
 
 export function isSupportedSmsNumber(value: string): boolean {
   const country = parsePhoneNumberFromString(value)?.country;

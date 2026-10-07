@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/authStore';
 import { beginAuthFlow } from '@/lib/auth/flow';
 import { mobileProviders, mobileSmsCountries, normalizePhone, isSupportedSmsNumber } from '@/lib/auth/mobileSignIn';
 import { recoveryPhoneError, type RecoveryPhoneStatus, type RecoveryProvider } from '@/lib/auth/recoveryPhone';
-import { createPhoneVerifier } from '@/lib/firebase/mobileAuth';
+import { createPhoneVerifier } from '@/lib/firebase/recoveryPhone';
 import { confirmRecoveryIdentity, requestRecoveryCode, confirmRecoveryCode, getRecoveryPhone } from '@/lib/firebase/recoveryPhone';
 import PasswordInput from './PasswordInput';
 import './recovery-phone.css';
@@ -100,10 +100,10 @@ export default function RecoveryPhone({ uid }: { uid: string }) {
 
   return <section className="recovery-phone" aria-labelledby={`${id}-title`} aria-busy={!!busy || loading}>
     <h3 id={`${id}-title`}><Smartphone size={18} aria-hidden="true" />Recovery phone</h3>
-    <p>Link a number you control so a text message code can open this same account and purchased library.</p>
+    <p>Link a number you control so you can recover your email sign-in if you forget your account details. Phone verification will not sign you into AfroBooks.</p>
     {loading ? <p role="status">Checking your sign-in methods…</p> : <>
-      {data?.phoneNumber ? <div className="recovery-phone-linked"><strong><Check size={17} aria-hidden="true" />Verified for sign-in</strong><span>{data.phoneNumber}</span><p>Choose Phone on the sign-in screen to return to this account.</p></div> : linkedPendingSync ? <p role="status">Phone verified. Your account and library stay together.</p> : data && <>
-        {phase === 'start' && <>{mobileProviders.phone ? <button type="button" className="recovery-phone-primary" disabled={!!busy || !data.providers.length} onClick={() => { setPhase('identity'); setError(''); }}>Link recovery phone</button> : <p>Phone linking is currently unavailable.</p>}{!data.providers.length && <p>Sign in with your existing provider again to manage account recovery.</p>}</>}
+      {data?.phoneNumber ? <div className="recovery-phone-linked"><strong><Check size={17} aria-hidden="true" />Recovery number verified</strong><span>{data.phoneNumber}</span><p>Use this number from “Forgot email or password?” on the sign-in screen.</p></div> : linkedPendingSync ? <p role="status">Phone verified. Your account and library stay together.</p> : data && <>
+        {phase === 'start' && <>{mobileProviders.phoneRecovery ? <button type="button" className="recovery-phone-primary" disabled={!!busy || !data.providers.length} onClick={() => { setPhase('identity'); setError(''); }}>Link recovery phone</button> : <p>Phone recovery is currently unavailable.</p>}{!data.providers.length && <p>Sign in with your existing provider again to manage account recovery.</p>}</>}
         {phase === 'identity' && <div className="recovery-phone-step"><h4>Confirm your existing sign-in</h4><p>This protects your account before adding another way to sign in.</p>
           {data.providers.includes('password') && <form onSubmit={event => { event.preventDefault(); confirmIdentity('password'); }}>
             <label htmlFor={`${id}-password`}>Current password</label><PasswordInput id={`${id}-password`} autoComplete="current-password" value={password} required disabled={!!busy} onChange={event => setPassword(event.target.value)} />

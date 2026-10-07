@@ -8,7 +8,8 @@ import { Eye, EyeOff, ArrowRight, ArrowLeft, LoaderCircle } from 'lucide-react';
 import { getCountries, getCountryCallingCode, type CountryCode } from 'libphonenumber-js/min';
 import type { ConfirmationResult, RecaptchaVerifier, User } from 'firebase/auth';
 import { logIn, logOut, getUserProfile } from '@/lib/firebase/auth';
-import { createPhoneVerifier, sendPhoneCode, mobileSocialSignIn, finishMobileIdentity } from '@/lib/firebase/mobileAuth';
+import { mobileSocialSignIn } from '@/lib/firebase/mobileAuth';
+import { createRecoveryPhoneVerifier, sendAccountRecoveryCode, resolveAccountRecovery, sendAccountPasswordReset } from '@/lib/firebase/recoveryPhone';
 import { syncAuthSession, setClientAuthHints } from '@/lib/firebase/session';
 import { beginAuthFlow } from '@/lib/auth/flow';
 import { queueWelcome } from '@/lib/auth/welcome';
@@ -23,7 +24,7 @@ const names = new Intl.DisplayNames(['en'], { type: 'region' });
 const countries = getCountries().filter(code => mobileSmsCountries.includes(code)).map(code => ({ code, name: names.of(code) ?? code, dial: getCountryCallingCode(code) }))
   .sort((a, b) => a.name.localeCompare(b.name));
 const emptyCode = () => Array<string>(6).fill('');
-const COOLDOWN_KEY = 'afrobooks:sms-retry-at';
+const COOLDOWN_KEY = 'afrobooks:recovery-sms-retry-at';
 
 function SocialIcon({ provider }: { provider: 'google' | 'apple' }) {
   return provider === 'google' ? <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
@@ -34,13 +35,15 @@ function SocialIcon({ provider }: { provider: 'google' | 'apple' }) {
 export default function MobileSignIn() {
   const router = useRouter();
   const { userProfile, loading, setFirebaseUser, setUserProfile, setLoading } = useAuthStore();
-  const [mode, setMode] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState<CountryCode>('NG');
-  const [sentTo, setSentTo] = useState('');
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoverySentTo, setRecoverySentTo] = useState('');
+  const [recoveryAccount, setRecoveryAccount] = useState<{ email: string; providers: string[] } | null>(null);
+  const [resetSent, setResetSent] = useState(false);
   const [digits, setDigits] = useState(emptyCode);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -84,7 +87,7 @@ export default function MobileSignIn() {
     }
   }, [attempt]);
 
-  useEffect(() => { if (!busy && sentTo && error) codeInputs.current[0]?.focus(); }, [busy, sentTo, error]);
+  useEffect(() => { if (!busy && recoverySentTo && error) codeInputs.current[0]?.focus(); }, [busy, recoverySentTo, error]);
 
   function feedback(message: string, fields: Record<string, string> = {}) {
     if (!mounted.current) return;
@@ -122,23 +125,22 @@ export default function MobileSignIn() {
     } finally { finish(); lock.current = false; if (mounted.current) setBusy(''); }
   }
 
-  async function requestCode() {
+  async function requestRecoveryCode() {
     if (lock.current || Date.now() < deadline.current) return;
-    if (!mobileProviders.phone) { feedback(signInError(new Error('provider-disabled'))); return; }
-    const number = sentTo || normalizePhone(phone, country);
+    if (!mobileProviders.phoneRecovery) { feedback(signInError(new Error('provider-disabled'))); return; }
+    const number = normalizePhone(phone, country);
     if (!number) { feedback('', { phone: 'Enter a valid phone number.' }); return; }
     if (!isSupportedSmsNumber(number)) { feedback(signInError(new Error('sms-region-not-allowed'))); return; }
     lock.current = true; setBusy('send'); setError(''); setFieldErrors({});
     try {
       verifier.current?.clear();
-      verifier.current = createPhoneVerifier(challenge.current!);
-      const result = await sendPhoneCode(number, verifier.current);
+      verifier.current = createRecoveryPhoneVerifier(challenge.current!);
+      const result = await sendAccountRecoveryCode(number, verifier.current);
       if (!mounted.current) return;
-      confirmation.current = result; setSentTo(number); setDigits(emptyCode());
+      confirmation.current = result; setRecoverySentTo(number); setDigits(emptyCode());
       deadline.current = Date.now() + 30000; setRemaining(30);
       try { sessionStorage.setItem(COOLDOWN_KEY, String(deadline.current)); } catch { /* Optional. */ }
       appHaptic();
-      // Do not force the keyboard open on arrival; OTP autofill remains available.
     } catch (e) { feedback(signInError(e)); }
     finally {
       verifier.current?.clear(); verifier.current = null;
@@ -146,13 +148,17 @@ export default function MobileSignIn() {
     }
   }
 
-  function verify(code: string) {
+  function verifyRecovery(code: string) {
     const current = confirmation.current;
     if (!current || !/^\d{6}$/.test(code)) return;
-    void authenticate('code', async () => {
-      const result = await current.confirm(code);
-      return { user: result.user, ...await finishMobileIdentity(result.user) };
-    });
+    if (lock.current) return;
+    lock.current = true; setBusy('verify'); setError('');
+    void resolveAccountRecovery(current, code).then(result => {
+      if (!mounted.current) return;
+      confirmation.current = null; setRecoveryAccount(result); setRecoverySentTo(''); setDigits(emptyCode()); appHaptic('success');
+    }).catch(error => {
+      if (mounted.current) { setDigits(emptyCode()); feedback(/RECOVERY_ACCOUNT_NOT_FOUND/.test(String(error)) ? 'We couldn’t recover an email sign-in for this number. You have not been signed in. Check the number or contact support.' : signInError(error)); }
+    }).finally(() => { lock.current = false; if (mounted.current) setBusy(''); });
   }
 
   function enterDigits(index: number, value: string) {
@@ -164,19 +170,42 @@ export default function MobileSignIn() {
     else for (let i = 0; i < numbers.length && start + i < 6; i++) next[start + i] = numbers[i];
     setDigits(next); setError('');
     if (numbers) codeInputs.current[Math.min(5, start + numbers.length)]?.focus();
-    if (next.every(Boolean)) verify(next.join(''));
+    if (next.every(Boolean) && recoveryOpen && recoverySentTo) verifyRecovery(next.join(''));
   }
 
   function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    if (sentTo) { verify(digits.join('')); return; }
-    if (mode === 'phone') { void requestCode(); return; }
+    if (recoveryOpen) {
+      if (recoverySentTo) verifyRecovery(digits.join(''));
+      else void requestRecoveryCode();
+      return;
+    }
     const errors: Record<string, string> = {};
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = 'Enter a valid email';
     if (password.length < 6) errors.password = 'Password must be at least 6 characters';
     if (Object.keys(errors).length) { feedback('', errors); form.current?.querySelector<HTMLInputElement>(`#${Object.keys(errors)[0]}`)?.focus(); return; }
     void authenticate('email', async () => ({ user: await logIn(email.trim(), password), isNewUser: false }));
+  }
+
+  function startRecovery() {
+    confirmation.current = null; setRecoveryOpen(true); setRecoverySentTo(''); setRecoveryAccount(null); setResetSent(false);
+    setDigits(emptyCode()); setPhone(''); setError(''); setFieldErrors({});
+  }
+
+  function backToSignIn() {
+    confirmation.current = null; setRecoveryOpen(false); setRecoverySentTo(''); setRecoveryAccount(null); setResetSent(false);
+    setDigits(emptyCode()); setError(''); setFieldErrors({});
+  }
+
+  async function sendResetEmail() {
+    if (!recoveryAccount || !recoveryAccount.providers.includes('password') || busy) return;
+    setBusy('reset'); setError('');
+    try {
+      await sendAccountPasswordReset(recoveryAccount.email);
+      if (mounted.current) { setResetSent(true); appHaptic('success'); }
+    } catch (failure) { if (mounted.current) feedback(signInError(failure)); }
+    finally { if (mounted.current) setBusy(''); }
   }
 
   return <main className="mobile-signin" data-success={success || undefined}>
@@ -190,37 +219,40 @@ export default function MobileSignIn() {
           <span><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m13 24 7 7 15-15"/></svg></span>
           <h1>You’re in.</h1><p>Your next chapter awaits.</p>
         </div> : <>
-          <header className="signin-intro signin-enter"><h1>{sentTo ? 'Check your phone' : 'Welcome back'}</h1><p>{sentTo ? `Enter the code sent to ${sentTo}` : 'Your stories are waiting for you.'}</p></header>
-          {!sentTo && <div className="signin-methods signin-enter" role="group" aria-label="Sign-in method" data-method={mode}>
-            <span aria-hidden="true"/>{(['email', 'phone'] as const).map(method => <button key={method} type="button" disabled={!!busy} aria-pressed={mode === method} onClick={() => { setMode(method); setError(''); setFieldErrors({}); appHaptic(); }}>{method === 'email' ? 'Email' : 'Phone'}</button>)}
-          </div>}
-          <form ref={form} onSubmit={submit} noValidate className="signin-form signin-enter" aria-busy={!!busy}>
-            <div>
-              {sentTo ? <div className="signin-code" role="group" aria-label="Six-digit verification code">
-                {digits.map((digit, index) => <input key={index} ref={el => { codeInputs.current[index] = el; }} aria-label={`Digit ${index + 1}`} aria-invalid={!!error} aria-describedby={error ? 'signin-error' : undefined}
-                  type="text" inputMode="numeric" autoComplete={index === 0 ? 'one-time-code' : 'off'} pattern="[0-9]*" maxLength={6} value={digit} disabled={!!busy}
-                  onFocus={e => e.target.select()} onChange={e => enterDigits(index, e.target.value)}
-                  onPaste={e => { e.preventDefault(); enterDigits(index, e.clipboardData.getData('text')); }}
-                  onKeyDown={e => { if (e.key === 'Backspace' && !digits[index] && index > 0) { e.preventDefault(); const next = [...digits]; next[index - 1] = ''; setDigits(next); codeInputs.current[index - 1]?.focus(); } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); codeInputs.current[Math.max(0, Math.min(5, index + (e.key === 'ArrowLeft' ? -1 : 1)))]?.focus(); } }}/>) }
-              </div> : mode === 'email' ? <div className="signin-fields">
-                <div><div className="signin-field"><input id="email" type="email" placeholder=" " value={email} autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="next" disabled={!!busy} aria-invalid={!!fieldErrors.email} aria-describedby={fieldErrors.email ? 'signin-email-error' : undefined} onChange={e => setEmail(e.target.value)}/><label htmlFor="email">Email</label></div>{fieldErrors.email && <p id="signin-email-error" className="signin-error" role="alert">{fieldErrors.email}</p>}</div>
-                <div><div className="signin-field"><input id="password" type={showPassword ? 'text' : 'password'} placeholder=" " value={password} autoComplete="current-password" enterKeyHint="go" disabled={!!busy} aria-invalid={!!fieldErrors.password} aria-describedby={fieldErrors.password ? 'signin-password-error' : undefined} onChange={e => setPassword(e.target.value)}/><label htmlFor="password">Password</label><button className="signin-reveal" type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(value => !value)}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div>{fieldErrors.password && <p id="signin-password-error" className="signin-error" role="alert">{fieldErrors.password}</p>}</div>
-              </div> : <div className="signin-fields">
-                <div className="signin-phone-row"><label className="signin-country"><span className="sr-only">Country code</span><span aria-hidden="true">{country} +{getCountryCallingCode(country)} ▾</span><select aria-label="Country code" value={country} disabled={!!busy} onChange={e => setCountry(e.target.value as CountryCode)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name} (+{c.dial})</option>)}</select></label><div className="signin-field"><input id="phone" type="tel" placeholder=" " autoComplete="tel-national" value={phone} disabled={!!busy} aria-invalid={!!fieldErrors.phone} aria-describedby="signin-phone-help" onChange={e => setPhone(e.target.value)}/><label htmlFor="phone">Phone number</label></div></div>
-                {fieldErrors.phone && <p className="signin-error" role="alert">{fieldErrors.phone}</p>}
-                <p id="signin-phone-help" className="signin-phone-help">{mobileProviders.phone ? 'By continuing, you agree to receive a verification text and let Google process your number for abuse prevention. Message rates may apply.' : 'Phone sign-in is coming soon. Use email or Google for now.'}</p>
-                <p className="signin-phone-help">Use your linked number to recover your library. Unlinked numbers create new accounts.</p>
-              </div>}
-            </div>
+          <header className="signin-intro signin-enter"><h1>{recoveryAccount ? 'Account recovered' : recoverySentTo ? 'Verify your number' : recoveryOpen ? 'Recover your account' : 'Welcome back'}</h1><p>{recoveryAccount ? 'Your phone helped locate the existing AfroBooks account.' : recoverySentTo ? <>Enter the code sent to {recoverySentTo}</> : recoveryOpen ? 'Use the recovery number already linked to your account.' : 'Your stories are waiting for you.'}</p></header>
+          {recoveryAccount ? <div className="signin-recovery-result signin-enter">
+            <span className="signin-recovery-label">Email on your account</span><strong>{recoveryAccount.email}</strong>
+            {recoveryAccount.providers.includes('password') ? resetSent
+              ? <p role="status">Password reset instructions were sent to this email. Check your inbox.</p>
+              : <button className="signin-continue" type="button" disabled={!!busy} onClick={() => void sendResetEmail()}>{busy === 'reset' ? <LoaderCircle className="signin-spinner" size={18}/> : null}{busy === 'reset' ? 'Sending reset link…' : 'Send password reset link'}{!busy && <ArrowRight size={18}/>}</button>
+              : <p>This account uses {recoveryAccount.providers.includes('google.com') ? 'Google' : 'Apple'} sign-in. Choose that provider on the sign-in screen; phone verification did not sign you in.</p>}
             {error && <p id="signin-error" className="signin-error" role="alert">{error}</p>}
-            <button className="signin-continue" type="submit" disabled={!!busy || (mode === 'phone' && !sentTo && (!mobileProviders.phone || remaining > 0)) || (!!sentTo && !digits.every(Boolean))}>
-              {busy ? <LoaderCircle className="signin-spinner" size={18}/> : null}{busy === 'send' ? 'Sending code…' : busy ? 'Signing in…' : sentTo ? 'Verify code' : mode === 'phone' && remaining > 0 ? `Try again in ${remaining}s` : 'Continue'}{!busy && <ArrowRight size={18}/>}</button>
-            {sentTo && <div className="signin-code-actions"><button type="button" disabled={!!busy || remaining > 0} onClick={() => void requestCode()}>{remaining > 0 ? `Resend in ${remaining}s` : 'Resend code'}</button><button type="button" disabled={!!busy} onClick={() => { confirmation.current = null; setSentTo(''); setDigits(emptyCode()); setError(''); }}><ArrowLeft size={14}/>Change number</button></div>}
-          </form>
-          {!sentTo && <><div className="signin-divider signin-enter"><span/>or continue with<span/></div>
+          </div> : <form ref={form} onSubmit={submit} noValidate className="signin-form signin-enter" aria-busy={!!busy}>
+            {recoveryOpen ? recoverySentTo ? <div className="signin-code" role="group" aria-label="Six-digit verification code">
+              {digits.map((digit, index) => <input key={index} ref={el => { codeInputs.current[index] = el; }} aria-label={'Digit ' + (index + 1)} aria-invalid={!!error} aria-describedby={error ? 'signin-error' : undefined}
+                type="text" inputMode="numeric" autoComplete={index === 0 ? 'one-time-code' : 'off'} pattern="[0-9]*" maxLength={6} value={digit} disabled={!!busy}
+                onFocus={e => e.target.select()} onChange={e => enterDigits(index, e.target.value)}
+                onPaste={e => { e.preventDefault(); enterDigits(index, e.clipboardData.getData('text')); }}
+                onKeyDown={e => { if (e.key === 'Backspace' && !digits[index] && index > 0) { e.preventDefault(); const next = [...digits]; next[index - 1] = ''; setDigits(next); codeInputs.current[index - 1]?.focus(); } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); codeInputs.current[Math.max(0, Math.min(5, index + (e.key === 'ArrowLeft' ? -1 : 1)))]?.focus(); } }}/>) }
+            </div> : <div className="signin-fields">
+              <div className="signin-phone-row"><label className="signin-country"><span className="sr-only">Country code</span><span aria-hidden="true">{country} +{getCountryCallingCode(country)} ▾</span><select aria-label="Country code" value={country} disabled={!!busy} onChange={e => setCountry(e.target.value as CountryCode)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name} (+{c.dial})</option>)}</select></label><div className="signin-field"><input id="phone" type="tel" placeholder=" " autoComplete="tel-national" value={phone} disabled={!!busy} aria-invalid={!!fieldErrors.phone} onChange={e => setPhone(e.target.value)}/><label htmlFor="phone">Recovery phone number</label></div></div>
+              {fieldErrors.phone && <p className="signin-error" role="alert">{fieldErrors.phone}</p>}
+              <p className="signin-phone-help">We’ll text a code to check for an existing account. This will not sign you in. Message rates may apply.</p>
+            </div> : <div className="signin-fields">
+              <div><div className="signin-field"><input id="email" type="email" placeholder=" " value={email} autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="next" disabled={!!busy} aria-invalid={!!fieldErrors.email} aria-describedby={fieldErrors.email ? 'signin-email-error' : undefined} onChange={e => setEmail(e.target.value)}/><label htmlFor="email">Email</label></div>{fieldErrors.email && <p id="signin-email-error" className="signin-error" role="alert">{fieldErrors.email}</p>}</div>
+              <div><div className="signin-field"><input id="password" type={showPassword ? 'text' : 'password'} placeholder=" " value={password} autoComplete="current-password" enterKeyHint="go" disabled={!!busy} aria-invalid={!!fieldErrors.password} aria-describedby={fieldErrors.password ? 'signin-password-error' : undefined} onChange={e => setPassword(e.target.value)}/><label htmlFor="password">Password</label><button className="signin-reveal" type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(value => !value)}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div>{fieldErrors.password && <p id="signin-password-error" className="signin-error" role="alert">{fieldErrors.password}</p>}</div>
+            </div>}
+            {error && !recoveryAccount && <p id="signin-error" className="signin-error" role="alert">{error}</p>}
+            <button className="signin-continue" type="submit" disabled={!!busy || (recoveryOpen && (recoverySentTo ? !digits.every(Boolean) : !mobileProviders.phoneRecovery || remaining > 0))}>
+              {busy ? <LoaderCircle className="signin-spinner" size={18}/> : null}{busy === 'send' ? 'Sending code…' : busy === 'verify' ? 'Checking account…' : busy ? 'Signing in…' : recoverySentTo ? 'Verify code' : recoveryOpen && remaining > 0 ? 'Try again in ' + remaining + 's' : 'Continue'}{!busy && <ArrowRight size={18}/>}</button>
+            {recoverySentTo && <div className="signin-code-actions"><button type="button" disabled={!!busy || remaining > 0} onClick={() => void requestRecoveryCode()}>{remaining > 0 ? 'Resend in ' + remaining + 's' : 'Resend code'}</button><button type="button" disabled={!!busy} onClick={() => { confirmation.current = null; setRecoverySentTo(''); setDigits(emptyCode()); setError(''); }}><ArrowLeft size={14}/>Change number</button></div>}
+          </form>}
+          {!recoveryOpen && !recoveryAccount && <><button className="signin-recovery-link signin-enter" type="button" onClick={startRecovery}>Forgot email or password?</button>
+            <div className="signin-divider signin-enter"><span/>or continue with<span/></div>
             <div className="signin-social signin-enter">{(['google', 'apple'] as const).map(provider => <button key={provider} type="button" disabled={!!busy} aria-label={`Continue with ${provider === 'google' ? 'Google' : 'Apple'}`} aria-disabled={provider === 'apple' && !mobileProviders.apple || undefined}
               onClick={() => { if (provider === 'apple' && !mobileProviders.apple) { feedback(signInError(new Error('provider-disabled'))); return; } void authenticate(provider, () => mobileSocialSignIn(provider)); }}><span><SocialIcon provider={provider}/></span>{provider === 'google' ? 'Google' : 'Apple'}</button>)}</div>
             <p className="signin-signup signin-enter"><span>New to AfroBooks? </span><Link href={signupHref}>Sign up</Link></p></>}
+          {recoveryOpen && <div className="signin-recovery-back signin-enter"><button type="button" disabled={!!busy} onClick={backToSignIn}><ArrowLeft size={14}/>Back to sign in</button>{!recoveryAccount && <p>Phone numbers only help recover an account that already has this number linked.</p>}</div>}
           <p className="signin-legal signin-enter"><Link href="/terms">Terms</Link><span aria-hidden="true">·</span><Link href="/privacy">Privacy</Link></p>
         </>}
       </div>

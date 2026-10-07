@@ -7,6 +7,7 @@ import { getUserProfile } from '@/lib/firebase/auth';
 import { clearAuthSession, setClientAuthHints, syncAuthSession } from '@/lib/firebase/session';
 import { useAuthStore } from '@/store/authStore';
 import { waitForAuthFlow } from '@/lib/auth/flow';
+import { isPhoneSignInProvider } from '@/lib/auth/mobileSignIn';
 import { isInstalledApp } from '@/lib/app/installed';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         }
         if (firebaseUser) {
           try {
+            let signInProvider: string | null;
+            try { signInProvider = (await firebaseUser.getIdTokenResult()).signInProvider; }
+            catch { await revokeAccess(); return; }
+            if (isPhoneSignInProvider(signInProvider)) { await revokeAccess(); return; }
             const profile = await getUserProfile(firebaseUser.uid);
             if (auth.currentUser !== firebaseUser) return;
             if (!profile || profile.status === 'suspended' || profile.status === 'banned') {

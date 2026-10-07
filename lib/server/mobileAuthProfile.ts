@@ -17,7 +17,7 @@ export async function ensureMobileAuthProfile(db: Firestore, identity: UserRecor
     }
     const age = now - Date.parse(identity.metadata.creationTime);
     if (!Number.isFinite(age) || age < -60000 || age > 10 * 60 * 1000 ||
-        !identity.providerData.some(p => ['phone', 'google.com', 'apple.com'].includes(p.providerId))) {
+        !identity.providerData.some(p => ['google.com', 'apple.com'].includes(p.providerId))) {
       // A missing/deleted profile on an older identity must not be resurrected.
       throw new Error('ACCOUNT_NOT_AVAILABLE');
     }

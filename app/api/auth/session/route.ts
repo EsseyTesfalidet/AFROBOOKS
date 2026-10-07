@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
     const adminDb = await getAdminDb();
 
     const decoded = await adminAuth.verifyIdToken(idToken, true);
+    if (decoded.firebase?.sign_in_provider === 'phone') {
+      return NextResponse.json({ error: 'Use phone verification to recover your existing sign-in.' }, { status: 403 });
+    }
     await adminAuth.getUser(decoded.uid);
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn: SESSION_MAX_AGE_MS,
