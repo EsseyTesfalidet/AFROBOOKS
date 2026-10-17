@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { captionSchema, posterMime, publicVideo, uploadSchema, videoAccess, videoDraftSchema, videoDuration } from '../lib/watch/policy';
+import { captionSchema, posterMime, publicTrailerReady, publicVideo, uploadSchema, videoAccess, videoDraftSchema, videoDuration } from '../lib/watch/policy';
 import type { WatchVideo } from '../types/video';
 import { mobileReturnPath } from '../lib/auth/mobileAccess';
 import { watchBytes } from '../lib/server/watchHttp';
@@ -27,6 +27,18 @@ test('paid full films stay private while separate trailers are available', () =>
   assert.equal(videoAccess(video, 'creator', false, false), true);
   assert.equal(videoAccess({ ...video, priceCents: 0 }, 'viewer', false, false), true);
   assert.equal(videoAccess({ ...video, hasTrailer: false }, 'viewer', false, false, true), false);
+});
+test('public preview grants a ready short trailer only for a published video', () => {
+  const trailer = { uid: 'a'.repeat(32), ready: true, duration: 120 };
+  assert.equal(publicTrailerReady(video, trailer), true);
+  for (const patch of [
+    { status: 'draft' as const },
+    { status: 'removed' as const },
+    { hasTrailer: false },
+  ]) assert.equal(publicTrailerReady({ ...video, ...patch }, trailer), false);
+  for (const asset of [undefined, { ...trailer, ready: false }, { ...trailer, uid: 'bad' }, { ...trailer, duration: 301 }, { ...trailer, duration: 0 }]) {
+    assert.equal(publicTrailerReady(video, asset), false);
+  }
 });
 test('drafts and removed videos do not leak through free, trailer or ownership paths', () => {
   for (const status of ['draft', 'processing', 'in_review', 'removed'] as const) {

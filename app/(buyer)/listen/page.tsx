@@ -11,7 +11,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     return {
       title: 'Listen to African Music, Podcasts & Audiobooks',
       description: 'Explore African music, podcasts and audiobooks from independent creators on AfroBooks.',
-      alternates: { canonical: '/listen' },
+      alternates: { canonical: '/african-audio' },
     };
   }
 
@@ -29,7 +29,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       : `Listen to ${title}${creator ? ` by ${creator}` : ''} on AfroBooks.`;
     const image = typeof audio.coverUrl === 'string' && audio.coverUrl.startsWith('https://') ? audio.coverUrl : undefined;
     const pageTitle = creator ? `${title} by ${creator}` : title;
-    const canonical = `/listen?title=${encodeURIComponent(id)}`;
+    const canonical = `/african-audio/${encodeURIComponent(id)}`;
     return {
       title: pageTitle,
       description,

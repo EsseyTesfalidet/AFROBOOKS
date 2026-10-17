@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: pageTitle,
       description,
-      alternates: { canonical: `/watch/${encodeURIComponent(id)}` },
+      alternates: { canonical: `/african-films/${encodeURIComponent(id)}` },
       openGraph: { type: 'website', title: pageTitle, description, ...(image ? { images: [{ url: image, alt: title }] } : {}) },
       twitter: { card: image ? 'summary_large_image' : 'summary', title: pageTitle, description, ...(image ? { images: [image] } : {}) },
     };

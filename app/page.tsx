@@ -76,7 +76,7 @@ export default function LandingPage() {
             className="inline-block text-xs font-bold px-3 py-1 rounded-full mb-8 uppercase tracking-widest"
             style={{ background: '#1a1a1a', color: '#f5b800', border: '1px solid #2a2a2a' }}
           >
-            Africa's Boldest Ebook Marketplace
+            African Stories in Books, Film & Sound
           </span>
 
           <h1 className="font-display text-5xl sm:text-7xl leading-none mb-6 tracking-tight">
@@ -86,19 +86,19 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl max-w-xl mx-auto mb-10 leading-relaxed" style={{ color: '#777' }}>
-            Discover thousands of ebooks by African authors. Buy, read, and support the writers shaping tomorrow's culture — all in one place.
+            Discover African books, films, documentaries, music, podcasts, and audiobooks. Read, watch, listen, and support the creators shaping tomorrow's culture.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-            <Link href="/browse"
+            <Link href="/african-books"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-opacity hover:opacity-90"
               style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
-              Browse Books <ArrowRight size={18} />
+              Explore African Books <ArrowRight size={18} />
             </Link>
-            <Link href="/signup?role=seller"
+            <Link href="/african-creators"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-medium border transition-all hover:border-[#555]"
               style={{ borderColor: '#2a2a2a', color: '#aaa', background: '#111' }}>
-              <Feather size={16} /> Start Publishing
+              <Feather size={16} /> Publish Your Work
             </Link>
           </div>
 
@@ -107,6 +107,15 @@ export default function LandingPage() {
           </p>
         </div>
       </section>
+
+      <nav aria-label="Explore African media" className="mx-auto grid max-w-5xl grid-cols-2 gap-3 px-5 py-8 sm:grid-cols-4 sm:px-10">
+        {[
+          { label: 'Films & documentaries', href: '/african-films' },
+          { label: 'African music', href: '/african-music' },
+          { label: 'Podcasts', href: '/african-podcasts' },
+          { label: 'Audiobooks', href: '/african-audiobooks' },
+        ].map(item => <Link key={item.href} href={item.href} className="rounded-xl border border-[#2a251a] bg-[#141412] px-4 py-3 text-center text-sm text-[#dfbd71] transition hover:border-[#d5a53a]">{item.label}</Link>)}
+      </nav>
 
       {/* ── STATS ── */}
       <div style={{ borderTop: '1px solid #1a1a1a', borderBottom: '1px solid #1a1a1a' }}>
@@ -197,9 +206,9 @@ export default function LandingPage() {
           <h2 className="font-display text-3xl text-white mb-14">How It Works</h2>
           <div className="grid sm:grid-cols-3 gap-6">
             {[
-              { step: '01', icon: Search, title: 'Discover', desc: 'Browse thousands of ebooks across every genre from African authors around the world.' },
-              { step: '02', icon: Zap, title: 'Purchase', desc: 'Buy instantly with secure checkout. Your book is added to your library immediately.' },
-              { step: '03', icon: BookOpen, title: 'Read', desc: 'Read inside the app — beautiful reader, dark mode, adjustable fonts. No downloads needed.' },
+              { step: '01', icon: Search, title: 'Discover', desc: 'Find books, films, documentaries, music, podcasts, and audiobooks from African creators.' },
+              { step: '02', icon: Zap, title: 'Support creators', desc: 'Purchase stories and media securely, with creator earnings handled through AfroBooks.' },
+              { step: '03', icon: BookOpen, title: 'Enjoy', desc: 'Read, watch, or listen in the AfroBooks app and keep your purchases in your library.' },
             ].map(({ step, icon: Icon, title, desc }) => (
               <div key={step} className="relative p-8 rounded-2xl text-left border" style={{ background: '#0e0e0e', borderColor: '#1a1a1a' }}>
                 <span
@@ -234,19 +243,19 @@ export default function LandingPage() {
               className="inline-block text-xs font-bold px-3 py-1 rounded-full mb-6 uppercase tracking-widest"
               style={{ background: '#1a1000', color: '#f5b800', border: '1px solid #2a2000' }}
             >
-              For Authors
+              For Creators
             </span>
             <h2 className="font-display text-4xl sm:text-5xl text-white mb-5 leading-tight">
-              Publish Your Story<br />to the World
+              Share Your Work<br />with the World
             </h2>
             <p className="text-base mb-8 leading-relaxed" style={{ color: '#666' }}>
-              Share your writing on AfroBooks. Upload your ebook, set your price, and review your estimated earnings before publishing.
+              Publish a book, film, documentary, music release, podcast, or audiobook and share it with a global audience.
             </p>
             <ul className="space-y-3 mb-10">
               {[
                 'Review fees and estimated earnings before publishing',
-                'In-app reading with protected paid chapters',
-                'Built-in audience of African literature fans',
+                'Readers and listeners can discover your work',
+                'Books, films, audio, and music in one creator platform',
                 'Real-time earnings and analytics dashboard',
                 'Choose which chapters readers can preview',
               ].map((item) => (
@@ -256,10 +265,10 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
-            <Link href="/signup?role=seller"
+            <Link href="/african-creators"
               className="inline-flex items-center gap-2 px-7 py-4 rounded-xl text-sm font-bold transition-opacity hover:opacity-90"
               style={{ background: '#f5b800', color: '#000' }}>
-              Start Publishing Free <ArrowRight size={16} />
+              Explore Creator Tools <ArrowRight size={16} />
             </Link>
           </div>
         </div>
@@ -273,10 +282,10 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto">
           <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#e8442a' }}>Join AfroBooks</p>
           <h2 className="font-display text-4xl sm:text-6xl text-white mb-5 leading-tight">
-            Ready to start<br />reading?
+              Ready to discover<br />African stories?
           </h2>
           <p className="text-base mb-10" style={{ color: '#555' }}>
-            Join thousands of readers discovering African literature every day.
+            Read, watch, and listen to independent African creators on AfroBooks.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/signup"
@@ -307,14 +316,14 @@ export default function LandingPage() {
               Built for Africa's<br />Literary Future
             </h2>
             <p className="text-sm leading-relaxed mb-4" style={{ color: '#a8a49c' }}>
-              AfroBooks is a digital marketplace dedicated to African storytelling. We believe every African story deserves a global audience — and every African author deserves fair compensation for their craft.
+              AfroBooks is a digital marketplace for African stories in print, film, and sound. We believe every creator deserves a global audience and fair compensation for their work.
             </p>
             <p className="text-sm leading-relaxed mb-6" style={{ color: '#96928a' }}>
-              Founded with a mission to bridge the gap between Africa's brilliant writers and a world hungry for authentic African narratives, we provide authors with the tools, platform, and audience they need to thrive.
+              We bring African authors, filmmakers, musicians, podcasters, and narrators together with audiences looking for original work and perspectives.
             </p>
             <div className="flex items-center gap-2 text-sm" style={{ color: '#b9ad98' }}>
               <Heart size={14} strokeWidth={1.75} className="shrink-0 text-[#e9bd73]" aria-hidden="true" />
-              Made with love for African literature
+              Made with love for African creativity
             </div>
           </div>
 
@@ -396,7 +405,7 @@ export default function LandingPage() {
             <div className="col-span-2 sm:col-span-1">
               <Logo size="sm" />
               <p className="text-xs mt-3 leading-relaxed" style={{ color: '#444' }}>
-                Africa's boldest ebook marketplace. Discover, buy, and support African authors.
+                African books, films, music, podcasts, and audiobooks — all in one place.
               </p>
             </div>
 
@@ -404,7 +413,11 @@ export default function LandingPage() {
               <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Readers</p>
               <ul className="space-y-2.5">
                 {[
-                  { label: 'Browse Books', href: '/browse' },
+                  { label: 'African Books', href: '/african-books' },
+                  { label: 'Films & Documentaries', href: '/african-films' },
+                  { label: 'African Music', href: '/african-music' },
+                  { label: 'Podcasts', href: '/african-podcasts' },
+                  { label: 'Audiobooks', href: '/african-audiobooks' },
                   { label: 'Discover', href: '/discover' },
                   { label: 'Community', href: '/community' },
                   { label: 'Subscription', href: '/subscription' },
@@ -422,7 +435,7 @@ export default function LandingPage() {
               <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Authors</p>
               <ul className="space-y-2.5">
                 {[
-                  { label: 'Start Publishing', href: '/signup?role=seller' },
+                  { label: 'Start Publishing', href: '/african-creators' },
                   { label: 'Author Studio', href: '/dashboard' },
                   { label: 'Publish a Book', href: '/publish' },
                   { label: 'Earnings', href: '/earnings' },

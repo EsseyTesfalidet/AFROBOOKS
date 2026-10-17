@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { VIDEO_CATEGORIES, type WatchState, type WatchVideo } from '../../types/video';
+import { VIDEO_CATEGORIES, type WatchAsset, type WatchState, type WatchVideo } from '../../types/video';
 
 export const watchId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 export const videoDraftSchema = z.object({
@@ -36,6 +36,12 @@ export function videoAccess(video: WatchVideo, uid: string, admin: boolean, owne
   if (owned) return true;
   if (video.status !== 'published') return false;
   return trailer ? video.hasTrailer : video.priceCents === 0;
+}
+
+export function publicTrailerReady(video: Pick<WatchVideo, 'status' | 'hasTrailer'>, trailer?: Partial<WatchAsset> | null) {
+  return video.status === 'published' && video.hasTrailer === true && trailer?.ready === true
+    && typeof trailer.uid === 'string' && /^[a-f0-9]{32}$/i.test(trailer.uid)
+    && typeof trailer.duration === 'number' && Number.isFinite(trailer.duration) && trailer.duration > 0 && trailer.duration <= 300;
 }
 
 export function publicVideo(data: WatchVideo): WatchVideo {

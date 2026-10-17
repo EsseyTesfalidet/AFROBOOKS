@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: `${name} videos`,
       description,
-      alternates: { canonical: `/watch/creator/${encodeURIComponent(id)}` },
+      alternates: { canonical: `/african-creators/${encodeURIComponent(id)}` },
       openGraph: { type: 'website', title: `${name} videos — AfroBooks`, description },
       twitter: { card: 'summary', title: `${name} videos — AfroBooks`, description },
     };

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
 import { APP_MODE_BOOTSTRAP } from '../lib/app/installed';
 import { hasMobileAccount, isPublicMobilePage, mobileReturnPath } from '../lib/auth/mobileAccess';
+import { protectedPage } from '../lib/auth/routeAccess';
 import { authorReturnPath, loginDestination } from '../lib/utils/loginDestination';
 import { mobileSignInDestination } from '../lib/auth/mobileSignIn';
 import { authorWebsiteHref, readerAppHref, READER_APP_RETURN } from '../lib/app/authorWebsite';
@@ -93,7 +94,9 @@ test('installed entry requires a matching active Firebase account, not a profile
 
 test('only authentication and legal screens stay visible to installed-app guests', () => {
   for (const path of ['/login', '/signup', '/privacy', '/terms']) assert.equal(isPublicMobilePage(path), true);
-  for (const path of ['/', '/browse', '/cart', '/read/book', '/sample/book', '/author/author', '/about-help', '/login/other', '/dashboard', '/community']) assert.equal(isPublicMobilePage(path), false);
+  for (const path of ['/', '/browse', '/cart', '/read/book', '/sample/book', '/author/author', '/about-help', '/login/other', '/dashboard', '/community', '/african-books', '/african-films', '/african-audio']) assert.equal(isPublicMobilePage(path), false);
+  for (const path of ['/african-books', '/african-books/title', '/african-films', '/african-creators']) assert.equal(protectedPage(path), false);
+  for (const path of ['/watch', '/listen', '/library', '/checkout']) assert.equal(protectedPage(path), true);
 });
 
 test('mobile deep-link returns are local screens and cannot redirect into authentication, another host or a gift-secret fragment', () => {

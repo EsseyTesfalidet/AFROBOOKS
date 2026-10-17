@@ -31,11 +31,15 @@ function contentUrl(path: string, id: string) {
 
 const publicPages: SitemapRecord[] = [
   { url: BASE, changeFrequency: 'daily', priority: 1 },
+  { url: `${BASE}/african-books`, changeFrequency: 'daily', priority: 0.9 },
+  { url: `${BASE}/african-films`, changeFrequency: 'daily', priority: 0.9 },
+  { url: `${BASE}/african-music`, changeFrequency: 'daily', priority: 0.9 },
+  { url: `${BASE}/african-podcasts`, changeFrequency: 'daily', priority: 0.8 },
+  { url: `${BASE}/african-audiobooks`, changeFrequency: 'daily', priority: 0.8 },
+  { url: `${BASE}/african-audio`, changeFrequency: 'daily', priority: 0.8 },
+  { url: `${BASE}/african-creators`, changeFrequency: 'weekly', priority: 0.8 },
   { url: `${BASE}/browse`, changeFrequency: 'daily', priority: 0.9 },
   { url: `${BASE}/discover`, changeFrequency: 'daily', priority: 0.8 },
-  { url: `${BASE}/subscription`, changeFrequency: 'monthly', priority: 0.6 },
-  { url: `${BASE}/watch`, changeFrequency: 'daily', priority: 0.7 },
-  { url: `${BASE}/listen`, changeFrequency: 'daily', priority: 0.7 },
   { url: `${BASE}/about-help`, changeFrequency: 'monthly', priority: 0.5 },
   { url: `${BASE}/terms`, changeFrequency: 'yearly', priority: 0.2 },
   { url: `${BASE}/privacy`, changeFrequency: 'yearly', priority: 0.2 },
@@ -74,7 +78,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const content: SitemapRecord[] = [
       ...liveBooks.map(row => ({
-        url: contentUrl('/book', row.id),
+        url: contentUrl('/african-books', row.id),
         lastModified: lastModified(row.data().updatedAt || row.data().publishedAt),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
@@ -85,26 +89,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       })),
       ...videoRows.docs.map(row => ({
-        url: contentUrl('/watch', row.id),
+        url: contentUrl('/african-films', row.id),
         lastModified: lastModified(row.data().updatedAt || row.data().publishedAt),
         changeFrequency: 'weekly' as const,
         priority: 0.7,
       })),
       ...[...approvedCreatorIds].map(id => ({
-        url: `${BASE}/watch/creator/${encodeURIComponent(id)}`,
+        url: `${BASE}/african-creators/${encodeURIComponent(id)}`,
         changeFrequency: 'monthly' as const,
         priority: 0.5,
       })),
       ...audioRows.docs.filter(row => row.data().ready === true).map(row => ({
-        url: `${BASE}/listen?title=${encodeURIComponent(row.id)}`,
+        url: `${BASE}/african-audio/${encodeURIComponent(row.id)}`,
         lastModified: lastModified(row.data().updatedAt),
         changeFrequency: 'weekly' as const,
         priority: 0.6,
       })),
     ];
 
-    // Nine pages plus five bounded groups of 9,000 stay below the protocol cap.
-    return [...publicPages, ...content].slice(0, 45_009);
+    // Thirteen public pages plus five bounded groups of 9,000 stay below the 50,000 URL cap.
+    return [...publicPages, ...content].slice(0, 45_013);
   } catch {
     // Keep the sitemap available if Firebase is temporarily unavailable. The
     // static storefront pages remain discoverable and content entries return

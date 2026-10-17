@@ -6,7 +6,7 @@ import type { AuthenticatedRequestUser } from './auth';
 import { WatchError } from './watchErrors';
 import { createStreamUpload, StreamUploadRejectedError, streamAssetStatus, streamConfigured, streamHostingStatus, streamPlaybackToken, testStreamUploadAccess, uploadStreamCaptions } from './watchStream';
 import { ensureWatchPoster } from './watchPosters';
-import { captionSchema, EMPTY_WATCH_STATE, posterMime, publicVideo, uploadSchema, videoAccess, videoDraftSchema, watchId } from '@/lib/watch/policy';
+import { captionSchema, EMPTY_WATCH_STATE, posterMime, publicTrailerReady, publicVideo, uploadSchema, videoAccess, videoDraftSchema, watchId } from '@/lib/watch/policy';
 import { getPlayOffer, playLiveConfigured, savePlayProduct, syncPlayPurchase, verifyPlayPlayback } from './watchPlay';
 import { getVideoEarnings } from './watchEarnings';
 import { getVideoPayoutOverview, payVideoCreator, registerVideoFunding, runVideoPayouts } from './watchPayouts';
@@ -20,6 +20,7 @@ type Actor = AuthenticatedRequestUser;
 const admin = (actor: Actor) => { if (actor.role !== 'admin') throw new WatchError(403, 'Administrator access required.'); };
 const author = (actor: Actor) => { if (!['seller', 'both', 'admin'].includes(actor.role)) throw new WatchError(403, 'Open your author workspace to apply as a video creator.'); };
 const stateRef = (db: Awaited<ReturnType<typeof getAdminDb>>, uid: string, id: string) => db.doc(`watchStates/${uid}/videos/${id}`);
+const publicTrailerTokens = new Map<string, { token: string; expiresAt: number }>();
 
 export async function watchRateLimit(actor: Actor, bucket: string, maximum = 60) {
   const db = await getAdminDb();
@@ -37,6 +38,31 @@ async function videoRecord(id: string) {
   const snap = await db.doc(`watchVideos/${id}`).get();
   if (!snap.exists) throw new WatchError(404, 'This video is unavailable.');
   return snap.data() as WatchVideo;
+}
+
+// Public SEO pages may embed a creator-provided trailer, but never the full
+// film. The short-lived token is cached only in this server process to avoid
+// asking Cloudflare for a fresh token on every crawler/player request.
+export async function getPublicTrailerEmbedUrl(id: string) {
+  watchId.parse(id);
+  const video = await videoRecord(id);
+  if (video.status !== 'published' || !video.hasTrailer) throw new WatchError(404, 'This trailer is unavailable.');
+  const cached = publicTrailerTokens.get(id);
+  if (cached && cached.expiresAt > Date.now() + 5 * 60_000) return `https://iframe.videodelivery.net/${encodeURIComponent(cached.token)}?autoplay=false&preload=none`;
+  const db = await getAdminDb();
+  const secret = (await db.doc(`watchPrivate/${id}`).get()).data();
+  const trailer = secret?.trailer as WatchPrivate['trailer'] | undefined;
+  if (!trailer || !publicTrailerReady(video, trailer)) {
+    throw new WatchError(404, 'This trailer is unavailable.');
+  }
+  const signed = await streamPlaybackToken(trailer.uid, trailer.duration);
+  const expiresAt = signed.expiresAt * 1000;
+  publicTrailerTokens.set(id, { token: signed.token, expiresAt });
+  if (publicTrailerTokens.size > 200) {
+    for (const [key, value] of publicTrailerTokens) if (value.expiresAt <= Date.now()) publicTrailerTokens.delete(key);
+    if (publicTrailerTokens.size > 200) publicTrailerTokens.delete(publicTrailerTokens.keys().next().value!);
+  }
+  return `https://iframe.videodelivery.net/${encodeURIComponent(signed.token)}?autoplay=false&preload=none`;
 }
 async function viewerState(actor: Actor, video: WatchVideo): Promise<WatchState> {
   const db = await getAdminDb();

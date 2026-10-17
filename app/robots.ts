@@ -5,8 +5,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/browse', '/discover', '/subscription', '/watch', '/listen', '/terms', '/privacy', '/about-help', '/book/', '/author/'],
+        allow: ['/', '/browse', '/discover', '/terms', '/privacy', '/about-help', '/book/', '/author/', '/african-books', '/african-films', '/african-music', '/african-podcasts', '/african-audiobooks', '/african-audio', '/african-creators', '/api/watch/public-preview'],
         disallow: [
+          '/api/',
           '/admin',
           '/dashboard',
           '/listings',
@@ -19,9 +20,12 @@ export default function robots(): MetadataRoute.Robots {
           '/read/',
           '/profile/',
           '/notifications',
+          '/watch',
+          '/listen',
+          '/subscription',
         ],
       },
     ],
-    sitemap: 'https://afrobs.com/sitemap.xml',
+    sitemap: ['https://afrobs.com/sitemap.xml', 'https://afrobs.com/video-sitemap.xml'],
   };
 }
