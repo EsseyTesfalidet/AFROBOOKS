@@ -7,6 +7,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const profile = await getPublicAuthor(id);
+    if (!profile) return { title: 'Author unavailable', robots: { index: false, follow: false } };
     const name = profile?.seller.penName || [profile?.author.firstName, profile?.author.lastName].filter(Boolean).join(' ') || 'Author';
     const bio = profile?.author.bio;
     const avatar = profile?.author.avatarUrl;
@@ -16,6 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: name,
       description: desc,
+      alternates: { canonical: `/author/${encodeURIComponent(id)}` },
       openGraph: {
         title: `${name} — AfroBooks`,
         description: desc,
@@ -29,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch {
-    return { title: 'Author — AfroBooks' };
+    return { title: 'Author unavailable', robots: { index: false, follow: false } };
   }
 }
 

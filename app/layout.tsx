@@ -24,11 +24,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
+    default: 'AfroBooks | African Books, Films, Music & Stories',
     template: '%s — AfroBooks',
   },
-  description: 'Discover and read ebooks by African authors. Browse thousands of titles across fiction, history, science, and more. Africa\'s boldest ebook marketplace.',
-  keywords: ['African ebooks', 'African authors', 'ebook marketplace', 'African literature', 'buy ebooks online', 'AfroBooks'],
+  description: 'Discover African books, magazines, films, music, podcasts and audiobooks on AfroBooks. Read, watch and listen to stories from African authors and creators.',
+  keywords: ['African books', 'African authors', 'African literature', 'African films', 'African music', 'African podcasts', 'African audiobooks', 'AfroBooks'],
   authors: [{ name: 'AfroBooks' }],
   creator: 'AfroBooks',
   publisher: 'AfroBooks',
@@ -41,14 +41,14 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://afrobs.com',
     siteName: 'AfroBooks',
-    title: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
-    description: 'Discover and read ebooks by African authors. Browse thousands of titles across fiction, history, science, and more.',
+    title: 'AfroBooks | African Books, Films, Music & Stories',
+    description: 'Discover African books, magazines, films, music, podcasts and audiobooks from African authors and creators.',
     images: [{ url: '/pwa-512x512.png?v=2', width: 512, height: 512, alt: 'AfroBooks' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AfroBooks — Africa\'s Boldest Ebook Marketplace',
-    description: 'Discover and read ebooks by African authors.',
+    title: 'AfroBooks | African Books, Films, Music & Stories',
+    description: 'Read, watch and listen to stories from African authors and creators.',
     images: ['/pwa-512x512.png?v=2'],
   },
   robots: {

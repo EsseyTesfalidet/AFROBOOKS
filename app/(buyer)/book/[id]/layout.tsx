@@ -20,6 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!res.ok) throw new Error('not found');
     const data = await res.json();
     const f = data.fields ?? {};
+    if (str(f.status) !== 'live' || f.deletionPending?.booleanValue === true) {
+      return { title: 'Book unavailable', robots: { index: false, follow: false } };
+    }
     const title = str(f.title) || 'Book';
     const author = str(f.authorName) || 'Unknown Author';
     const desc = str(f.description);
@@ -28,6 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title,
       description: snippet,
+      alternates: { canonical: `/book/${encodeURIComponent(id)}` },
       openGraph: {
         title: `${title} — ${author}`,
         description: snippet,
@@ -41,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch {
-    return { title: 'Book — AfroBooks' };
+    return { title: 'Book unavailable', robots: { index: false, follow: false } };
   }
 }
 

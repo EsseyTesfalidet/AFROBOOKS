@@ -150,7 +150,9 @@ export default function LandingPage() {
                 <div className="relative" style={{ height: 150, background: book.coverBgColor || '#1a1040' }}>
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.9))' }} />
                   {book.coverUrl && (
-                    <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+                    book.coverUrl.startsWith('https://firebasestorage.googleapis.com/')
+                      ? <Image src={book.coverUrl} alt={book.title} fill sizes="160px" quality={76} className="object-cover" />
+                      : <img src={book.coverUrl} alt={book.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   )}
                   <div className="absolute top-2 right-2">
                     <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: '#f5b800', color: '#000', fontSize: 8 }}>EBOOK</span>
