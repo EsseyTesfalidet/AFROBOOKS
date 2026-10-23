@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PublicRelease, JsonLd } from '@/components/discovery/PublicDiscovery';
-import { discoveryDescription, getPublicDiscoveryItem } from '@/lib/server/discoveryPages';
+import { discoveryDescription, getPublicDiscoveryItem, getPublicDiscoveryItems } from '@/lib/server/discoveryPages';
+import { relatedReleases } from '@/lib/seo/discovery';
 
 type Props = { params: Promise<{ id: string }> };
 export const revalidate = 1800;
@@ -20,6 +21,7 @@ export default async function PublicAudioPage({ params }: Props) {
   const { id } = await params;
   const item = await getPublicDiscoveryItem('audio', id);
   if (!item) notFound();
+  const candidates = await getPublicDiscoveryItems('audio').catch(() => []);
   const jsonLd = { '@context': 'https://schema.org', '@type': 'CreativeWork', name: item.title, description: item.description, creator: { '@type': 'Person', name: item.creator }, inLanguage: item.language, url: `https://afrobs.com${item.href}`, ...(item.image ? { image: item.image } : {}) };
-  return <><JsonLd data={jsonLd} /><PublicRelease item={item} action={{ href: `/listen?title=${encodeURIComponent(id)}`, label: 'Listen on AfroNarra' }} /></>;
+  return <><JsonLd data={jsonLd} /><PublicRelease item={item} related={relatedReleases(item, candidates)} action={{ href: `/listen?title=${encodeURIComponent(id)}`, label: 'Open Listen in the app' }} /></>;
 }

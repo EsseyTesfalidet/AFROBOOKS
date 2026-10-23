@@ -1,4 +1,6 @@
 import { getAdminDb } from '@/lib/firebase/admin';
+import { cache } from 'react';
+import { bookSampleAllowed, bookSampleText, publicAudioSamplePath } from '@/lib/seo/publicSamples';
 import type { Book } from '@/types/book';
 import type { AudioTitle } from '@/types/audio';
 import type { WatchVideo } from '@/types/video';
@@ -17,6 +19,9 @@ export type DiscoveryItem = {
   publishedAt: string;
   durationSeconds: number;
   hasTrailer: boolean;
+  creatorHref?: string;
+  format?: string;
+  tags?: string[];
 };
 
 const MAX_ITEMS = 36;
@@ -44,8 +49,8 @@ function isoDate(value: unknown): string {
 }
 
 function clipDescription(value: unknown, fallback: string): string {
-  const description = string(value, fallback).replace(/\s+/g, ' ');
-  return description.length > 1000 ? `${description.slice(0, 997).trimEnd()}…` : description;
+  const description = string(value, fallback).replace(/\r\n?/g, '\n').trim() || fallback;
+  return description.length > 6000 ? `${description.slice(0, 5997).trimEnd()}…` : description;
 }
 
 function itemFromBook(id: string, book: Partial<Book> & Record<string, unknown>): DiscoveryItem {
@@ -57,6 +62,9 @@ function itemFromBook(id: string, book: Partial<Book> & Record<string, unknown>)
     category: string(book.genre, 'Books'), language: string(book.language, 'Unknown language'),
     image: publicImage(book.coverUrl), href: `/african-books/${encodeURIComponent(id)}`,
     publishedAt: isoDate(book.publishedAt || book.updatedAt), durationSeconds: 0, hasTrailer: false,
+    creatorHref: validPublicId(string(book.sellerId)) ? `/author/${encodeURIComponent(string(book.sellerId))}` : undefined,
+    format: book.publicationType === 'magazine' ? 'Magazine' : book.publicationType === 'short_story' ? 'Short story' : 'Book',
+    tags: Array.isArray(book.tags) ? book.tags.filter((tag): tag is string => typeof tag === 'string').map(tag => tag.trim().slice(0, 60)).filter(Boolean).slice(0, 8) : [],
   };
 }
 
@@ -71,6 +79,8 @@ function itemFromVideo(id: string, video: Partial<WatchVideo> & Record<string, u
     publishedAt: isoDate(video.publishedAt || video.updatedAt),
     durationSeconds: typeof video.durationSeconds === 'number' ? Math.max(0, video.durationSeconds) : 0,
     hasTrailer: video.hasTrailer === true,
+    creatorHref: validPublicId(string(video.creatorId)) ? `/african-creators/${encodeURIComponent(string(video.creatorId))}` : undefined,
+    format: string(video.category, 'Film & video'),
   };
 }
 
@@ -84,11 +94,12 @@ function itemFromAudio(id: string, audio: Partial<AudioTitle> & Record<string, u
     image: publicImage(audio.coverUrl), href: `/african-audio/${encodeURIComponent(id)}`,
     publishedAt: isoDate(audio.updatedAt),
     durationSeconds: typeof audio.durationSeconds === 'number' ? Math.max(0, audio.durationSeconds) : 0,
-    hasTrailer: audio.previewReady === true,
+    hasTrailer: publicAudioSamplePath({ ...audio, id }) !== null,
+    format: string(audio.category, 'Audio'),
   };
 }
 
-export async function getPublicDiscoveryItems(kind: DiscoveryKind, category?: string, creatorId?: string): Promise<DiscoveryItem[]> {
+export const getPublicDiscoveryItems = cache(async (kind: DiscoveryKind, category?: string, creatorId?: string): Promise<DiscoveryItem[]> => {
   const db = await getAdminDb();
   const collection = kind === 'book' ? 'books' : kind === 'video' ? 'watchVideos' : 'audioTitles';
   const status = kind === 'book' ? 'live' : 'published';
@@ -106,9 +117,9 @@ export async function getPublicDiscoveryItems(kind: DiscoveryKind, category?: st
     return [itemFromAudio(row.id, data as Partial<AudioTitle> & Record<string, unknown>)];
   }).filter((item) => !category || item.category.toLowerCase() === category.toLowerCase());
   return items.sort((a, b) => (b.publishedAt || '').localeCompare(a.publishedAt || '')).slice(0, MAX_ITEMS);
-}
+});
 
-export async function getPublicDiscoveryItem(kind: DiscoveryKind, id: string): Promise<DiscoveryItem | null> {
+export const getPublicDiscoveryItem = cache(async (kind: DiscoveryKind, id: string): Promise<DiscoveryItem | null> => {
   if (!validPublicId(id)) return null;
   const db = await getAdminDb();
   const collection = kind === 'book' ? 'books' : kind === 'video' ? 'watchVideos' : 'audioTitles';
@@ -125,6 +136,19 @@ export async function getPublicDiscoveryItem(kind: DiscoveryKind, id: string): P
   }
   if (data.status !== 'published' || data.ready !== true) return null;
   return itemFromAudio(row.id, data as Partial<AudioTitle> & Record<string, unknown>);
+});
+
+export async function getPublicBookSample(id: string): Promise<{ title: string; text: string } | null> {
+  if (!validPublicId(id)) return null;
+  const db = await getAdminDb();
+  const book = await db.doc(`books/${id}`).get();
+  if (!book.exists || !bookSampleAllowed(book.data()!)) return null;
+  // Only chapters explicitly marked as public may enter the page response.
+  const chapters = await book.ref.collection('chapters').where('isPreview', '==', true).limit(12).get();
+  const chapter = chapters.docs.map(row => row.data()).sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0))[0];
+  if (!chapter || chapter.isPreview !== true || typeof chapter.content !== 'string') return null;
+  const text = bookSampleText(chapter.content);
+  return text ? { title: string(chapter.title, 'Book sample'), text } : null;
 }
 
 export async function getPublicVideoCreator(id: string) {
@@ -149,7 +173,9 @@ export async function getPublicVideoCreators(limit = 24) {
 }
 
 export function discoveryDescription(text: string, max = 160) {
-  return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
+  const description = text.replace(/\s+/g, ' ').trim();
+  const characters = Array.from(description);
+  return characters.length <= max ? description : `${characters.slice(0, max - 1).join('').trimEnd()}…`;
 }
 
 export function isoDuration(seconds: number) {

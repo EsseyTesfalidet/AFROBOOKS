@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { getAdminDb } from '@/lib/firebase/admin';
+import { PUBLIC_COLLECTIONS, matchesPublicCollection } from '@/lib/seo/collections';
 
 const BASE = 'https://afrobs.com';
 // Keep each catalog slice comfortably below Google's 50,000 URL sitemap cap.
@@ -77,6 +78,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const approvedCreatorIds = new Set(creatorDocs.flatMap(creator => creator.data()?.status === 'approved' ? [creator.id] : []));
 
     const content: SitemapRecord[] = [
+      ...PUBLIC_COLLECTIONS.filter(collection => (collection.kind === 'book' ? liveBooks : videoRows.docs).some(row => matchesPublicCollection(collection.slug, row.data()))).map(collection => ({
+        url: `${BASE}/${collection.slug}`, changeFrequency: 'weekly' as const, priority: 0.8,
+      })),
       ...liveBooks.map(row => ({
         url: contentUrl('/african-books', row.id),
         lastModified: lastModified(row.data().updatedAt || row.data().publishedAt),
@@ -107,8 +111,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })),
     ];
 
-    // Thirteen public pages plus five bounded groups of 9,000 stay below the 50,000 URL cap.
-    return [...publicPages, ...content].slice(0, 45_013);
+    // Public pages and bounded catalog groups stay below the 50,000 URL cap.
+    return [...publicPages, ...content].slice(0, 45_015);
   } catch {
     // Keep the sitemap available if Firebase is temporarily unavailable. The
     // static storefront pages remain discoverable and content entries return

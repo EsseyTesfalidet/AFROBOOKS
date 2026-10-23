@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/browse', '/discover', '/terms', '/privacy', '/about-help', '/book/', '/author/', '/african-books', '/african-films', '/african-music', '/african-podcasts', '/african-audiobooks', '/african-audio', '/african-creators', '/api/watch/public-preview'],
+        allow: ['/', '/browse', '/discover', '/terms', '/privacy', '/about-help', '/book/', '/author/', '/african-books', '/african-films', '/african-music', '/african-podcasts', '/african-audiobooks', '/african-audio', '/african-creators', '/tigrinya-books', '/african-documentaries', '/api/watch/public-preview', '/api/audio/public-preview'],
         disallow: [
           '/api/',
           '/admin',

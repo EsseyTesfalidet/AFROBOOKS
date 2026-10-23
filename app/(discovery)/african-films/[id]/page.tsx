@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PublicRelease } from '@/components/discovery/PublicDiscovery';
-import { discoveryDescription, getPublicDiscoveryItem, isoDuration } from '@/lib/server/discoveryPages';
+import { discoveryDescription, getPublicDiscoveryItem, getPublicDiscoveryItems } from '@/lib/server/discoveryPages';
+import { relatedReleases } from '@/lib/seo/discovery';
 
 type Props = { params: Promise<{ id: string }> };
 export const revalidate = 900;
@@ -20,16 +21,16 @@ export default async function PublicVideoPage({ params }: Props) {
   const { id } = await params;
   const item = await getPublicDiscoveryItem('video', id);
   if (!item) notFound();
+  const candidates = await getPublicDiscoveryItems('video').catch(() => []);
   const embedUrl = item.hasTrailer ? `https://afrobs.com/api/watch/public-preview?id=${encodeURIComponent(id)}` : undefined;
   const jsonLd = item.hasTrailer && item.image ? {
     '@context': 'https://schema.org', '@type': 'VideoObject', name: item.title, description: item.description,
     thumbnailUrl: item.image ? [item.image] : undefined,
     uploadDate: item.publishedAt || undefined,
-    duration: item.durationSeconds > 0 ? isoDuration(item.durationSeconds) : undefined,
     embedUrl,
     inLanguage: item.language,
     publisher: { '@type': 'Organization', name: item.creator },
     mainEntityOfPage: `https://afrobs.com${item.href}`,
   } : undefined;
-  return <PublicRelease item={item} trailerUrl={embedUrl} jsonLd={jsonLd} action={{ href: `/watch/${encodeURIComponent(id)}`, label: 'Open AfroNarra Watch' }} />;
+  return <PublicRelease item={item} trailerUrl={embedUrl} jsonLd={jsonLd} related={relatedReleases(item, candidates)} action={{ href: `/watch/${encodeURIComponent(id)}`, label: 'Open Watch in the app' }} />;
 }

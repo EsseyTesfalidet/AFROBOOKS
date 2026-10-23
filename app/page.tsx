@@ -1,39 +1,28 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { BookOpen, Clapperboard, Headphones, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Facebook, Heart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import CommunityInvitation from '@/components/community/CommunityInvitation';
-import { useAuthStore } from '@/store/authStore';
-import { useCatalog } from '@/hooks/useCatalog';
-import { centsToDisplay } from '@/lib/utils/formatCurrency';
+import LandingSession from '@/components/discovery/LandingSession';
+import { PublicMediaShelf } from '@/components/discovery/PublicDiscovery';
+import { getPublicDiscoveryItems } from '@/lib/server/discoveryPages';
 import { LEGAL_CONTACT } from '@/lib/legal';
 import { BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand';
+import { PUBLIC_COLLECTIONS, matchesPublicCollection } from '@/lib/seo/collections';
 
 const GENRES = ['Fiction', 'History', 'Science', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 
-export default function LandingPage() {
-  const router = useRouter();
-  const { userProfile, loading } = useAuthStore();
-  const catalog = useCatalog();
-  const books = catalog.books.slice(0, 8);
+export const revalidate = 900;
 
-  useEffect(() => {
-    if (!loading && userProfile) {
-      if (userProfile.role === 'admin') router.replace('/admin');
-      else if (userProfile.activeRole === 'seller') router.replace('/dashboard');
-      else router.replace('/browse');
-    }
-  }, [loading, userProfile]);
-
-  if (loading) return null;
-  if (userProfile) return null;
+export default async function LandingPage() {
+  const releases = await Promise.allSettled([
+    getPublicDiscoveryItems('book'), getPublicDiscoveryItems('video'), getPublicDiscoveryItems('audio'),
+  ]);
+  // A temporary catalog outage must not remove the public landing page.
+  const [books, films, audio] = releases.map(result => result.status === 'fulfilled' ? result.value.slice(0, 4) : []);
 
   return (
-    <div className="min-h-screen" style={{ background: '#0e0e0e', color: '#f5f2eb' }}>
+    <LandingSession><div className="min-h-screen" style={{ background: '#0e0e0e', color: '#f5f2eb' }}>
 
       {/* ── NAV ── */}
       <nav
@@ -42,7 +31,7 @@ export default function LandingPage() {
       >
         <Logo size="sm" />
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link href="/browse"
+          <Link href="/african-books"
             className="hidden sm:block text-sm px-4 py-2 rounded-lg transition-colors"
             style={{ color: '#888' }}>
             Read
@@ -83,9 +72,9 @@ export default function LandingPage() {
           </span>
 
           <h1 className="font-display text-5xl sm:text-7xl leading-none mb-6 tracking-tight">
-            Africa's Stories,
+            African Books, Films,
             <br />
-            <span style={{ color: '#f5b800' }}>Your World.</span>
+            <span style={{ color: '#f5b800' }}>Music & Stories.</span>
           </h1>
 
           <p className="text-lg sm:text-xl max-w-xl mx-auto mb-10 leading-relaxed" style={{ color: '#777' }}>
@@ -106,7 +95,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-xs" style={{ color: '#444' }}>
-            Explore freely · Buy or subscribe where offered
+            Explore releases and available previews · Buy or subscribe where offered
           </p>
         </div>
       </section>
@@ -151,54 +140,15 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* ── FEATURED BOOKS ── */}
-      {books.length > 0 && (
-        <section className="py-16">
-          <div className="px-5 sm:px-10 mb-8 flex items-end justify-between max-w-6xl mx-auto">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#e8442a' }}>Just Added</p>
-              <h2 className="font-display text-3xl text-white">New Books & Stories</h2>
-            </div>
-            <Link href="/browse" className="text-sm flex items-center gap-1 transition-colors hover:text-white" style={{ color: '#f5b800' }}>
-              View all <ArrowRight size={14} />
-            </Link>
-          </div>
+      <div className="mx-auto max-w-6xl space-y-14 px-5 py-14 sm:px-10">
+        <PublicMediaShelf title="New books & stories" items={books} href="/african-books" linkLabel="Explore books" />
+        <PublicMediaShelf title="Films & documentaries" items={films} href="/african-films" linkLabel="Explore films" />
+        <PublicMediaShelf title="Music, podcasts & audiobooks" items={audio} href="/african-audio" linkLabel="Explore audio" />
+      </div>
 
-          <div
-            className="flex gap-4 overflow-x-auto px-5 sm:px-10 pb-4 sm:grid sm:grid-cols-4 sm:overflow-visible sm:max-w-6xl sm:mx-auto"
-            style={{ scrollbarWidth: 'none' } as React.CSSProperties}
-          >
-            {books.map((book) => (
-              <Link key={book.id} href={`/book/${book.id}`}
-                className="flex-shrink-0 w-40 sm:w-auto rounded-xl overflow-hidden border transition-transform hover:-translate-y-1"
-                style={{ border: '1px solid #1a1a1a', background: '#111' }}>
-                <div className="relative" style={{ height: 150, background: book.coverBgColor || '#1a1040' }}>
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.9))' }} />
-                  {book.coverUrl && (
-                    book.coverUrl.startsWith('https://firebasestorage.googleapis.com/')
-                      ? <Image src={book.coverUrl} alt={book.title} fill sizes="160px" quality={76} className="object-cover" />
-                      : <img src={book.coverUrl} alt={book.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                  )}
-                  <div className="absolute top-2 right-2">
-                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: '#f5b800', color: '#000', fontSize: 8 }}>EBOOK</span>
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-2">
-                    <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: book.coverAccentColor || '#f5b800', fontSize: 8 }}>{book.genre}</p>
-                    <p className="font-display text-white leading-tight" style={{ fontSize: 13 }}>{book.title}</p>
-                    <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>{book.authorName}</p>
-                  </div>
-                </div>
-                <div className="px-3 py-2.5 flex items-center justify-between">
-                  <p className="text-sm font-medium" style={{ color: '#f5b800' }}>{centsToDisplay(book.price)}</p>
-                  {book.averageRating > 0 && (
-                    <p className="text-xs" style={{ color: '#555' }}>★ {book.averageRating.toFixed(1)}</p>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      <nav aria-label="Featured collections" className="mx-auto flex max-w-6xl flex-wrap justify-center gap-3 px-5 pb-8 sm:px-10">
+        {PUBLIC_COLLECTIONS.filter(collection => releases.some(result => result.status === 'fulfilled' && result.value.some(item => item.kind === collection.kind && matchesPublicCollection(collection.slug, item)))).map(collection => <Link key={collection.slug} href={`/${collection.slug}`} className="inline-flex min-h-11 items-center rounded-full border border-[#d5a53a]/40 px-4 text-sm text-[#dfbd71]">{collection.title}<ArrowRight size={14} className="ml-2" aria-hidden="true" /></Link>)}
+      </nav>
 
       {/* ── GENRES ── */}
       <section className="px-5 sm:px-10 py-16 max-w-3xl mx-auto text-center">
@@ -206,7 +156,7 @@ export default function LandingPage() {
         <h2 className="font-display text-3xl text-white mb-8">Browse by Genre</h2>
         <div className="flex flex-wrap gap-3 justify-center">
           {GENRES.map((g) => (
-            <Link key={g} href="/browse"
+            <Link key={g} href="/african-books"
               className="px-4 py-2 rounded-full text-sm font-medium border transition-all hover:border-[#e8442a] hover:text-white"
               style={{ borderColor: '#222', color: '#666', background: '#111' }}>
               {g}
@@ -499,6 +449,6 @@ export default function LandingPage() {
         </div>
       </footer>
 
-    </div>
+    </div></LandingSession>
   );
 }
