@@ -5,15 +5,15 @@ import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { initializeTestEnvironment, assertFails, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { getDoc, setDoc, doc } from 'firebase/firestore';
-import { experienceWrite, experiencePreferences, experienceCollections, experienceContinue, playlistTitles } from '../lib/server/experience';
+import { experienceWrite, experiencePreferences, experienceCollections, experienceContinue, playlistTitles, experienceCreatorPlaylists, experienceCreatorCatalog } from '../lib/server/experience';
 import type { AuthenticatedRequestUser as Actor } from '../lib/server/auth';
 assert.match(process.env.FIRESTORE_EMULATOR_HOST||'',/^(127\.0\.0\.1|localhost):\d+$/);
 const projectId='demo-afrobooks-watch';const app=initializeApp({projectId});const db=getFirestore(app);let env:RulesTestEnvironment;
-const reader:Actor={uid:'reader',role:'buyer',status:'active',email:null};const other:Actor={...reader,uid:'other'};const admin:Actor={...reader,uid:'admin',role:'admin'};
+const reader:Actor={uid:'reader',role:'buyer',status:'active',email:null};const other:Actor={...reader,uid:'other'};const author:Actor={...reader,uid:'author',role:'seller'};const admin:Actor={...reader,uid:'admin',role:'admin'};
 const action=(who:Actor,action:string,data:unknown)=>experienceWrite(who,{action,data});
 const draft={id:'collection',title:'Stories from home',description:'A book and a recording.',published:true,items:[{kind:'book',id:'book'},{kind:'audio',id:'audio'}]};
 before(async()=>{env=await initializeTestEnvironment({projectId,firestore:{rules:readFileSync('firestore.rules','utf8')}});});
-beforeEach(async()=>{await env.clearFirestore();for(const user of [reader,other,admin])await db.doc(`users/${user.uid}`).set(user);await db.doc('books/book').set({title:'Book',status:'live',authorName:'Author',language:'Tigrinya',price:199});await db.doc('audioTitles/audio').set({title:'Audio',creatorName:'Musician',status:'published',ready:true,language:'English',durationSeconds:100,priceCents:199,privateSecret:'never expose'});await db.doc('watchVideos/video').set({title:'Film',status:'published',durationSeconds:100,priceCents:0,privateSecret:'never expose'});});
+beforeEach(async()=>{await env.clearFirestore();for(const user of [reader,other,author,admin])await db.doc(`users/${user.uid}`).set(user);await db.doc('books/book').set({title:'Book',status:'live',sellerId:'author',authorName:'Author',language:'Tigrinya',price:199});await db.doc('books/other-book').set({title:'Other book',status:'live',sellerId:'other',authorName:'Other',language:'English'});await db.doc('audioTitles/audio').set({title:'Audio',creatorId:'author',creatorName:'Musician',status:'published',ready:true,language:'English',durationSeconds:100,priceCents:199,privateSecret:'never expose'});await db.doc('watchVideos/video').set({title:'Film',creatorId:'author',creatorName:'Director',status:'published',durationSeconds:100,priceCents:0,privateSecret:'never expose'});});
 after(async()=>{await env.cleanup();await deleteApp(app);});
 test('playlists and preferences are account-owned, bounded and never expose protected metadata',async()=>{
   await action(reader,'playlist',{id:'favorites',name:'Favourites',titleIds:['audio']});await action(reader,'languages',{languages:['Tigrinya','English']});
@@ -36,6 +36,77 @@ test('collections require admin, published titles, mixed formats; removals disap
   await action(admin,'collection',{...draft,published:false});assert.equal((await experienceCollections(reader)).collections.length,0);
   await assertFails(setDoc(doc(env.authenticatedContext('reader').firestore(),'storyCollections/forged'),draft));
   await action(admin,'delete_collection',{id:'collection'});assert.equal((await experienceCollections(admin,true)).collections.length,0);
+});
+test('creator playlists can group only the author’s published media and never grant access',async()=>{
+  const value={id:'author-series',title:'Stories from Tigray',description:'Read, watch, and listen.',published:true,items:[{kind:'book',id:'book'},{kind:'video',id:'video'},{kind:'audio',id:'audio'}]};
+  await assert.rejects(action(reader,'creator_playlist',value),/Author studio access/);
+  await action(author,'creator_playlist',value);
+  assert.deepEqual((await experienceCreatorCatalog(author,'book',null)).items.map(item=>item.id),['book']);
+  assert.deepEqual((await experienceCreatorCatalog(author,'video',null)).items.map(item=>item.id),['video']);
+  assert.deepEqual((await experienceCreatorCatalog(author,'audio',null)).items.map(item=>item.id),['audio']);
+  const audience=await experienceCreatorPlaylists(reader,'author');
+  assert.equal(audience.playlists.length,1);assert.deepEqual(audience.playlists[0].items.map(item=>item.kind),['book','video','audio']);
+  assert.doesNotMatch(JSON.stringify(audience),/privateSecret|never expose|token|signedUrl/i);
+  assert.equal((await db.doc('library/reader_book').get()).exists,false);assert.equal((await db.doc('audioEntitlements/reader/titles/audio').get()).exists,false);
+  await assert.rejects(action(other,'creator_playlist',value),/Author studio access/);
+  await assert.rejects(action(author,'creator_playlist',{...value,items:[{kind:'book',id:'other-book'}]}),/only your own titles/);
+  const editor=await experienceCreatorPlaylists(author,'author',true);assert.equal(editor.playlists[0].items.length,3);
+  await db.doc('audioTitles/audio').update({status:'removed'});
+  assert.equal((await experienceCreatorPlaylists(reader,'author')).playlists[0].items.length,2);
+  await action(author,'delete_creator_playlist',{id:'author-series'});assert.equal((await experienceCreatorPlaylists(reader,'author')).playlists.length,0);
+});
+test('empty playlist drafts can be saved, published after adding a title, reordered and unpublished',async()=>{
+  const value={id:'draft-series',title:'My series',description:'',published:false,items:[] as {kind:'book'|'video'|'audio';id:string}[]};
+  await action(author,'creator_playlist',value);
+  assert.equal((await experienceCreatorPlaylists(author,'author',true)).playlists.length,1);
+  assert.equal((await experienceCreatorPlaylists(reader,'author')).playlists.length,0);
+  await assert.rejects(action(author,'creator_playlist',{...value,published:true}),/at least one/);
+  const items=[{kind:'audio',id:'audio'},{kind:'book',id:'book'},{kind:'video',id:'video'}];
+  await action(author,'creator_playlist',{...value,published:true,items});
+  assert.deepEqual((await experienceCreatorPlaylists(reader,'author')).playlists[0].items.map(item=>item.kind),['audio','book','video']);
+  await action(author,'creator_playlist',{...value,published:false,items:items.slice().reverse()});
+  assert.equal((await experienceCreatorPlaylists(reader,'author')).playlists.length,0);
+  assert.deepEqual((await experienceCreatorPlaylists(author,'author',true)).playlists[0].items.map(item=>item.kind),['video','book','audio']);
+});
+test('another creator cannot edit, delete, or inspect private playlists; direct database access is denied',async()=>{
+  const colleague:Actor={...author,uid:'colleague'};await db.doc('users/colleague').set(colleague);
+  const value={id:'private-series',title:'Private draft',description:'',published:false,items:[]};
+  await action(author,'creator_playlist',value);
+  await assert.rejects(action(colleague,'creator_playlist',value),/another creator/);
+  await assert.rejects(action(colleague,'delete_creator_playlist',{id:value.id}),/another creator/);
+  await assert.rejects(experienceCreatorPlaylists(colleague,'author',true),/only your own/);
+  assert.equal((await experienceCreatorPlaylists(colleague,'author')).playlists.length,0);
+  await assertFails(getDoc(doc(env.authenticatedContext('author').firestore(),'creatorPlaylists/private-series')));
+  await assertFails(setDoc(doc(env.authenticatedContext('author').firestore(),'creatorPlaylists/private-series'),{published:true}));
+  await assertFails(setDoc(doc(env.authenticatedContext('author').firestore(),'creatorPlaylistQuotas/author'),{count:0}));
+});
+test('playlist publication rejects unavailable or duplicate media and hides pending deletions and suspended creators',async()=>{
+  const value={id:'unavailable-series',title:'My work',description:'',published:true,items:[{kind:'book',id:'book'}]};
+  await assert.rejects(action(author,'creator_playlist',{...value,items:[...value.items,...value.items]}),/duplicate/);
+  await db.doc('books/book').update({status:'draft'});await assert.rejects(action(author,'creator_playlist',value),/only published/);
+  await db.doc('books/book').update({status:'live'});await action(author,'creator_playlist',value);
+  await db.doc('books/book').update({deletionPending:true});assert.equal((await experienceCreatorPlaylists(reader,'author')).playlists.length,0);
+  await db.doc('books/book').update({deletionPending:false});await db.doc('users/author').update({status:'suspended'});
+  assert.equal((await experienceCreatorPlaylists(reader,'author')).playlists.length,0);
+  await db.doc('audioTitles/audio').update({ready:false});await assert.rejects(action(author,'creator_playlist',{...value,items:[{kind:'audio',id:'audio'}]}),/only published/);
+});
+test('concurrent playlist creation respects the limit and deleting a playlist releases its slot',async()=>{
+  const value={title:'My series',description:'',published:false,items:[],creatorId:'author',updatedAt:1};
+  await Promise.all(Array.from({length:19},(_,index)=>db.doc(`creatorPlaylists/seed-${index}`).set({...value,id:`seed-${index}`})));
+  const results=await Promise.allSettled(['last-one','last-two'].map(key=>action(author,'creator_playlist',{...value,id:key})));
+  assert.equal(results.filter(result=>result.status==='fulfilled').length,1);
+  assert.equal((await db.collection('creatorPlaylists').where('creatorId','==','author').get()).size,20);
+  await action(author,'delete_creator_playlist',{id:'seed-0'});await action(author,'creator_playlist',{...value,id:'replacement'});
+  assert.equal((await db.collection('creatorPlaylists').where('creatorId','==','author').get()).size,20);
+});
+test('two creators racing for a new playlist ID cannot overwrite each other',async()=>{
+  const colleague:Actor={...author,uid:'colleague'};await db.doc('users/colleague').set(colleague);
+  const value={id:'shared-id',title:'My series',description:'',published:false,items:[]};
+  const results=await Promise.allSettled([action(author,'creator_playlist',value),action(colleague,'creator_playlist',value)]);
+  assert.equal(results.filter(result=>result.status==='fulfilled').length,1);
+  const owner=(await db.doc('creatorPlaylists/shared-id').get()).data()!.creatorId;
+  const loser=owner===author.uid?colleague:author;
+  await assert.rejects(action(loser,'delete_creator_playlist',{id:'shared-id'}),/another creator/);
 });
 test('continue shelf sorts all media by recency and removes finished, refunded or inaccessible titles',async()=>{
   await db.doc('readingProgress/reader_book').set({userId:'reader',bookId:'book',percentComplete:40,isFinished:false,lastReadAt:Timestamp.fromMillis(2000)});

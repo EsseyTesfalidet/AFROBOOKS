@@ -96,11 +96,11 @@ test('only authentication and legal screens stay visible to installed-app guests
   for (const path of ['/login', '/signup', '/privacy', '/terms']) assert.equal(isPublicMobilePage(path), true);
   for (const path of ['/', '/browse', '/cart', '/read/book', '/sample/book', '/author/author', '/about-help', '/login/other', '/dashboard', '/community', '/african-books', '/african-films', '/african-audio']) assert.equal(isPublicMobilePage(path), false);
   for (const path of ['/african-books', '/african-books/title', '/african-films', '/african-creators']) assert.equal(protectedPage(path), false);
-  for (const path of ['/watch', '/listen', '/library', '/checkout']) assert.equal(protectedPage(path), true);
+  for (const path of ['/watch', '/listen', '/library', '/checkout', '/creator-playlists']) assert.equal(protectedPage(path), true);
 });
 
 test('mobile deep-link returns are local screens and cannot redirect into authentication, another host or a gift-secret fragment', () => {
-  for (const path of ['/read/book_123', '/book/book-123', '/cart', '/browse', '/gifts/claim', '/checkout/receipt?orderIds=one,two', '/dashboard?profile=payout']) assert.equal(mobileReturnPath(path), path);
+  for (const path of ['/read/book_123', '/book/book-123', '/cart', '/browse', '/gifts/claim', '/checkout/receipt?orderIds=one,two', '/dashboard?profile=payout', '/creator-playlists']) assert.equal(mobileReturnPath(path), path);
   for (const path of [null, 'https://evil.test', '//evil.test', '/\\evil.test', '/read/../login', '/read/%2e%2e/login', '/login', '/signup?next=/browse', '/api/admin', '/gifts/claim#token=secret', '/read/book\n', '/book/💥']) assert.equal(mobileReturnPath(path), null);
 });
 

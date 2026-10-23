@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { experienceCollections, experienceContinue, experiencePreferences, experienceWrite, playlistTitles, mediaCards } from '@/lib/server/experience';
+import { experienceCollections, experienceContinue, experiencePreferences, experienceWrite, playlistTitles, mediaCards, experienceCreatorCatalog, experienceCreatorPlaylists } from '@/lib/server/experience';
 import { watchActor, watchBody, watchJson, watchFailure } from '@/lib/server/watchHttp';
 import { watchRateLimit } from '@/lib/server/watch';
 import { getAdminDb } from '@/lib/firebase/admin';
@@ -12,6 +12,15 @@ export async function GET(request: NextRequest) {
     if (view === 'continue') return watchJson(await experienceContinue(actor));
     if (view === 'collections' || view === 'editor') return watchJson(await experienceCollections(actor, view === 'editor'));
     if (view === 'playlist_titles') return watchJson(await playlistTitles(actor));
+    if (view === 'creator_playlists' || view === 'creator_editor') {
+      const creatorId = view === 'creator_editor' ? actor.uid : request.nextUrl.searchParams.get('creatorId') || '';
+      return watchJson(await experienceCreatorPlaylists(actor, creatorId, view === 'creator_editor'));
+    }
+    if (view === 'creator_catalog') {
+      const kind = request.nextUrl.searchParams.get('kind');
+      if (kind !== 'book' && kind !== 'audio' && kind !== 'video') throw new WatchError(400, 'Choose a format.');
+      return watchJson(await experienceCreatorCatalog(actor, kind, request.nextUrl.searchParams.get('after')));
+    }
     if (view === 'catalog') {
       if (actor.role !== 'admin') throw new WatchError(403, 'Administrator access required.');
       const kind = request.nextUrl.searchParams.get('kind');

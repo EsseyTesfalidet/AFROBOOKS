@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { FieldPath } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { getAdminDb } from '@/lib/firebase/admin';
 import type { AuthenticatedRequestUser as Actor } from './auth';
 import { WatchError } from './watchErrors';
-import type { ExperiencePreferences, Playlist, MediaRef, MediaCard, StoryCollection } from '@/types/experience';
+import type { ExperiencePreferences, Playlist, MediaRef, MediaCard, StoryCollection, CreatorPlaylist, CreatorPlaylistView } from '@/types/experience';
 import { canReadWithSubscription, isBookReleased } from '@/lib/utils/bookAccess';
 import type { Book } from '@/types/book';
 import type { User } from '@/types/user';
@@ -14,6 +15,7 @@ const reference = z.object({ kind: z.enum(['book', 'video', 'audio']), id });
 const refs = z.array(reference).max(30).refine(items => new Set(items.map(item => `${item.kind}:${item.id}`)).size === items.length, 'Remove duplicate titles.');
 const playlist = z.object({ id, name: z.string().trim().min(1).max(80), titleIds: z.array(id).max(100).refine(items => new Set(items).size === items.length, 'Remove duplicate titles.') });
 const collection = z.object({ id, title: z.string().trim().min(1).max(120), description: z.string().trim().max(1200), published: z.boolean(), items: refs }).refine(value => !value.published || (value.items.length >= 2 && new Set(value.items.map(item => item.kind)).size >= 2), 'Published collections need at least two titles in different formats.');
+const creatorPlaylist = z.object({ id, title: z.string().trim().min(1).max(120), description: z.string().trim().max(1200), published: z.boolean(), items: refs });
 const paths = { book: 'books', video: 'watchVideos', audio: 'audioTitles' };
 const millis = (value: unknown): number => typeof value === 'number' ? value : value && typeof (value as { toMillis?: unknown }).toMillis === 'function' ? (value as { toMillis: () => number }).toMillis() : 0;
 export async function mediaCards(items: MediaRef[]): Promise<MediaCard[]> {
@@ -23,6 +25,7 @@ export async function mediaCards(items: MediaRef[]): Promise<MediaCard[]> {
   return rows.flatMap((row, index) => {
     const value = row.data(); const item = items[index];
     if (!value || value.status !== (item.kind === 'book' ? 'live' : 'published')) return [];
+    if (item.kind === 'book' && value.deletionPending === true) return [];
     if (item.kind === 'audio' && value.ready !== true) return [];
     // Explicit public metadata only: collections and playlists never grant access.
     return [{ ...item, title: String(value.title || ''), creator: String(value.authorName || value.creatorName || ''), language: String(value.language || ''), cover: String(value.coverUrl || value.posterUrl || ''), href: item.kind === 'book' ? `/book/${item.id}` : item.kind === 'video' ? `/watch/${item.id}` : `/listen?title=${item.id}` }];
@@ -33,8 +36,39 @@ export async function experiencePreferences(actor: Actor): Promise<ExperiencePre
   return { languages: row.data()?.languages || [], playlists: row.data()?.playlists || [] };
 }
 export async function experienceWrite(actor: Actor, input: unknown) {
-  const { action, data } = z.object({ action: z.enum(['languages', 'playlist', 'delete_playlist', 'collection', 'delete_collection']), data: z.record(z.unknown()) }).parse(input);
+  const { action, data } = z.object({ action: z.enum(['languages', 'playlist', 'delete_playlist', 'collection', 'delete_collection', 'creator_playlist', 'delete_creator_playlist']), data: z.record(z.unknown()) }).parse(input);
   const db = await getAdminDb();
+  if (action === 'creator_playlist' || action === 'delete_creator_playlist') {
+    if (!['seller', 'both', 'admin'].includes(actor.role)) throw new WatchError(403, 'Author studio access is required.');
+    const key = id.parse(data.id);
+    const ref = db.doc(`creatorPlaylists/${key}`);
+    const value = action === 'creator_playlist' ? creatorPlaylist.parse(data) : null;
+    if (value?.published && value.items.length === 0) throw new WatchError(400, 'Add at least one published title before publishing this playlist.');
+    await db.runTransaction(async tx => {
+      const old = await tx.get(ref);
+      if (old.exists && old.data()?.creatorId !== actor.uid) throw new WatchError(403, 'This playlist belongs to another creator.');
+      const titleRefs = value?.items.map(item => db.doc(`${paths[item.kind]}/${item.id}`)) || [];
+      const titles = titleRefs.length ? await tx.getAll(...titleRefs) : [];
+      for (let index = 0; index < (value?.items.length || 0); index++) {
+        const item = value!.items[index]; const title = titles[index].data();
+        if (!title) throw new WatchError(400, 'One of these titles is no longer available. Remove it and try again.');
+        const ownerId = item.kind === 'book' ? title.sellerId : title.creatorId;
+        if (ownerId !== actor.uid) throw new WatchError(403, 'Playlists can include only your own titles.');
+        const isPublished = title.status === (item.kind === 'book' ? 'live' : 'published') && title.deletionPending !== true && (item.kind !== 'audio' || title.ready === true);
+        if (!isPublished) throw new WatchError(400, 'Playlists can include only published titles that are ready for audiences.');
+      }
+      if ((!old.exists && value) || (old.exists && !value)) {
+        const quotaRef = db.doc(`creatorPlaylistQuotas/${actor.uid}`);
+        const quota = await tx.get(quotaRef);
+        const count = quota.exists ? Number(quota.data()?.count || 0) : (await tx.get(db.collection('creatorPlaylists').where('creatorId', '==', actor.uid).limit(20))).size;
+        if (value && count >= 20) throw new WatchError(400, 'You can create up to 20 public playlists.');
+        tx.set(quotaRef, { count: Math.max(0, count + (value ? 1 : -1)) });
+      }
+      if (value) tx.set(ref, { ...value, creatorId: actor.uid, updatedAt: Date.now() });
+      else if (old.exists) tx.delete(ref);
+    });
+    return { ok: true };
+  }
   if (action === 'collection' || action === 'delete_collection') {
     if (actor.role !== 'admin') throw new WatchError(403, 'Administrator access required.');
     const key = id.parse(data.id);
@@ -59,6 +93,39 @@ export async function experienceWrite(actor: Actor, input: unknown) {
     });
   }
   return experiencePreferences(actor);
+}
+async function creatorPlaylistViews(key: string, includeDrafts: boolean): Promise<CreatorPlaylistView[]> {
+  const db = await getAdminDb();
+  const rows = await db.collection('creatorPlaylists').where('creatorId', '==', key).limit(40).get();
+  const playlists = rows.docs.map(row => ({ ...row.data(), id: row.id }) as CreatorPlaylist)
+    .filter(value => includeDrafts || value.published === true)
+    .sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 20);
+  const refsByKey = new Map<string, MediaRef>();
+  for (const value of playlists) for (const item of value.items || []) refsByKey.set(`${item.kind}:${item.id}`, item);
+  const cards = await mediaCards([...refsByKey.values()]);
+  const cardsByKey = new Map(cards.map(item => [`${item.kind}:${item.id}`, item]));
+  const views = playlists.map(value => ({ ...value, items: (value.items || []).flatMap(item => { const card = cardsByKey.get(`${item.kind}:${item.id}`); return card ? [card] : []; }) }));
+  return includeDrafts ? views : views.filter(value => value.items.length > 0);
+}
+export async function publicCreatorPlaylists(creatorId: string): Promise<CreatorPlaylistView[]> {
+  const key = id.parse(creatorId); const db = await getAdminDb();
+  const user = (await db.doc(`users/${key}`).get()).data();
+  if (!user || !['seller', 'both', 'admin'].includes(user.role) || ['suspended', 'banned'].includes(user.status)) return [];
+  return creatorPlaylistViews(key, false);
+}
+export async function experienceCreatorPlaylists(actor: Actor, creatorId: string, editor = false) {
+  const key = id.parse(creatorId);
+  if (editor && (actor.uid !== key || !['seller', 'both', 'admin'].includes(actor.role))) throw new WatchError(403, 'You can manage only your own playlists.');
+  return { playlists: editor ? await creatorPlaylistViews(key, true) : await publicCreatorPlaylists(key) };
+}
+export async function experienceCreatorCatalog(actor: Actor, kind: MediaRef['kind'], after: string | null) {
+  if (!['seller', 'both', 'admin'].includes(actor.role)) throw new WatchError(403, 'Author studio access is required.');
+  const db = await getAdminDb(); const owner = kind === 'book' ? 'sellerId' : 'creatorId';
+  let query = db.collection(paths[kind]).where(owner, '==', actor.uid).orderBy(FieldPath.documentId());
+  if (after) query = query.startAfter(id.parse(after));
+  const rows = await query.limit(41).get(); const page = rows.docs.slice(0, 40);
+  const items = page.map(row => ({ kind, id: row.id } as MediaRef));
+  return { items: await mediaCards(items), next: rows.size > 40 ? page[39].id : null };
 }
 export async function experienceCollections(actor: Actor, admin = false) {
   if (admin && actor.role !== 'admin') throw new WatchError(403, 'Administrator access required.');

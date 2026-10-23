@@ -10,7 +10,8 @@ async function main() {
     import React from 'react';import {createRoot} from 'react-dom/client';import Player from './components/watch/WatchPlayer';import Feed from './components/watch/WatchFeed';import {useAuthStore} from './store/authStore';
     window.fixture={calls:[],denyRetry:false};window.setAccount=uid=>useAuthStore.setState({firebaseUser:uid?{uid}:null});window.setAccount('reader');
     const rows=[{id:'one',title:'First preview'},{id:'two',title:'Second preview'},{id:'three',title:'Third preview'}];
-    createRoot(document.getElementById('root')).render(location.search.includes('feed')?<main className="watch-page" style={{paddingBlock:'50vh'}}><Feed videos={rows}/></main>:<main className="watch-page watch-detail"><h1>AfroBooks Screen</h1><Player id="film" title="Sprite Fight · Player preview" autoPlay={location.search.includes('autoplay')} trailer={location.search.includes('trailer')} playback={{token:'fixture',seconds:20,duration:600,expiresAt:0}}/></main>);
+    const params=new URLSearchParams(location.search);
+    createRoot(document.getElementById('root')).render(params.has('feed')?<main className="watch-page" style={{paddingBlock:'50vh'}}><Feed videos={rows}/></main>:<main className="watch-page watch-detail"><h1>AfroBooks Screen</h1><Player id="film" title="Sprite Fight · Player preview" autoPlay={params.has('autoplay')} trailer={params.has('trailer')} poster={params.has('poster')?'/fixture-poster.png':undefined} hidePoster={params.has('hidePoster')} playback={{token:'fixture',seconds:20,duration:600,expiresAt:0}}/></main>);
   ` }, plugins: [{ name: 'player-http-boundary', setup(b) {
     b.onResolve({ filter: /^(\.\/WatchUI|@\/lib\/firebase\/request)$/ }, () => ({ path: 'network', namespace: 'network' }));
     b.onLoad({ filter: /.*/, namespace: 'network' }, () => ({ loader:'jsx',resolveDir:process.cwd(),contents: `
@@ -117,6 +118,9 @@ async function main() {
     await page.getByRole('button',{name:'Video previews: On'}).click();
     await page.locator('video').waitFor({state:'detached'});
     assert.deepEqual(errors, []);
+    await page.goto(base+'?poster'); await page.locator('.vds-poster').waitFor();
+    await page.goto(base+'?poster&hidePoster'); await page.locator('[data-media-player]').waitFor();
+    assert.equal(await page.locator('.vds-poster').count(),0,'installed-app playback does not flash a cover or placeholder over the opening video');
     console.log('PASS muted HLS feed previews, centered switching, one active player, no watch-history writes, reduced motion and preview toggle.');
     if (!process.env.DISCOVERY_ONLY) console.log('PASS real HLS decoding, resume, play/pause, touch skip controls, settings, fullscreen, themes/rotation, retry preserving position and account switching.');
   } catch (error) {

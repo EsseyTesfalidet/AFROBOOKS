@@ -7,6 +7,7 @@ import { BadgeCheck, Globe, Twitter, Instagram, Linkedin, BookOpen } from 'lucid
 import BuyerHeader from '@/components/buyer/BuyerHeader';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import FollowButton from '@/components/shared/FollowButton';
+import { CreatorPlaylists } from '@/components/experience/MediaShelves';
 import { useCatalog } from '@/hooks/useCatalog';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import type { Seller } from '@/types/user';
@@ -117,6 +118,8 @@ export default function AuthorPage() {
             </div>
           </div>
         </div>
+
+        <CreatorPlaylists creatorId={id} />
 
         {/* Books grid */}
         <div>

@@ -65,7 +65,7 @@ function ListingsPageContent() {
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">Your catalog</p>
       <div className="mt-3 flex flex-wrap items-start justify-between gap-5">
         <div><h1 className="text-[28px] font-semibold tracking-tight sm:text-[36px]">Books</h1><p className="mt-2 text-[14px] text-[#a8a49c]">From your first draft to your next release.</p></div>
-        <Link href="/publish" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#ed6647] px-4 text-[14px] font-semibold text-[#160e0b] hover:bg-[#ff8b6f]"><Plus size={17} /> New book</Link>
+        <div className="flex flex-wrap gap-2"><Link href="/creator-playlists" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 px-4 text-[14px] font-medium text-[#f5f2eb] hover:bg-white/5">Playlists &amp; series</Link><Link href="/publish" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#ed6647] px-4 text-[14px] font-semibold text-[#160e0b] hover:bg-[#ff8b6f]"><Plus size={17} /> New book</Link></div>
       </div>
       {(notice || publishNotice) && <p role="status" className="mt-6 border-l-2 border-emerald-400/60 py-2 pl-4 text-[14px] leading-relaxed text-emerald-200">{notice || publishNotice}</p>}
       {actionError && <p role="alert" className="mt-6 text-[14px] text-[#ffc2ad]">{actionError}</p>}

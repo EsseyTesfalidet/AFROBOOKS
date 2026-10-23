@@ -12,7 +12,7 @@ import '@vidstack/react/player/styles/default/layouts/video.css';
 import './watch-player.css';
 
 export interface WatchPlayback { token: string; expiresAt: number; seconds: number; duration: number }
-interface Props { id: string; playback: WatchPlayback; trailer?: boolean; preview?: boolean; title?: string; poster?: string; autoPlay?: boolean }
+interface Props { id: string; playback: WatchPlayback; trailer?: boolean; preview?: boolean; title?: string; poster?: string; hidePoster?: boolean; autoPlay?: boolean }
 
 function TouchPlayControls() {
   const paused = useMediaState('paused');
@@ -39,7 +39,7 @@ export default function WatchPlayer(props: Props) {
   return uid && uid === owner ? <PlayerSession key={`${uid}:${props.id}:${props.trailer}:${props.preview}:${props.playback.token}`} {...props} uid={uid} /> : null;
 }
 
-function PlayerSession({ id, playback, trailer = false, preview = false, title = 'Video', poster, uid, autoPlay = false }: Props & { uid: string }) {
+function PlayerSession({ id, playback, trailer = false, preview = false, title = 'Video', poster, hidePoster = false, uid, autoPlay = false }: Props & { uid: string }) {
   const player = useRef<MediaPlayerInstance>(null);
   const mounted = useRef(true); const readyRef = useRef(false); const retrying = useRef(false);
   const configured = useRef(false); const engaged = useRef(false);
@@ -135,7 +135,7 @@ function PlayerSession({ id, playback, trailer = false, preview = false, title =
         onWaiting={() => setBuffering(true)} onRateChange={value => setSpeed(value)}
         onError={() => { setBuffering(false); setError('This video could not play. Check your connection, then retry.'); }}
       >
-        <MediaProvider>{poster && <Poster className="vds-poster" src={poster} alt="" />}</MediaProvider>
+        <MediaProvider>{!hidePoster && poster && <Poster className="vds-poster" src={poster} alt="" />}</MediaProvider>
         <DefaultVideoLayout icons={defaultLayoutIcons} colorScheme="dark" seekStep={10} playbackRates={[...WATCH_SPEEDS]}
           menuGroup="bottom" smallLayoutWhen={true} thumbnails={thumbnails} hideQualityBitrate noAudioGain slots={{ googleCastButton: null, airPlayButton: null, chapterTitle: null,
             topControlsGroupStart: <span className="afro-cinema-title" dir="auto">{title}{trailer && <small>Trailer</small>}</span>,

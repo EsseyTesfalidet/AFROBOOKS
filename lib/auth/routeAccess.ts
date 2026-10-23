@@ -1,5 +1,5 @@
 export const BUYER_PATHS = ['/checkout', '/library', '/profile', '/notifications', '/watch', '/listen'];
-export const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller', '/promotions', '/video-studio', '/audio-studio'];
+export const SELLER_PATHS = ['/dashboard', '/publish', '/listings', '/analytics', '/earnings', '/seller', '/promotions', '/video-studio', '/audio-studio', '/creator-playlists'];
 export const ADMIN_PATHS = ['/admin'];
 export function pathStartsWith(path: string, prefixes: string[]) {
   return prefixes.some(prefix => path === prefix || path.startsWith(prefix + '/'));

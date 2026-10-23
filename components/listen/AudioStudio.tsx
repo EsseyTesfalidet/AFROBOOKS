@@ -45,7 +45,7 @@ function Studio({ admin }: { admin: boolean }) {
   const next = cursor === undefined ? resource.data?.next : cursor;
   return <>{!admin && <SellerHeader />}<main className="listen-page listen-studio-page app-page"><header className="listen-heading"><div><p className="listen-eyebrow">{admin ? 'Review & publishing' : 'Creator studio'}</p><h1>{admin ? 'Audio' : 'Audio Studio'}</h1><p>Music, podcasts and audiobooks.</p></div><Headphones size={34} /></header>
     {admin && <MusicAdmin />}
-    {!admin && <div className="listen-studio-toolbar"><Link className="watch-button" href="/listen">Back to Listen</Link>{!editing && <button className="watch-button watch-primary" onClick={() => setEditing('new')}>Upload audio</button>}</div>}
+    {!admin && <div className="listen-studio-toolbar"><Link className="watch-button" href="/listen">Back to Listen</Link><Link className="watch-button" href="/creator-playlists">Playlists &amp; series</Link>{!editing && <button className="watch-button watch-primary" onClick={() => setEditing('new')}>Upload audio</button>}</div>}
     {editing && <AudioEditor key={editing === 'new' ? 'new' : editing.id} title={editing === 'new' ? undefined : editing} cancel={() => { setEditing(null); refresh(); }} done={() => { setEditing(null); refresh(); }} />}
     {resource.loading && <p role="status">Loading audio…</p>}{(resource.error || error) && <p role="alert">{resource.error || error} <button onClick={refresh}>Retry</button></p>}
     {!editing && [...(resource.data?.entries || []), ...extra].map(({ title }) => <StudioRow key={`${title.id}:${title.updatedAt}`} title={title} admin={admin} refresh={refresh} edit={() => setEditing(title)} />)}

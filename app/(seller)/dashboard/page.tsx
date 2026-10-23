@@ -79,6 +79,7 @@ export default function SellerDashboardPage() {
             <p className="mt-3 text-[13px] leading-relaxed text-[#a8a49c]">Manage your catalog, follow your sales, and keep your author details up to date.</p>
             <div className="mt-5 divide-y divide-white/10 text-[14px]">
               <Link href="/listings" className="flex min-h-14 items-center justify-between gap-3 hover:text-[#ff9e83]">Manage books <ArrowUpRight size={16} /></Link>
+              <Link href="/creator-playlists" className="flex min-h-14 items-center justify-between gap-3 hover:text-[#ff9e83]">Playlists &amp; series <ArrowUpRight size={16} /></Link>
               <Link href="/analytics" className="flex min-h-14 items-center justify-between gap-3 hover:text-[#ff9e83]">Sales & earnings <ArrowUpRight size={16} /></Link>
               <Link href="/seller/profile/identity" className="flex min-h-14 items-center justify-between gap-3 hover:text-[#ff9e83]">Author profile <ArrowUpRight size={16} /></Link>
             </div>
