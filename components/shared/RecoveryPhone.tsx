@@ -100,7 +100,7 @@ export default function RecoveryPhone({ uid }: { uid: string }) {
 
   return <section className="recovery-phone" aria-labelledby={`${id}-title`} aria-busy={!!busy || loading}>
     <h3 id={`${id}-title`}><Smartphone size={18} aria-hidden="true" />Recovery phone</h3>
-    <p>Link a number you control so you can recover your email sign-in if you forget your account details. Phone verification will not sign you into AfroBooks.</p>
+    <p>Link a number you control so you can recover your email sign-in if you forget your account details. Phone verification will not sign you into AfroNarra.</p>
     {loading ? <p role="status">Checking your sign-in methods…</p> : <>
       {data?.phoneNumber ? <div className="recovery-phone-linked"><strong><Check size={17} aria-hidden="true" />Recovery number verified</strong><span>{data.phoneNumber}</span><p>Use this number from “Forgot email or password?” on the sign-in screen.</p></div> : linkedPendingSync ? <p role="status">Phone verified. Your account and library stay together.</p> : data && <>
         {phase === 'start' && <>{mobileProviders.phoneRecovery ? <button type="button" className="recovery-phone-primary" disabled={!!busy || !data.providers.length} onClick={() => { setPhase('identity'); setError(''); }}>Link recovery phone</button> : <p>Phone recovery is currently unavailable.</p>}{!data.providers.length && <p>Sign in with your existing provider again to manage account recovery.</p>}</>}

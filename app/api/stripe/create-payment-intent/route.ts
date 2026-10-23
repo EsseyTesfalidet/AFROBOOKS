@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       const sender = (await adminDb.doc(`users/${requestUser.uid}`).get()).data();
       const prepared = await prepareBookGift(adminDb, {
         ...gift, senderId: requestUser.uid,
-        senderName: [sender?.firstName, sender?.lastName].filter(Boolean).join(' ') || 'An AfroBooks reader',
+        senderName: [sender?.firstName, sender?.lastName].filter(Boolean).join(' ') || 'An AfroNarra reader',
         order: {
           buyerId: requestUser.uid, buyerEmail: requestUser.email ?? '', bookId: book.bookId, bookTitle: book.title,
           sellerId: book.sellerId, sellerName: book.sellerName, authorName: book.authorName,

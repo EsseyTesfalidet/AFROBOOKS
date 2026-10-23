@@ -15,7 +15,7 @@ export function watchFailure(error: unknown) {
   return watchJson({ error: 'Videos are temporarily unavailable. Please try again.' }, 500);
 }
 export async function watchActor(request: NextRequest, agreement = false) {
-  if (!isSameOriginMutation(request)) throw new WatchError(403, 'Please use AfroBooks to complete this action.');
+  if (!isSameOriginMutation(request)) throw new WatchError(403, 'Please use AfroNarra to complete this action.');
   const actor = await requireRequestUser(request);
   if (agreement && agreementRequiredResponse(actor)) throw new WatchError(403, 'Please accept the current Terms and Privacy information before continuing.');
   return actor;

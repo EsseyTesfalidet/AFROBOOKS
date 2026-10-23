@@ -36,7 +36,7 @@ export function videoPayoutGateway(): VideoPayoutGateway {
     transfer: async input => await stripe.transfers.create({ amount: input.amount, currency: input.currency.toLowerCase(),
       destination: input.destination, transfer_group: `video_${input.id}`,
       metadata: { integration: 'afrobooks-video', videoPayoutId: input.id, creatorId: input.creatorId },
-      description: `AfroBooks monthly video earnings ${input.id}`,
+      description: `AfroNarra monthly video earnings ${input.id}`,
     }, { idempotencyKey: `afrobooks-video-${input.id}` }) as VideoTransfer,
   };
 }

@@ -34,7 +34,7 @@ test('membership states and integer artist allocation conserve the creator pool'
 });
 test('membership binds to one account, requires verified active payment and survives cancellation until expiry', async () => {
   await assert.rejects(configureMusic(reader, { testEnabled: true, liveEnabled: true }), /Administrator/);
-  await assert.rejects(syncMusic(token, 'stranger', client), /another AfroBooks/);
+  await assert.rejects(syncMusic(token, 'stranger', client), /another AfroNarra/);
   subscription.subscriptionState = 'SUBSCRIPTION_STATE_PENDING'; assert.equal((await syncMusic(token, reader.uid, client)).active, false); assert.equal(acknowledges, 0);
   subscription.subscriptionState = 'SUBSCRIPTION_STATE_ACTIVE'; await syncMusic(token, reader.uid, client); await syncMusic(token, reader.uid, client); assert.equal(acknowledges, 1);
   assert.ok((await musicStatus(reader)).active); await assert.rejects(prepareMusic(reader), /already active/);

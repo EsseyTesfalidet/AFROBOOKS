@@ -15,6 +15,7 @@ import { APP_APPEARANCE_BOOTSTRAP } from '@/lib/app/appearance';
 import MobileAppShell from '@/components/shared/MobileAppShell';
 import AuthorReturnBar from '@/components/shared/AuthorReturnBar';
 import AccountRouteGate from '@/components/auth/AccountRouteGate';
+import { BRAND_DESCRIPTION, BRAND_NAME } from '@/lib/brand';
 
 export const viewport: Viewport = {
   themeColor: '#0e0e0e',
@@ -23,15 +24,17 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  applicationName: BRAND_NAME,
+  appleWebApp: { title: BRAND_NAME },
   title: {
-    default: 'AfroBooks | African Books, Films, Music & Stories',
-    template: '%s — AfroBooks',
+    default: `${BRAND_NAME} | African Books, Films, Music & Stories`,
+    template: `%s — ${BRAND_NAME}`,
   },
-  description: 'Discover African books, magazines, films, music, podcasts and audiobooks on AfroBooks. Read, watch and listen to stories from African authors and creators.',
-  keywords: ['African books', 'African authors', 'African literature', 'African films', 'African music', 'African podcasts', 'African audiobooks', 'AfroBooks'],
-  authors: [{ name: 'AfroBooks' }],
-  creator: 'AfroBooks',
-  publisher: 'AfroBooks',
+  description: BRAND_DESCRIPTION,
+  keywords: ['African books', 'African authors', 'African literature', 'African films', 'African music', 'African podcasts', 'African audiobooks', 'AfroNarra'],
+  authors: [{ name: BRAND_NAME }],
+  creator: BRAND_NAME,
+  publisher: BRAND_NAME,
   metadataBase: new URL('https://afrobs.com'),
   alternates: {
     canonical: '/',
@@ -40,14 +43,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://afrobs.com',
-    siteName: 'AfroBooks',
-    title: 'AfroBooks | African Books, Films, Music & Stories',
+    siteName: BRAND_NAME,
+    title: `${BRAND_NAME} | African Books, Films, Music & Stories`,
     description: 'Discover African books, magazines, films, music, podcasts and audiobooks from African authors and creators.',
-    images: [{ url: '/pwa-512x512.png?v=2', width: 512, height: 512, alt: 'AfroBooks' }],
+    images: [{ url: '/pwa-512x512.png?v=2', width: 512, height: 512, alt: BRAND_NAME }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AfroBooks | African Books, Films, Music & Stories',
+    title: `${BRAND_NAME} | African Books, Films, Music & Stories`,
     description: 'Read, watch and listen to stories from African authors and creators.',
     images: ['/pwa-512x512.png?v=2'],
   },
@@ -70,7 +73,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head><script id="afrobooks-app-mode" dangerouslySetInnerHTML={{ __html: APP_MODE_BOOTSTRAP + ';' + APP_APPEARANCE_BOOTSTRAP }} /></head>
+      <head>
+        <script id="afrobooks-app-mode" dangerouslySetInnerHTML={{ __html: APP_MODE_BOOTSTRAP + ';' + APP_APPEARANCE_BOOTSTRAP }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org', '@type': 'WebSite', name: BRAND_NAME,
+          url: 'https://afrobs.com/',
+        }) }} />
+      </head>
       <body className="bg-[#0e0e0e] text-[#f5f2eb] font-body antialiased">
         <ServiceWorkerRegistration />
         <ConnectionStatus />

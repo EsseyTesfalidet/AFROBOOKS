@@ -6,10 +6,12 @@ import './buyer-chrome.css';
 const FOOTER_GROUPS = [
   { title: 'Explore', links: [
     { label: 'Browse books', href: '/browse' },
+    { label: 'Films & documentaries', href: '/african-films' },
+    { label: 'Music & podcasts', href: '/african-audio' },
     { label: 'Discover', href: '/discover' },
     { label: 'Community', href: '/community' },
   ] },
-  { title: 'Your reading', links: [
+  { title: 'Your collection', links: [
     { label: 'Your library', href: '/library' },
     { label: 'Book gifts', href: '/gifts' },
     { label: 'Your cart', href: '/cart' },
@@ -24,7 +26,7 @@ export default function BuyerFooter() {
           <div className="buyer-footer-brand">
             <Logo href="/browse" size="sm" />
             <p>African voices.<br /><span>Stories for everyone.</span></p>
-            <span className="buyer-footer-description">Discover your next read, support its author, and find a little connection along the way.</span>
+            <span className="buyer-footer-description">Read, watch and listen to African stories. Discover original work and support the creators behind it.</span>
             <Link href="/#about" className="buyer-footer-about">Our story <ArrowUpRight size={16} aria-hidden="true" /></Link>
           </div>
           {FOOTER_GROUPS.map(({ title, links }) => (
@@ -35,7 +37,7 @@ export default function BuyerFooter() {
           ))}
         </div>
         <div className="buyer-footer-bottom">
-          <p>© {new Date().getFullYear()} AfroBooks. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} AfroNarra. All rights reserved.</p>
           <nav aria-label="Legal">
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms of use</Link>

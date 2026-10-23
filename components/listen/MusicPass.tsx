@@ -19,7 +19,7 @@ export default function MusicPass({ onChanged }: { onChanged?: () => void }) {
     if (!item || !status || busy) return; setBusy(true); setError('');
     let response: PaymentResponse | undefined;
     try {
-      const request = new PaymentRequest([{ supportedMethods: PLAY_METHOD, data: { sku: MUSIC_PRODUCT, obfuscatedAccountId: status.accountId } }], { total: { label: 'AfroBooks Music · monthly', amount: item.price } });
+      const request = new PaymentRequest([{ supportedMethods: PLAY_METHOD, data: { sku: MUSIC_PRODUCT, obfuscatedAccountId: status.accountId } }], { total: { label: 'AfroNarra Music · monthly', amount: item.price } });
       response = await request.show(); const token = (response.details as { purchaseToken?: string }).purchaseToken;
       if (!token) throw new Error('Google did not return a purchase. Restore before trying to pay again.');
       const result = await authenticatedPost<{ active: boolean }>('/api/music', { action: 'verify', purchaseToken: token });
@@ -33,7 +33,7 @@ export default function MusicPass({ onChanged }: { onChanged?: () => void }) {
     try { const service = await playService(); if (service) for (const purchase of await service.listPurchases()) if (purchase.itemId === MUSIC_PRODUCT) await authenticatedPost('/api/music', { action: 'verify', purchaseToken: purchase.purchaseToken }); await authenticatedPost('/api/music', { action: 'restore' }); changed(); }
     catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
-  return <section className="listen-pass"><div><p className="listen-eyebrow">AfroBooks Music</p><h2>One pass. More voices.</h2><p>All participating music in one monthly subscription.</p></div>
+  return <section className="listen-pass"><div><p className="listen-eyebrow">AfroNarra Music</p><h2>One pass. More voices.</h2><p>All participating music in one monthly subscription.</p></div>
     {status?.active ? <><strong>Music pass active</strong><p>{status.autoRenew ? 'Next renewal' : 'Access until'}: {new Date(status.expiresAt).toLocaleDateString()}</p><a className="watch-button" href={`https://play.google.com/store/account/subscriptions?sku=${MUSIC_PRODUCT}&package=${PLAY_PACKAGE}`} target="_blank" rel="noopener noreferrer">Manage or cancel subscription</a></> : status?.available ? <><button className="watch-button watch-primary" disabled={!item || busy} onClick={() => void buy()}>{busy ? 'Confirming…' : item ? `${status.testOnly ? 'Test subscription' : 'Subscribe'} · ${playPrice(item)}/month` : 'Open the Google Play app to subscribe'}</button><p>Renews monthly until cancelled in Google Play. Access continues until the paid period ends. Podcasts and audiobooks sold separately are not included.</p></> : <p>Music subscriptions are coming soon. Free recordings are available now.</p>}
     <button className="watch-button" disabled={busy} onClick={() => void restore()}>Restore music subscription</button>{(error || resource.error) && <p role="alert">{error || resource.error}</p>}
   </section>;

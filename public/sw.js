@@ -1,6 +1,7 @@
 /* Only immutable, public application bundles are cached. Never cache APIs,
  * authenticated HTML, book files, remote URLs or requests with credentials in headers. */
-const CACHE = 'afrobooks-public-v1';
+// Refresh the public offline page when adopting the new display branding.
+const CACHE = 'afrobooks-public-v2';
 const LEGACY = new Set([
   'apis', 'others', 'cross-origin', 'start-url', 'next-data', 'next-image',
   'google-fonts-webfonts', 'google-fonts-stylesheets', 'static-font-assets',

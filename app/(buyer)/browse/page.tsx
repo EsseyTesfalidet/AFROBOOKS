@@ -59,7 +59,7 @@ export default function BrowsePage() {
     <BuyerHeader />
     <main className="app-page mx-auto max-w-6xl space-y-9 px-5 py-7 sm:px-8 sm:py-10">
       <MobilePullToRefresh onRefresh={refresh} />
-      <header className="app-page-intro"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">The AfroBooks collection</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Stories to get lost in.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">Explore books and magazines, discover creators, and open your next read.</p></header>
+      <header className="app-page-intro"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c5a56a]">The AfroNarra collection</p><h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight sm:text-[40px]">Stories to get lost in.</h1><p className="mt-3 text-[14px] text-[#a8a49c]">Explore books and magazines, discover creators, and open your next read.</p></header>
       <LanguageChoices/>
       <div className="app-catalog-filters grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
         <div><label htmlFor="catalog-search" className="sr-only">Search the catalog</label><div className="relative"><Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-3.5 text-[#96938b]" /><input id="catalog-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search title, author, or genre" className="min-h-11 w-full rounded-lg border border-white/15 bg-white/[0.03] pl-10 pr-3 text-[16px] placeholder:text-[#96938b]" /></div></div>

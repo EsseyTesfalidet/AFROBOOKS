@@ -149,7 +149,7 @@ export default function LegalDocument({
                 href={`mailto:${LEGAL_CONTACT}`}
                 className="mt-2 inline-flex min-h-11 items-center break-all text-[#e5c68e] underline decoration-[#c5a56a]/40 underline-offset-4"
               >
-                {LEGAL_CONTACT}
+                Contact support
               </a>
             </div>
           </article>
@@ -157,7 +157,7 @@ export default function LegalDocument({
       </main>
       <footer className="border-t border-white/10 px-5 py-7 text-xs text-[#a8a49c]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} AfroBooks</p>
+          <p>© {new Date().getFullYear()} AfroNarra</p>
           <p>A place for stories. Built on trust.</p>
         </div>
       </footer>

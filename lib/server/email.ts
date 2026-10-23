@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { subscriptionConfirmationEmail } from '@/lib/email/templates';
 
-const FROM = 'AfroBooks <noreply@afrobooks.com>';
+const FROM = 'AfroNarra <noreply@afrobooks.com>';
 
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY;

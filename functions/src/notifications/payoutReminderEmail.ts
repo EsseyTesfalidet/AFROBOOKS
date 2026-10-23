@@ -17,14 +17,14 @@ export function payoutReminderEmail(input: {
   if (base.protocol !== 'https:' || base.username || base.password) throw new Error('Invalid reminder app URL');
   const url = new URL('/dashboard?profile=payout', base.origin).href;
   const subject = input.followup
-    ? 'Reminder: finish your AfroBooks payout setup'
-    : 'Finish setting up your AfroBooks author payments';
+    ? 'Reminder: finish your AfroNarra payout setup'
+    : 'Finish setting up your AfroNarra author payments';
   const message = 'Readers cannot purchase your books until your Stripe payout setup is complete. Open your Payouts settings to securely provide the required information.';
   const footer = 'Enter your bank and identity details only through Stripe. Do not reply with financial information. This is an account setup reminder, not a promotional email.';
   return {
     from: input.from, to: input.to, subject,
     text: `Hello ${input.name || 'Author'},\n\n${message}\n\nComplete payout setup: ${url}\n\n${footer}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#222"><h1 style="color:#d7472c">AfroBooks</h1><h2>${subject}</h2><p>Hello ${escapeHtml(input.name || 'Author')},</p><p>${message}</p><p><a href="${escapeHtml(url)}" style="display:inline-block;background:#d7472c;color:white;padding:14px 20px;border-radius:8px;text-decoration:none">Complete payout setup</a></p><p style="font-size:12px;color:#666">${footer}</p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#222"><h1 style="color:#d7472c">AfroNarra</h1><h2>${subject}</h2><p>Hello ${escapeHtml(input.name || 'Author')},</p><p>${message}</p><p><a href="${escapeHtml(url)}" style="display:inline-block;background:#d7472c;color:white;padding:14px 20px;border-radius:8px;text-decoration:none">Complete payout setup</a></p><p style="font-size:12px;color:#666">${footer}</p></div>`,
   };
 }
 

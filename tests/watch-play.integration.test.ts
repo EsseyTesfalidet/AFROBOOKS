@@ -68,7 +68,7 @@ test('pending payments never grant access; confirmation grants it and stale pend
   assert.equal((await sync()).status, 'active');
 });
 test('forged account binding, mismatched products and unprepared live transactions cannot grant access', async () => {
-  await assert.rejects(sync(token, 'other'), /another AfroBooks/);
+  await assert.rejects(sync(token, 'other'), /another AfroNarra/);
   await assert.rejects(syncPlayPurchase(db, token, reader.uid, 'afrobooks_video_other', client), /does not match/);
   delete purchased.obfuscatedExternalAccountId; await assert.rejects(sync(), /not linked/);
   purchased.obfuscatedExternalAccountId = playAccountId(reader.uid); delete purchased.testPurchaseContext;
@@ -161,7 +161,7 @@ test('live checkout grants ownership once and records an exact 80/20 share of ac
   assert.equal((await getVideoEarnings(person('creator', 'seller'))).length, 1);
   assert.equal((await getVideoEarnings(person('other-creator', 'seller'))).length, 0);
   await assert.rejects(getVideoEarnings(reader), /Creator access/);
-  await assert.rejects(syncPlayPurchase(db, token, 'stranger', sku, liveClient), /another AfroBooks/);
+  await assert.rejects(syncPlayPurchase(db, token, 'stranger', sku, liveClient), /another AfroNarra/);
 });
 test('Google license test purchases in live checkout grant access without creating earnings', async () => {
   await enableLive(); purchased.testPurchaseContext = { fopType: 'TEST' }; await syncLive();

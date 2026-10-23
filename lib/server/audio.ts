@@ -98,7 +98,7 @@ export async function audioAction(actor: Actor, input: unknown) {
   if (action === 'create') {
     author(actor); const { partTitles: _partTitles, ...draft } = audioDraft.parse(data); const id = randomUUID();
     const profile = (await db.doc(`users/${actor.uid}`).get()).data();
-    const creatorName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').slice(0, 120) || 'AfroBooks creator';
+    const creatorName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').slice(0, 120) || 'AfroNarra creator';
     await db.runTransaction(async tx => {
       const quota = db.doc(`audioQuotas/${actor.uid}`); const current = (await tx.get(quota)).data()?.count || 0;
       if (current >= 20) throw new WatchError(409, 'Your studio allows 20 audio uploads. Remove an unused draft before adding another.');

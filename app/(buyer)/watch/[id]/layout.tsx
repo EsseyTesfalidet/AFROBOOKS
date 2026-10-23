@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     const title = typeof video.title === 'string' && video.title.trim() ? video.title.trim() : 'Video';
     const creator = typeof video.creatorName === 'string' ? video.creatorName.trim() : '';
-    const description = snippet(video.description, `Watch ${title}${creator ? ` by ${creator}` : ''} on AfroBooks.`);
+    const description = snippet(video.description, `Watch ${title}${creator ? ` by ${creator}` : ''} on AfroNarra.`);
     const image = typeof video.posterUrl === 'string' && video.posterUrl.startsWith('https://') ? video.posterUrl : undefined;
     const pageTitle = creator ? `${title} by ${creator}` : title;
     return {

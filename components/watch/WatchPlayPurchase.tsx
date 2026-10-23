@@ -26,7 +26,7 @@ export default function WatchPlayPurchase({ videoId, offer, onPurchased, content
     let active = true;
     void (async () => {
       const service = await playService();
-      if (!service) throw new Error(`Open the current Google Play version of AfroBooks to purchase this ${contentKind}.`);
+      if (!service) throw new Error(`Open the current Google Play version of AfroNarra to purchase this ${contentKind}.`);
       const details = (await service.getDetails([offer.productId])).find(row => row.itemId === offer.productId);
       if (!details) throw new Error(`This ${contentKind} is not available in Google Play for this account or country.`);
       playPrice(details);

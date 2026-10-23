@@ -4,7 +4,7 @@ import { PublicDiscovery } from '@/components/discovery/PublicDiscovery';
 import { discoveryMetadata } from '@/lib/seo/discoveryMetadata';
 
 export const revalidate = 1800;
-export const metadata: Metadata = discoveryMetadata('African Films & Documentaries', 'Watch African films, documentaries, short films, news, and cultural stories from independent creators on AfroBooks.', '/african-films');
+export const metadata: Metadata = discoveryMetadata('African Films & Documentaries', 'Watch African films, documentaries, short films, news, and cultural stories from independent creators on AfroNarra.', '/african-films');
 
 export default async function AfricanFilmsPage() {
   const items = await getPublicDiscoveryItems('video');

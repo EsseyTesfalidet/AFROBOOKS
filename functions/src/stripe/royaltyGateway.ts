@@ -37,7 +37,7 @@ export function stripeRoyaltyGateway(stripe: StripeClient): RoyaltyGateway {
       amount: input.amount, currency: 'usd', destination: input.destination,
       source_transaction: input.source,
       metadata: { payoutId: input.payoutId, sellerId: input.sellerId, orderId: input.orderId },
-      description: `AfroBooks book royalty ${input.orderId}`,
+      description: `AfroNarra book royalty ${input.orderId}`,
     }, { idempotencyKey: input.idempotencyKey }) as RoyaltyTransfer,
   };
 }

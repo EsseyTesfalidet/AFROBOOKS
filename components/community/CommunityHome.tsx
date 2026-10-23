@@ -40,7 +40,7 @@ export default function CommunityHome({ kind }: { kind: CommunityKind }) {
   }
   const posts = feed?.posts.filter(post => kind !== 'weekly' || post.id !== feed.featured?.id) ?? [];
   return <main className="community community-shell">
-    <p className="community-kicker">The AfroBooks community</p><h1>A little closer to home.</h1>
+    <p className="community-kicker">The AfroNarra community</p><h1>A little closer to home.</h1>
     <p className="community-muted mt-4">Share an experience, find a forgotten memory, and hear from people across our communities.</p>
     <nav className="community-tabs" aria-label="Community sections">
       <Link href="/community" aria-current={kind === 'weekly' ? 'page' : undefined}>Weekly Question</Link>
@@ -54,7 +54,7 @@ export default function CommunityHome({ kind }: { kind: CommunityKind }) {
       {error && <button type="button" className="community-secondary justify-self-start" onClick={() => { setError(''); setRevision(v => v + 1); }}>Try again</button>}
       {!feed && !error && <p role="status" className="community-muted">Loading conversations…</p>}
       {kind === 'weekly' && feed?.featured && <PostCard post={feed.featured} featured />}
-      {kind === 'weekly' && feed && !feed.featured && <div className="community-card"><h2>Our first question is on its way.</h2><p className="community-muted mt-3">Come back for a conversation chosen by AfroBooks. You can explore Find a Memory in the meantime.</p><Link href="/community?tab=memory" className="community-link">Explore memory requests</Link></div>}
+      {kind === 'weekly' && feed && !feed.featured && <div className="community-card"><h2>Our first question is on its way.</h2><p className="community-muted mt-3">Come back for a conversation chosen by AfroNarra. You can explore Find a Memory in the meantime.</p><Link href="/community?tab=memory" className="community-link">Explore memory requests</Link></div>}
       {kind === 'weekly' && posts.length > 0 && <h2>More conversations</h2>}
       {posts.map(post => <PostCard key={post.id} post={post} />)}
       {kind === 'memory' && feed && !posts.length && !error && <div className="community-empty"><h2>What have you been trying to remember?</h2><p className="community-muted mt-3">Be the first to ask. Include a few words, where you heard them, or what made the memory special.</p></div>}

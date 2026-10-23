@@ -80,7 +80,7 @@ export async function preparePlayPurchase(actor: AuthenticatedRequestUser, video
 
 export function classifyPlayPurchase(purchase: PlayPurchase, acceptLive = false) {
   const items = purchase.productLineItem;
-  if (items?.length !== 1 || !PLAY_PRODUCT_PATTERN.test(items[0].productId || '')) throw new WatchError(400, 'This is not an AfroBooks video purchase.');
+  if (items?.length !== 1 || !PLAY_PRODUCT_PATTERN.test(items[0].productId || '')) throw new WatchError(400, 'This is not an AfroNarra video purchase.');
   const offer = items[0].productOfferDetails;
   if (purchase.testPurchaseContext && purchase.testPurchaseContext.fopType !== 'TEST') throw new WatchError(409, 'Unknown Google purchase type.');
   if (!purchase.testPurchaseContext && !acceptLive) throw new WatchError(409, 'Real-money video sales are not enabled. This purchase requires support review.');
@@ -104,8 +104,8 @@ export async function syncPlayPurchase(db: Firestore, token: string, uid?: strin
   const productId = purchase.productLineItem![0].productId!;
   if (expectedProductId && productId !== expectedProductId) throw new WatchError(403, 'The purchase does not match this video.');
   const accountId = purchase.obfuscatedExternalAccountId;
-  if (!accountId || !/^[a-f0-9]{64}$/.test(accountId)) throw new WatchError(403, 'This purchase is not linked to an AfroBooks account.');
-  if (uid && playAccountId(uid) !== accountId) throw new WatchError(403, 'This purchase belongs to another AfroBooks account.');
+  if (!accountId || !/^[a-f0-9]{64}$/.test(accountId)) throw new WatchError(403, 'This purchase is not linked to an AfroNarra account.');
+  if (uid && playAccountId(uid) !== accountId) throw new WatchError(403, 'This purchase belongs to another AfroNarra account.');
   const account = await db.doc(`watchPlayAccounts/${accountId}`).get();
   const buyerId = account.data()?.uid;
   if (typeof buyerId !== 'string' || playAccountId(buyerId) !== accountId || (uid && buyerId !== uid)) throw new WatchError(403, 'The purchase account could not be verified.');
@@ -131,7 +131,7 @@ export async function syncPlayPurchase(db: Firestore, token: string, uid?: strin
     const entitlementRef = db.doc(`${paths.entitlements}/${buyerId}/${paths.items}/${videoId}`);
     const [video, entitlement] = await tx.getAll(db.doc(`${paths.titles}/${videoId}`), entitlementRef);
     if (!old.exists && testPurchase && !playTester(buyerId) && !checkout.data()?.liveAuthorized) throw new WatchError(403, 'This account is not enabled for video purchase testing.');
-    if (!old.exists && !testPurchase && (checkout.data()?.uid !== buyerId || checkout.data()?.videoId !== videoId || !checkout.data()?.liveAuthorized || checkout.data()?.platformBps !== VIDEO_PLATFORM_BPS)) throw new WatchError(403, 'Start this video purchase in AfroBooks before paying.');
+    if (!old.exists && !testPurchase && (checkout.data()?.uid !== buyerId || checkout.data()?.videoId !== videoId || !checkout.data()?.liveAuthorized || checkout.data()?.platformBps !== VIDEO_PLATFORM_BPS)) throw new WatchError(403, 'Start this video purchase in AfroNarra before paying.');
     if (!video.exists || video.data()?.creatorId !== product.data()?.creatorId) throw new WatchError(409, 'Purchased content needs review.');
     const resolved = old.data()?.status === 'revoked' ? 'revoked' : old.data()?.status === 'active' && status === 'pending' ? 'active' : status;
     if (resolved === 'active' && entitlement.data()?.status === 'active' && entitlement.data()?.purchaseId !== purchaseId) throw new WatchError(409, 'This video is already owned. Contact support about the duplicate purchase.');

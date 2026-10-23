@@ -4,7 +4,7 @@ import { PublicDiscovery } from '@/components/discovery/PublicDiscovery';
 import { discoveryMetadata } from '@/lib/seo/discoveryMetadata';
 
 export const revalidate = 1800;
-export const metadata: Metadata = discoveryMetadata('African Music & Independent Artists', 'Discover African music and independent artists on AfroBooks. Explore new songs, music videos, and sounds from across the continent and diaspora.', '/african-music');
+export const metadata: Metadata = discoveryMetadata('African Music & Independent Artists', 'Discover African music and independent artists on AfroNarra. Explore new songs, music videos, and sounds from across the continent and diaspora.', '/african-music');
 
 export default async function AfricanMusicPage() {
   const [audio, videos] = await Promise.all([getPublicDiscoveryItems('audio', 'Music'), getPublicDiscoveryItems('video', 'Music')]);

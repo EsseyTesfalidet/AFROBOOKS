@@ -75,7 +75,7 @@ export default function SignupForm() {
   async function onSubmit({ email, password, firstName, lastName }: FormData) {
     setError('');
     if (signupsOpen.maintenanceMode) {
-      setError('AfroBooks is currently in maintenance mode. Please try again later.');
+      setError('AfroNarra is currently in maintenance mode. Please try again later.');
       return;
     }
     if (!signupsOpen.buyer) {
@@ -131,16 +131,16 @@ export default function SignupForm() {
           <span className="eyebrow-chip">Create Account</span>
           <div className="mt-5 text-center">
             <Logo size="lg" href="/" />
-            <h1 className="mt-6 font-display text-[32px] leading-tight text-white sm:text-5xl">Join AfroBooks</h1>
+            <h1 className="mt-6 font-display text-[32px] leading-tight text-white sm:text-5xl">Join AfroNarra</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#9a9aa3]">
-              Create one polished account for discovering books, building your audience, and publishing when you are ready.
+              Discover African books, films, music and podcasts. Enjoy your favourites or share your own work, all with one account.
             </p>
           </div>
 
           <div className="mt-6 grid gap-2 sm:grid-cols-3">
             {[
-              { label: 'Reader-ready library', icon: BookOpen },
-              { label: 'Author tools included', icon: PenLine },
+              { label: 'Your personal library', icon: BookOpen },
+              { label: 'Creator tools included', icon: PenLine },
               { label: 'Protected account', icon: ShieldCheck },
             ].map(({ label, icon: Icon }) => (
               <div key={label} className="surface-panel-muted rounded-2xl px-3 py-3 text-center">

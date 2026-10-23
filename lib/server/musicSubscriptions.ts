@@ -44,9 +44,9 @@ export async function prepareMusic(actor: Actor) {
 }
 export async function syncMusic(token: string, uid?: string, client: MusicClient = musicClient) {
   playToken.parse(token); const purchase = await client.subscription(token); const items = purchase.lineItems;
-  if (items?.length !== 1 || items[0].productId !== MUSIC_PRODUCT || items[0].offerDetails?.basePlanId !== MUSIC_BASE_PLAN || !items[0].autoRenewingPlan) throw new WatchError(400, 'This is not an AfroBooks monthly music subscription.');
+  if (items?.length !== 1 || items[0].productId !== MUSIC_PRODUCT || items[0].offerDetails?.basePlanId !== MUSIC_BASE_PLAN || !items[0].autoRenewingPlan) throw new WatchError(400, 'This is not an AfroNarra monthly music subscription.');
   const accountId = purchase.externalAccountIdentifiers?.obfuscatedExternalAccountId;
-  if (!accountId || !/^[a-f0-9]{64}$/.test(accountId) || (uid && playAccountId(uid) !== accountId)) throw new WatchError(403, 'This subscription belongs to another AfroBooks account.');
+  if (!accountId || !/^[a-f0-9]{64}$/.test(accountId) || (uid && playAccountId(uid) !== accountId)) throw new WatchError(403, 'This subscription belongs to another AfroNarra account.');
   const db = await getAdminDb(); const account = await db.doc(`watchPlayAccounts/${accountId}`).get(); const buyerId = account.data()?.uid;
   if (typeof buyerId !== 'string' || playAccountId(buyerId) !== accountId || (uid && buyerId !== uid)) throw new WatchError(403, 'The subscription account could not be verified.');
   const expiresAt = Date.parse(items[0].expiryTime || ''); const startAt = Date.parse(purchase.startTime || ''); const state = purchase.subscriptionState || '';
@@ -57,7 +57,7 @@ export async function syncMusic(token: string, uid?: string, client: MusicClient
   const effective = await db.runTransaction(async tx => {
     const [old, access, checkout] = await Promise.all([tx.get(ref), tx.get(accessRef), tx.get(db.doc(`musicCheckouts/${buyerId}`))]);
     if (old.exists && (old.data()?.buyerId !== buyerId || old.data()?.test !== test)) throw new WatchError(403, 'Subscription ownership mismatch.');
-    if (!old.exists && ((!test && !checkout.data()?.liveAuthorized) || (test && !playTester(buyerId) && !checkout.data()?.liveAuthorized))) throw new WatchError(403, 'Start the music subscription in AfroBooks first.');
+    if (!old.exists && ((!test && !checkout.data()?.liveAuthorized) || (test && !playTester(buyerId) && !checkout.data()?.liveAuthorized))) throw new WatchError(403, 'Start the music subscription in AfroNarra first.');
     // An older canceled token must never replace a newer subscription.
     const terminal = old.data()?.state === 'SUBSCRIPTION_STATE_EXPIRED';
     const resolved = terminal ? 'SUBSCRIPTION_STATE_EXPIRED' : state;

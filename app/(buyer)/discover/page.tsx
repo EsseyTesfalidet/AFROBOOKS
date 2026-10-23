@@ -36,7 +36,7 @@ export default function DiscoverPage() {
           <SponsoredBook books={books} />
           {shelves.popular.length > 0 && <BookRail title="Popular with readers" subtitle="Ordered by copies sold across the catalog." books={shelves.popular} actionHref="/search?collection=trending" />}
           {hasDifferentLatest && <BookRail title="Latest releases" subtitle="Recently published stories, ready to read." books={shelves.latest} actionHref="/search?collection=new" />}
-          {shelves.featured.length > 0 && <BookRail title="Staff picks" subtitle="Selected by the AfroBooks team." books={shelves.featured} actionHref="/search?collection=featured" />}
+          {shelves.featured.length > 0 && <BookRail title="Staff picks" subtitle="Selected by the AfroNarra team." books={shelves.featured} actionHref="/search?collection=featured" />}
           {shelves.hidden.length > 0 && <BookRail title="Readers recommend" subtitle="Highly rated books with a small but growing readership." books={shelves.hidden} actionHref="/search?collection=hidden" />}
         </>}
     </main>

@@ -1,8 +1,8 @@
 {
   "packageId": "com.afrobs.app",
   "host": "afrobs.com",
-  "name": "AfroBooks",
-  "launcherName": "AfroBooks",
+  "name": "AfroNarra",
+  "launcherName": "AfroNarra",
   "display": "standalone",
   "themeColor": "#101110",
   "themeColorDark": "#000000",

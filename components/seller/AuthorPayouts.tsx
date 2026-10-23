@@ -138,7 +138,7 @@ export default function AuthorPayouts() {
             <p className="rounded-lg border border-amber-400/20 p-3 text-sm text-amber-200">
               {status.payoutHold
                 ? 'A payment or balance needs review before further earnings can be sent to Stripe.'
-                : 'Automatic transfers are currently paused by AfroBooks.'}
+                : 'Automatic transfers are currently paused by AfroNarra.'}
             </p>
           )}
           {!status.connected && (

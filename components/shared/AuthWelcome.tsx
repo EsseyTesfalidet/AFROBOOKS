@@ -22,7 +22,7 @@ export default function AuthWelcome() {
 
   if (!eligible || !profile || welcome?.uid !== uid) return null;
   const name = profile.firstName?.trim();
-  const title = welcome.kind === 'signup' ? 'Welcome to AfroBooks' : 'Welcome back';
+  const title = welcome.kind === 'signup' ? 'Welcome to AfroNarra' : 'Welcome back';
   const author = profile.activeRole === 'seller';
 
   return (

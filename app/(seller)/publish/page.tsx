@@ -610,7 +610,7 @@ function PublishWorkspace({ editId, resetDraft }: { editId: string | null; reset
                       className="mt-1 accent-[var(--app-accent,#e8442a)]"
                     />
                     <span className="text-sm text-[#aaa]">
-                      I confirm that I own the rights to this book or I have explicit permission to publish it on AfroBooks.
+                      I confirm that I own the rights to this book or I have explicit permission to publish it on AfroNarra.
                     </span>
                   </label>
                 </div>

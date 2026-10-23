@@ -6,7 +6,7 @@ import { LEGAL_CONTACT } from '@/lib/legal';
 export const metadata: Metadata = {
   title: 'Terms of use',
   description:
-    'Your guide to reading, publishing, payments, author earnings and book promotions on AfroBooks.',
+    'Your guide to reading, publishing, payments, author earnings and book promotions on AfroNarra.',
   alternates: { canonical: 'https://afrobs.com/terms' },
 };
 
@@ -15,7 +15,7 @@ export default function TermsPage() {
     <LegalDocument
       kind="terms"
       title="Terms of use"
-      introduction="A shared understanding for readers and authors. These terms explain how AfroBooks works, what you can expect, and the responsibilities that come with using it."
+      introduction="A shared understanding for readers and authors. These terms explain how AfroNarra works, what you can expect, and the responsibilities that come with using it."
       highlights={[
         {
           title: 'Your stories remain yours',
@@ -33,11 +33,11 @@ export default function TermsPage() {
       sections={[
         {
           id: 'using-afrobooks',
-          title: 'Using AfroBooks',
+          title: 'Using AfroNarra',
           content: (
             <>
               <p>
-                These terms apply to AfroBooks at afrobs.com, including its reader, author tools and
+                These terms apply to AfroNarra at afrobs.com, including its reader, author tools and
                 book promotions. To use an account, you must accept these terms and acknowledge our{' '}
                 <Link href="/privacy">Privacy information</Link>. We record the document versions
                 and acceptance date. Acknowledging the privacy notice is not consent to unrelated
@@ -76,7 +76,7 @@ export default function TermsPage() {
             <>
               <p>
                 A purchase gives you a personal, non-transferable license to read the book through
-                AfroBooks. A borrow or subscription provides access under the duration and
+                AfroNarra. A borrow or subscription provides access under the duration and
                 eligibility shown in the app. Neither transfers copyright or grants permission to
                 redistribute, resell, or bypass access controls, except where applicable law
                 permits.
@@ -104,7 +104,7 @@ export default function TermsPage() {
               </p>
               <p>
                 For access failures, duplicate charges or other purchase problems, contact{' '}
-                <a href={`mailto:${LEGAL_CONTACT}?subject=Purchase%20support`}>{LEGAL_CONTACT}</a>{' '}
+                <a href={`mailto:${LEGAL_CONTACT}?subject=Purchase%20support`}>our support team</a>{' '}
                 with your order reference. We review the circumstances and any refund rights that
                 apply where you live. Nothing in these terms excludes mandatory consumer rights,
                 statutory remedies or cancellation rights. Do not send card numbers or bank details
@@ -143,7 +143,7 @@ export default function TermsPage() {
                 including permission for third-party material.
               </p>
               <p>
-                You give AfroBooks a non-exclusive license to store, process, display and deliver
+                You give AfroNarra a non-exclusive license to store, process, display and deliver
                 that content to operate the service, show previews and catalog listings, and carry
                 out promotions you request. This license is limited to those purposes and ends when
                 the content is removed, except for records or copies needed to complete existing
@@ -151,7 +151,7 @@ export default function TermsPage() {
               </p>
               <p>
                 Public reviews and profile material must also be yours to share. Report suspected
-                infringement with the work involved, its AfroBooks link, an explanation of your
+                infringement with the work involved, its AfroNarra link, an explanation of your
                 rights and a way to contact you. We may request further information before acting.
               </p>
             </>
@@ -218,7 +218,7 @@ export default function TermsPage() {
           content: (
             <>
               <p>
-                Do not use AfroBooks for fraud, harassment, infringement, illegal content,
+                Do not use AfroNarra for fraud, harassment, infringement, illegal content,
                 manipulated reviews or promotion metrics, malicious uploads, or attempts to access
                 other people’s accounts or private data. Do not evade payment, security or
                 publishing restrictions.
@@ -244,7 +244,7 @@ export default function TermsPage() {
               <p>
                 You can request account deletion from settings. Deletion removes sign-in and library
                 access, and removes an author’s books. Financial, dispute, security and necessary
-                compliance records may remain. Deleting AfroBooks does not automatically close a
+                compliance records may remain. Deleting AfroNarra does not automatically close a
                 separate Stripe account or erase records Stripe must retain. Contact support before
                 deletion if you have unresolved earnings or a payment dispute.
               </p>
@@ -257,13 +257,13 @@ export default function TermsPage() {
           content: (
             <>
               <p>
-                We work to keep AfroBooks available and secure, but interruptions and errors can
+                We work to keep AfroNarra available and secure, but interruptions and errors can
                 occur. Content and features may change. Except for rights or guarantees that cannot
                 legally be excluded, the service is provided as available without a promise of
                 uninterrupted access or specific results.
               </p>
               <p>
-                To the extent allowed by applicable law, AfroBooks is not responsible for indirect
+                To the extent allowed by applicable law, AfroNarra is not responsible for indirect
                 or consequential losses. This does not limit liability that cannot lawfully be
                 excluded, including mandatory consumer protections. These terms do not require you
                 to give up rights or remedies under the laws that apply to you.
@@ -282,8 +282,8 @@ export default function TermsPage() {
                 already completed purchase or promotion except where law permits.
               </p>
               <p>
-                For questions, complaints, copyright reports or account help, contact AfroBooks at{' '}
-                <a href={`mailto:${LEGAL_CONTACT}`}>{LEGAL_CONTACT}</a>. Include the relevant book,
+                For questions, complaints, copyright reports or account help, contact{' '}
+                <a href={`mailto:${LEGAL_CONTACT}`}>our support team</a>. Include the relevant book,
                 order or campaign reference, and avoid sending passwords, full payment details or
                 identity documents.
               </p>

@@ -1,7 +1,7 @@
 {
-  "name": "AfroBooks",
-  "short_name": "AfroBooks",
-  "description": "The African ebook marketplace — discover and read ebooks by African authors",
+  "name": "AfroNarra",
+  "short_name": "AfroNarra",
+  "description": "Read African books, watch films and documentaries, and listen to music, podcasts and audiobooks on AfroNarra.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0e0e0e",
@@ -21,7 +21,12 @@
       "purpose": "maskable any"
     }
   ],
-  "categories": ["books", "education", "entertainment"],
+  "categories": [
+    "books",
+    "education",
+    "entertainment",
+    "music"
+  ],
   "screenshots": [],
   "shortcuts": [
     {
@@ -30,9 +35,19 @@
       "description": "View your library"
     },
     {
-      "name": "Browse",
+      "name": "Read",
       "url": "/browse",
-      "description": "Browse all ebooks"
+      "description": "Explore African books, magazines and short stories"
+    },
+    {
+      "name": "Watch",
+      "url": "/watch",
+      "description": "Films, documentaries and videos from African creators"
+    },
+    {
+      "name": "Listen",
+      "url": "/listen",
+      "description": "African music, podcasts and audiobooks"
     }
   ]
 }

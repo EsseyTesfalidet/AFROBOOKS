@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { BRAND_NAME } from '@/lib/brand';
 
 interface LogoProps {
   href?: string;
@@ -20,11 +21,11 @@ export default function Logo({ href = '/', size = 'md', compact = false }: LogoP
   return (
     <Link
       href={href}
-      aria-label="AfroBooks"
+      aria-label={BRAND_NAME}
       className={`inline-flex min-h-11 shrink-0 select-none items-center justify-center rounded-md align-middle ${scale.gap} transition-opacity hover:opacity-80 ${compact ? 'min-w-11' : ''}`}
     >
       <Image src="/brand/afrobooks-mark.svg" alt="" width={64} height={64} className={`${scale.mark} shrink-0`} aria-hidden="true" />
-      {!compact && <span aria-hidden="true" className={`font-body ${scale.wordmark} whitespace-nowrap font-semibold leading-none tracking-[-0.055em] text-[#f5f2eb]`}>AfroBooks</span>}
+      {!compact && <span aria-hidden="true" className={`font-body ${scale.wordmark} whitespace-nowrap font-semibold leading-none tracking-[-0.055em] text-[#f5f2eb]`}>{BRAND_NAME}</span>}
     </Link>
   );
 }

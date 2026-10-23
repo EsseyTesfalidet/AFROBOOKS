@@ -44,7 +44,7 @@ export default function BuyerHeader() {
           <div className="buyer-header-brand">
             <div className="buyer-logo-full"><Logo href="/browse" size="sm" /></div>
             <div className="buyer-logo-compact"><Logo href="/browse" size="sm" compact /></div>
-            <span className="buyer-header-tagline">African stories.<br />Endless possibilities.</span>
+            <span className="buyer-header-tagline">Read. Watch.<br />Listen.</span>
           </div>
 
           <div className="buyer-header-actions">

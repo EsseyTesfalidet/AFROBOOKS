@@ -119,7 +119,7 @@ export default function AdminSettingsPage() {
                 processing. It is your platform revenue before other costs.
               </p>
               <div className="flex items-center justify-between gap-5 mt-6">
-                <label htmlFor="platform-commission">AfroBooks commission</label>
+                <label htmlFor="platform-commission">AfroNarra commission</label>
                 <div className="flex items-center gap-3">
                   <input
                     id="platform-commission"

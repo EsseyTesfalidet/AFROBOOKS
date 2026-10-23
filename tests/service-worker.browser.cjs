@@ -19,7 +19,7 @@ async function main() {
       res.end('/* public bundle */');
     } else {
       res.setHeader('Content-Type', 'text/html');
-      res.end(req.url === '/offline.html' ? '<h1>Offline fallback</h1>' : '<h1>Online page</h1>');
+      res.end(req.url === '/offline.html' ? fs.readFileSync('public/offline.html') : '<h1>Online page</h1>');
     }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -30,7 +30,7 @@ async function main() {
     const page = await context.newPage();
     await page.goto(base);
     await page.evaluate(async () => {
-      for (const name of ['apis', 'others', 'cross-origin', 'static-data-assets', 'workbox-precache-v2-test']) {
+      for (const name of ['afrobooks-public-v1', 'apis', 'others', 'cross-origin', 'static-data-assets', 'workbox-precache-v2-test']) {
         const cache = await caches.open(name);
         await cache.put('/api/private', new Response('old private data'));
       }
@@ -38,20 +38,22 @@ async function main() {
       await navigator.serviceWorker.ready;
       if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     });
-    assert.deepEqual(await page.evaluate(() => caches.keys()), ['afrobooks-public-v1']);
+    assert.deepEqual(await page.evaluate(() => caches.keys()), ['afrobooks-public-v2']);
     for (const account of ['account-A', 'account-B']) {
       const data = await page.evaluate(async (token) => (await fetch('/api/private', { headers: { authorization: token } })).json(), account);
       assert.equal(data.private, account);
     }
     await page.evaluate(async () => { await fetch('/api/private'); await fetch('/_next/static/public.js'); });
-    const paths = await page.evaluate(async () => (await (await caches.open('afrobooks-public-v1')).keys()).map(key => new URL(key.url).pathname));
+    const paths = await page.evaluate(async () => (await (await caches.open('afrobooks-public-v2')).keys()).map(key => new URL(key.url).pathname));
     assert.deepEqual(paths.sort(), ['/_next/static/public.js', '/offline.html'].sort());
     await context.setOffline(true);
     assert.equal(await page.evaluate(async () => { try { await fetch('/api/private'); return 'leaked'; } catch { return 'blocked'; } }), 'blocked');
     assert.equal(await page.evaluate(async () => (await fetch('/_next/static/public.js')).text()), '/* public bundle */');
     await page.goto(base + '/library');
-    assert.equal(await page.locator('h1').textContent(), 'Offline fallback');
-    console.log('PASS legacy caches purged; account responses isolated; private APIs unavailable offline; public bundles and generic offline fallback work');
+    assert.equal(await page.locator('h1').textContent(), 'You’re offline');
+    assert.ok((await page.locator('body').innerText()).includes('AfroNarra'));
+    assert.ok(!/afrobooks/i.test(await page.locator('body').innerText()));
+    console.log('PASS previous public cache purged; account responses isolated; private APIs unavailable offline; public bundles and AfroNarra offline branding work');
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));

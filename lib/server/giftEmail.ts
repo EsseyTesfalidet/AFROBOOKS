@@ -6,19 +6,19 @@ export function giftEmailConfiguration(env: Record<string, string | undefined> =
   try {
     const url = new URL(env.NEXT_PUBLIC_APP_URL ?? '');
     if (!env.RESEND_API_KEY || url.protocol !== 'https:' || url.username || url.password) return null;
-    return { appUrl: url.origin, apiKey: env.RESEND_API_KEY, from: env.GIFT_EMAIL_FROM || 'AfroBooks <noreply@afrobooks.com>' };
+    return { appUrl: url.origin, apiKey: env.RESEND_API_KEY, from: env.GIFT_EMAIL_FROM || 'AfroNarra <noreply@afrobooks.com>' };
   } catch { return null; }
 }
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export function bookGiftEmail(input: { from: string; to: string; senderName: string; bookTitle: string; message: string; url: string }): ReminderEmail {
-  const intro = `${input.senderName} sent you "${input.bookTitle}" on AfroBooks.`;
+  const intro = `${input.senderName} sent you "${input.bookTitle}" on AfroNarra.`;
   const instructions = 'Sign in or create an account with this email address, verify your email, and claim your book. There is no charge to claim it.';
   return {
-    from: input.from, to: input.to, subject: 'Someone sent you a book on AfroBooks',
+    from: input.from, to: input.to, subject: 'Someone sent you a book on AfroNarra',
     text: `${intro}\n\n${input.message ? `${input.message}\n\n` : ''}${instructions}\n\nOpen your gift: ${input.url}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#222"><h1>AfroBooks</h1><h2>A book for you</h2><p>${escapeHtml(intro)}</p>${input.message ? `<blockquote style="white-space:pre-wrap">${escapeHtml(input.message)}</blockquote>` : ''}<p>${instructions}</p><p><a href="${escapeHtml(input.url)}">Open your gift</a></p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#222"><h1>AfroNarra</h1><h2>A book for you</h2><p>${escapeHtml(intro)}</p>${input.message ? `<blockquote style="white-space:pre-wrap">${escapeHtml(input.message)}</blockquote>` : ''}<p>${instructions}</p><p><a href="${escapeHtml(input.url)}">Open your gift</a></p></div>`,
   };
 }
 

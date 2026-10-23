@@ -74,7 +74,7 @@ export async function createPromotionCheckout(
               currency: 'usd',
               unit_amount: item.priceCents,
               product_data: {
-                name: 'AfroBooks · 7-day book promotion',
+                name: 'AfroNarra · 7-day book promotion',
                 description: 'Shared sponsored placement in Discover. No automatic renewal.',
               },
             },

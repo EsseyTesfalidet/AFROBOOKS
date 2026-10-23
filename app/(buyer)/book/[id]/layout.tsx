@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const author = str(f.authorName) || 'Unknown Author';
     const desc = str(f.description);
     const cover = str(f.coverUrl);
-    const snippet = desc ? (desc.length > 160 ? desc.slice(0, 157) + '…' : desc) : `Read "${title}" by ${author} on AfroBooks.`;
+    const snippet = desc ? (desc.length > 160 ? desc.slice(0, 157) + '…' : desc) : `Read "${title}" by ${author} on AfroNarra.`;
     return {
       title,
       description: snippet,

@@ -28,7 +28,7 @@ public class VideoPaymentActivity extends Activity implements PurchasesUpdatedLi
         ComponentName caller = getCallingActivity();
         Token trusted = new SharedPreferencesTokenStore(this).load();
         if (caller == null || trusted == null || !trusted.matches(caller.getPackageName(), getPackageManager())) {
-            fail("Open checkout from the verified AfroBooks app."); return;
+            fail("Open checkout from the verified AfroNarra app."); return;
         }
         // Match the browser-helper adapter's attribution of the verified TWA browser.
         getIntent().putExtra("PROXY_PACKAGE", caller.getPackageName());

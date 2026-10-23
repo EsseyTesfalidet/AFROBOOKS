@@ -44,7 +44,7 @@ function Catalog({ library = false }: { library?: boolean }) {
     try { const playback = await authenticatedGet<AudioPlayback>(`/api/audio?view=${preview ? 'preview' : 'playback'}&id=${detail.title.id}${position === undefined ? '' : `&position=${position}`}`); if (useAuthStore.getState().firebaseUser?.uid === uid) { useAudioStore.getState().set(playback, uid); setDetail(null); } }
     catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
-  return <><BuyerHeader /><main className="listen-page app-page"><header className="listen-heading"><div><p className="listen-eyebrow">AfroBooks</p><h1>{library ? 'Your library' : 'Listen'}</h1><p>{library ? 'Your audio, ready when you are.' : 'Music. Conversations. Stories told aloud.'}</p></div><Headphones size={36} /></header>
+  return <><BuyerHeader /><main className="listen-page app-page"><header className="listen-heading"><div><p className="listen-eyebrow">AfroNarra</p><h1>{library ? 'Your library' : 'Listen'}</h1><p>{library ? 'Your audio, ready when you are.' : 'Music. Conversations. Stories told aloud.'}</p></div><Headphones size={36} /></header>
     <MobilePullToRefresh onRefresh={async () => { setExtra([]); setCursor(undefined); setError(''); setNotice(''); await resource.refresh(); }} />
     {library ? <LibraryFormatTabs active="audio" /> : <section className="listen-hero"><span className="listen-hero-mark" aria-hidden="true"><Headphones size={70} strokeWidth={1} /></span><p>Find your next favourite voice.</p><span>Discover African music, podcasts and audiobooks.</span></section>}
     {library&&<ContinueEnjoying/>}<Playlists/><LanguageChoices/>
@@ -65,6 +65,6 @@ function Catalog({ library = false }: { library?: boolean }) {
 }
 export default function ListenCatalog({ library = false }: { library?: boolean }) {
   const installed = useInstalledApp(); const uid = useAuthStore(s => s.firebaseUser?.uid);
-  if (!installed) return <><BuyerHeader /><main className="listen-page"><h1>AfroBooks Listen is in the app</h1><p>Open AfroBooks on your phone for music, podcasts and audiobooks.</p><Link href="/browse">Back to books</Link></main></>;
+  if (!installed) return <><BuyerHeader /><main className="listen-page"><h1>AfroNarra Listen is in the app</h1><p>Open AfroNarra on your phone for music, podcasts and audiobooks.</p><Link href="/browse">Back to books</Link></main></>;
   return <Suspense fallback={<p>Loading Listen…</p>}><Catalog key={uid} library={library} /></Suspense>;
 }

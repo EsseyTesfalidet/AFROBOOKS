@@ -6,7 +6,7 @@ import { processAuthorPayoutReminder } from './authorPayoutReminders';
 import { sendReminderEmail } from './payoutReminderEmail';
 
 const appUrl = defineString('PAYOUT_REMINDER_APP_URL', { default: 'https://afrobs.com' });
-const emailFrom = defineString('PAYOUT_REMINDER_EMAIL_FROM', { default: 'AfroBooks <noreply@afrobooks.com>' });
+const emailFrom = defineString('PAYOUT_REMINDER_EMAIL_FROM', { default: 'AfroNarra <noreply@afrobooks.com>' });
 
 export const processAuthorPayoutReminders = functions
   .runWith({ secrets: ['STRIPE_SECRET_KEY', 'RESEND_API_KEY'], timeoutSeconds: 540, maxInstances: 1 })

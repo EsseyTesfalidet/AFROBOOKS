@@ -11,14 +11,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!creator || creator.status !== 'approved') {
       return { title: 'Creator unavailable', robots: { index: false, follow: false } };
     }
-    const name = typeof creator.name === 'string' && creator.name.trim() ? creator.name.trim() : 'AfroBooks creator';
-    const description = `Watch films, documentaries, music and stories from ${name} on AfroBooks.`;
+    const name = typeof creator.name === 'string' && creator.name.trim() ? creator.name.trim() : 'AfroNarra creator';
+    const description = `Watch films, documentaries, music and stories from ${name} on AfroNarra.`;
     return {
       title: `${name} videos`,
       description,
       alternates: { canonical: `/african-creators/${encodeURIComponent(id)}` },
-      openGraph: { type: 'website', title: `${name} videos — AfroBooks`, description },
-      twitter: { card: 'summary', title: `${name} videos — AfroBooks`, description },
+      openGraph: { type: 'website', title: `${name} videos — AfroNarra`, description },
+      twitter: { card: 'summary', title: `${name} videos — AfroNarra`, description },
     };
   } catch {
     return { title: 'Creator unavailable', robots: { index: false, follow: false } };

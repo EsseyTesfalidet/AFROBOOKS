@@ -4,13 +4,14 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { BookOpen, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Facebook, Heart } from 'lucide-react';
+import { BookOpen, Clapperboard, Headphones, Feather, Star, Users, Zap, ArrowRight, CheckCircle, Search, Mail, MapPin, Twitter, Instagram, Linkedin, Facebook, Heart } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import CommunityInvitation from '@/components/community/CommunityInvitation';
 import { useAuthStore } from '@/store/authStore';
 import { useCatalog } from '@/hooks/useCatalog';
 import { centsToDisplay } from '@/lib/utils/formatCurrency';
 import { LEGAL_CONTACT } from '@/lib/legal';
+import { BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand';
 
 const GENRES = ['Fiction', 'History', 'Science', 'Fantasy', 'Romance', 'Biography', 'Self-Help', 'Business', 'Poetry'];
 
@@ -44,8 +45,10 @@ export default function LandingPage() {
           <Link href="/browse"
             className="hidden sm:block text-sm px-4 py-2 rounded-lg transition-colors"
             style={{ color: '#888' }}>
-            Browse
+            Read
           </Link>
+          <Link href="/african-films" className="hidden min-h-11 items-center px-3 text-sm text-[#888] hover:text-white lg:inline-flex">Watch</Link>
+          <Link href="/african-audio" className="hidden min-h-11 items-center px-3 text-sm text-[#888] hover:text-white lg:inline-flex">Listen</Link>
           <Link href="/community" className="hidden min-h-11 items-center px-3 text-sm text-[#b5b0a6] hover:text-white sm:inline-flex">Community</Link>
           <Link href="/login"
             className="text-xs px-2 py-2 rounded-lg transition-colors sm:text-sm sm:px-4"
@@ -76,7 +79,7 @@ export default function LandingPage() {
             className="inline-block text-xs font-bold px-3 py-1 rounded-full mb-8 uppercase tracking-widest"
             style={{ background: '#1a1a1a', color: '#f5b800', border: '1px solid #2a2a2a' }}
           >
-            African Stories in Books, Film & Sound
+            {BRAND_NAME} · {BRAND_TAGLINE}
           </span>
 
           <h1 className="font-display text-5xl sm:text-7xl leading-none mb-6 tracking-tight">
@@ -90,10 +93,10 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-            <Link href="/african-books"
+            <Link href="#explore"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-opacity hover:opacity-90"
               style={{ background: 'var(--app-action, #e8442a)', color: 'var(--app-on-action, #fff)' }}>
-              Explore African Books <ArrowRight size={18} />
+              Explore AfroNarra <ArrowRight size={18} />
             </Link>
             <Link href="/african-creators"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-base font-medium border transition-all hover:border-[#555]"
@@ -103,12 +106,25 @@ export default function LandingPage() {
           </div>
 
           <p className="text-xs" style={{ color: '#444' }}>
-            Free to browse · No subscription required
+            Explore freely · Buy or subscribe where offered
           </p>
         </div>
       </section>
 
-      <nav aria-label="Explore African media" className="mx-auto grid max-w-5xl grid-cols-2 gap-3 px-5 py-8 sm:grid-cols-4 sm:px-10">
+      <nav id="explore" aria-label="Read, watch and listen" className="mx-auto grid max-w-6xl scroll-mt-20 gap-4 px-5 pb-12 sm:grid-cols-3 sm:px-10">
+        {[
+          { label: 'Read', detail: 'Books, magazines & short stories', description: 'Find a new perspective, a familiar voice, or a story to get lost in.', href: '/african-books', icon: BookOpen },
+          { label: 'Watch', detail: 'Films, documentaries & music videos', description: 'Discover African stories on screen, from independent creators.', href: '/african-films', icon: Clapperboard },
+          { label: 'Listen', detail: 'Music, podcasts & audiobooks', description: 'Press play on original sounds, conversations and stories told aloud.', href: '/african-audio', icon: Headphones },
+        ].map(({ label, detail, description, href, icon: Icon }) => <Link key={href} href={href} className="group rounded-2xl border border-[#3b3020] bg-[#151410] p-6 transition-colors hover:border-[#c5a56a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e9bd73]">
+          <Icon size={27} className="mb-5 text-[#e9bd73]" aria-hidden="true" />
+          <h2 className="flex items-center justify-between font-display text-3xl text-[#f5f2eb]">{label}<ArrowRight size={18} className="text-[#e9bd73] transition-transform group-hover:translate-x-1 motion-reduce:transform-none" aria-hidden="true" /></h2>
+          <p className="mt-2 text-sm font-medium text-[#e9bd73]">{detail}</p>
+          <p className="mt-3 text-sm leading-relaxed text-[#a8a49c]">{description}</p>
+        </Link>)}
+      </nav>
+
+      <nav aria-label="Explore African media" className="mx-auto flex max-w-5xl flex-wrap justify-center gap-3 px-5 pb-12 sm:px-10">
         {[
           { label: 'Films & documentaries', href: '/african-films' },
           { label: 'African music', href: '/african-music' },
@@ -123,7 +139,7 @@ export default function LandingPage() {
           {[
             { value: 'Discover', label: 'African stories', icon: Users },
             { value: 'Preview', label: 'Before you buy', icon: BookOpen },
-            { value: 'Publish', label: 'Share your writing', icon: Feather },
+            { value: 'Publish', label: 'Share your creativity', icon: Feather },
             { value: 'Review', label: 'Share your experience', icon: Star },
           ].map(({ value, label, icon: Icon }) => (
             <div key={label}>
@@ -141,7 +157,7 @@ export default function LandingPage() {
           <div className="px-5 sm:px-10 mb-8 flex items-end justify-between max-w-6xl mx-auto">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#e8442a' }}>Just Added</p>
-              <h2 className="font-display text-3xl text-white">New Releases</h2>
+              <h2 className="font-display text-3xl text-white">New Books & Stories</h2>
             </div>
             <Link href="/browse" className="text-sm flex items-center gap-1 transition-colors hover:text-white" style={{ color: '#f5b800' }}>
               View all <ArrowRight size={14} />
@@ -207,8 +223,8 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-3 gap-6">
             {[
               { step: '01', icon: Search, title: 'Discover', desc: 'Find books, films, documentaries, music, podcasts, and audiobooks from African creators.' },
-              { step: '02', icon: Zap, title: 'Support creators', desc: 'Purchase stories and media securely, with creator earnings handled through AfroBooks.' },
-              { step: '03', icon: BookOpen, title: 'Enjoy', desc: 'Read, watch, or listen in the AfroBooks app and keep your purchases in your library.' },
+              { step: '02', icon: Zap, title: 'Support creators', desc: 'Purchase stories and media securely, with creator earnings handled through AfroNarra.' },
+              { step: '03', icon: BookOpen, title: 'Enjoy', desc: 'Read, watch, or listen in the AfroNarra app and keep your purchases in your library.' },
             ].map(({ step, icon: Icon, title, desc }) => (
               <div key={step} className="relative p-8 rounded-2xl text-left border" style={{ background: '#0e0e0e', borderColor: '#1a1a1a' }}>
                 <span
@@ -280,12 +296,12 @@ export default function LandingPage() {
         style={{ background: '#080808', borderTop: '1px solid #1a1a1a' }}
       >
         <div className="max-w-2xl mx-auto">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#e8442a' }}>Join AfroBooks</p>
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#e8442a' }}>Join AfroNarra</p>
           <h2 className="font-display text-4xl sm:text-6xl text-white mb-5 leading-tight">
               Ready to discover<br />African stories?
           </h2>
           <p className="text-base mb-10" style={{ color: '#555' }}>
-            Read, watch, and listen to independent African creators on AfroBooks.
+            Read, watch, and listen to independent African creators on AfroNarra.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/signup"
@@ -313,10 +329,10 @@ export default function LandingPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#e9bd73]">About Us</p>
             </div>
             <h2 id="about-title" className="font-display text-3xl text-[#f5f2eb] mb-5 leading-tight">
-              Built for Africa's<br />Literary Future
+              Built for Africa's<br />Creative Future
             </h2>
             <p className="text-sm leading-relaxed mb-4" style={{ color: '#a8a49c' }}>
-              AfroBooks is a digital marketplace for African stories in print, film, and sound. We believe every creator deserves a global audience and fair compensation for their work.
+              AfroNarra is a digital marketplace for African stories in print, film, and sound. We believe every creator deserves a global audience and fair compensation for their work.
             </p>
             <p className="text-sm leading-relaxed mb-6" style={{ color: '#96928a' }}>
               We bring African authors, filmmakers, musicians, podcasters, and narrators together with audiences looking for original work and perspectives.
@@ -342,7 +358,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <p className="text-xs mb-0.5 text-[#96928a]">General enquiries</p>
-                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">{LEGAL_CONTACT}</p>
+                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">Contact support</p>
                 </div>
               </a>
 
@@ -354,8 +370,8 @@ export default function LandingPage() {
                   <Feather size={15} strokeWidth={1.75} className="text-[#e9bd73]" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-xs mb-0.5 text-[#96928a]">Author support</p>
-                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">{LEGAL_CONTACT}</p>
+                  <p className="text-xs mb-0.5 text-[#96928a]">Creator support</p>
+                  <p className="text-sm font-medium text-[#c9c4ba] group-hover:text-[#f5f2eb] transition-colors">Contact support</p>
                 </div>
               </a>
 
@@ -410,7 +426,7 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Readers</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Explore</p>
               <ul className="space-y-2.5">
                 {[
                   { label: 'African Books', href: '/african-books' },
@@ -432,7 +448,7 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Authors</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#333' }}>Creators</p>
               <ul className="space-y-2.5">
                 {[
                   { label: 'Start Publishing', href: '/african-creators' },
@@ -454,7 +470,7 @@ export default function LandingPage() {
                   { label: 'About Us', href: '#about' },
                   { label: 'Terms of use', href: '/terms' },
                   { label: 'Privacy information', href: '/privacy' },
-                  { label: LEGAL_CONTACT, href: `mailto:${LEGAL_CONTACT}` },
+                  { label: 'Contact support', href: `mailto:${LEGAL_CONTACT}` },
                 ].map(({ label, href }) => (
                   <li key={label}>
                     <Link href={href} className="text-sm transition-colors hover:text-white break-all" style={{ color: '#444' }}>{label}</Link>
@@ -465,7 +481,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8" style={{ borderTop: '1px solid #111' }}>
-            <p className="text-xs" style={{ color: '#2a2a2a' }}>© 2025 AfroBooks. All rights reserved.</p>
+            <p className="text-xs" style={{ color: '#777' }}>© {new Date().getFullYear()} AfroNarra. All rights reserved.</p>
             <div className="flex items-center gap-4">
               {[
                 { icon: Twitter, href: 'https://twitter.com/afrobs', label: 'X / Twitter' },

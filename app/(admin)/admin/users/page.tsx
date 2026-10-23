@@ -55,7 +55,7 @@ export default function AdminUsersPage() {
       return;
     if (
       action === 'suspended' &&
-      !window.confirm('Suspend this account and prevent access to AfroBooks?')
+      !window.confirm('Suspend this account and prevent access to AfroNarra?')
     )
       return;
     setBusy(true);

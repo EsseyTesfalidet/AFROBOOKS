@@ -50,10 +50,10 @@ function clipDescription(value: unknown, fallback: string): string {
 
 function itemFromBook(id: string, book: Partial<Book> & Record<string, unknown>): DiscoveryItem {
   const title = string(book.title, 'African book');
-  const creator = string(book.authorName || book.sellerName, 'AfroBooks author');
+  const creator = string(book.authorName || book.sellerName, 'AfroNarra author');
   return {
     id, kind: 'book', title, creator,
-    description: clipDescription(book.description, `Discover ${title} by ${creator} on AfroBooks.`),
+    description: clipDescription(book.description, `Discover ${title} by ${creator} on AfroNarra.`),
     category: string(book.genre, 'Books'), language: string(book.language, 'Unknown language'),
     image: publicImage(book.coverUrl), href: `/african-books/${encodeURIComponent(id)}`,
     publishedAt: isoDate(book.publishedAt || book.updatedAt), durationSeconds: 0, hasTrailer: false,
@@ -62,10 +62,10 @@ function itemFromBook(id: string, book: Partial<Book> & Record<string, unknown>)
 
 function itemFromVideo(id: string, video: Partial<WatchVideo> & Record<string, unknown>): DiscoveryItem {
   const title = string(video.title, 'African film');
-  const creator = string(video.creatorName, 'AfroBooks creator');
+  const creator = string(video.creatorName, 'AfroNarra creator');
   return {
     id, kind: 'video', title, creator,
-    description: clipDescription(video.description, `Watch ${title} by ${creator} on AfroBooks.`),
+    description: clipDescription(video.description, `Watch ${title} by ${creator} on AfroNarra.`),
     category: string(video.category, 'Film'), language: string(video.language, 'Unknown language'),
     image: publicImage(video.posterUrl), href: `/african-films/${encodeURIComponent(id)}`,
     publishedAt: isoDate(video.publishedAt || video.updatedAt),
@@ -76,10 +76,10 @@ function itemFromVideo(id: string, video: Partial<WatchVideo> & Record<string, u
 
 function itemFromAudio(id: string, audio: Partial<AudioTitle> & Record<string, unknown>): DiscoveryItem {
   const title = string(audio.title, 'African audio');
-  const creator = string(audio.creatorName, 'AfroBooks creator');
+  const creator = string(audio.creatorName, 'AfroNarra creator');
   return {
     id, kind: 'audio', title, creator,
-    description: clipDescription(audio.description, `Listen to ${title} by ${creator} on AfroBooks.`),
+    description: clipDescription(audio.description, `Listen to ${title} by ${creator} on AfroNarra.`),
     category: string(audio.category, 'Audio'), language: string(audio.language, 'Unknown language'),
     image: publicImage(audio.coverUrl), href: `/african-audio/${encodeURIComponent(id)}`,
     publishedAt: isoDate(audio.updatedAt),
@@ -133,7 +133,7 @@ export async function getPublicVideoCreator(id: string) {
   const row = await db.doc(`watchCreators/${id}`).get();
   const data = row.data();
   if (!row.exists || data?.status !== 'approved') return null;
-  return { id: row.id, name: string(data.name, 'AfroBooks creator'), description: clipDescription(data.description, `Films and documentaries from ${string(data.name, 'an African creator')} on AfroBooks.`) };
+  return { id: row.id, name: string(data.name, 'AfroNarra creator'), description: clipDescription(data.description, `Films and documentaries from ${string(data.name, 'an African creator')} on AfroNarra.`) };
 }
 
 export async function getPublicVideoCreators(limit = 24) {
@@ -144,7 +144,7 @@ export async function getPublicVideoCreators(limit = 24) {
   const creators = await db.getAll(...ids.map(id => db.doc(`watchCreators/${id}`)));
   return creators.flatMap(row => {
     const data = row.data();
-    return data?.status === 'approved' ? [{ id: row.id, name: string(data.name, 'AfroBooks creator'), href: `/african-creators/${encodeURIComponent(row.id)}` }] : [];
+    return data?.status === 'approved' ? [{ id: row.id, name: string(data.name, 'AfroNarra creator'), href: `/african-creators/${encodeURIComponent(row.id)}` }] : [];
   });
 }
 

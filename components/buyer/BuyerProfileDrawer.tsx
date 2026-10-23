@@ -107,7 +107,7 @@ export default function BuyerProfileDrawer() {
         <footer className="shrink-0 border-t border-white/10 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-7">
           {signOutError && <p role="alert" className="mb-2 text-[14px] text-red-300">{signOutError}</p>}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] tracking-wide text-[#8d897f]">AfroBooks · Reader account</span>
+            <span className="text-[12px] tracking-wide text-[#8d897f]">AfroNarra · Reader account</span>
             {user && <button type="button" onClick={signOut} disabled={signingOut} className={`${buttonClass} text-[#a39f97] hover:bg-white/5`}><LogOut size={16} />{signingOut ? 'Signing out…' : 'Sign out'}</button>}
           </div>
         </footer>

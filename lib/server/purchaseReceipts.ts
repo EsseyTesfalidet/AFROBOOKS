@@ -6,7 +6,7 @@ import { sendReminderEmail, type ReminderEmail } from '../../functions/src/notif
 export function receiptEmailConfiguration(env: Record<string, string | undefined> = process.env) {
   return {
     apiKey: env.RESEND_API_KEY,
-    from: env.RECEIPT_EMAIL_FROM || env.GIFT_EMAIL_FROM || 'AfroBooks <noreply@afrobooks.com>',
+    from: env.RECEIPT_EMAIL_FROM || env.GIFT_EMAIL_FROM || 'AfroNarra <noreply@afrobooks.com>',
   };
 }
 

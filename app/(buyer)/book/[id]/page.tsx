@@ -337,7 +337,7 @@ export default function BookDetailPage() {
             {linkCopied ? <Check size={11} /> : <Copy size={11} />}
             {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
-          <a href={`https://wa.me/?text=${encodeURIComponent(`"${book.title}" by ${book.authorName} on AfroBooks — ${shareUrl}`)}`}
+          <a href={`https://wa.me/?text=${encodeURIComponent(`"${book.title}" by ${book.authorName} on AfroNarra — ${shareUrl}`)}`}
             target="_blank" rel="noopener noreferrer"
             className="px-2.5 py-1 rounded-lg text-xs border transition-colors hover:text-white"
             style={{ borderColor: 'var(--app-line, #2a2a2a)', color: 'var(--app-muted, #666)', background: 'var(--app-surface, #111)' }}>

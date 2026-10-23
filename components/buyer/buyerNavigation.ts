@@ -28,9 +28,9 @@ export interface BuyerRouteState {
 }
 
 const DEFAULT_ROUTE_STATE: BuyerRouteState = {
-  eyebrow: 'AfroBooks',
-  title: 'Reader App',
-  subtitle: 'Discover bold stories by African authors.',
+  eyebrow: 'AfroNarra',
+  title: 'Read. Watch. Listen.',
+  subtitle: 'Discover African stories, films, music and conversations.',
   showBottomNav: true,
   showFooter: true,
   showDrawer: true,
@@ -41,16 +41,16 @@ const ROUTE_STATE_RULES: Array<{
   matches: string[];
   state: Partial<BuyerRouteState>;
 }> = [
-  { matches: ['/listen'], state: { eyebrow: 'AfroBooks Listen', title: 'Listen', subtitle: 'Music, podcasts and audiobooks.', showFooter: false, showSwipe: false } },
-  { matches: ['/watch'], state: { eyebrow: 'AfroBooks Watch', title: 'Watch', subtitle: 'African films, music and ideas.', showFooter: false, showSwipe: false } },
+  { matches: ['/listen'], state: { eyebrow: 'AfroNarra Listen', title: 'Listen', subtitle: 'Music, podcasts and audiobooks.', showFooter: false, showSwipe: false } },
+  { matches: ['/watch'], state: { eyebrow: 'AfroNarra Watch', title: 'Watch', subtitle: 'African films, music and ideas.', showFooter: false, showSwipe: false } },
   {
     matches: ['/about-help'],
-    state: { eyebrow: 'AfroBooks', title: 'About & Help', subtitle: 'Support, information and app details.', showSwipe: false },
+    state: { eyebrow: 'AfroNarra', title: 'About & Help', subtitle: 'Support, information and app details.', showSwipe: false },
   },
   {
     matches: ['/community'],
     state: {
-      eyebrow: 'AfroBooks',
+      eyebrow: 'AfroNarra',
       title: 'Community',
       subtitle: 'Shared experiences and memories from home.',
       showSwipe: false,

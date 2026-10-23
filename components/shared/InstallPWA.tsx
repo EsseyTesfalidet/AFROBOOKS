@@ -73,10 +73,10 @@ export default function InstallPWA() {
         type="button"
         onClick={handleInstall}
         disabled={installing}
-        aria-label="Install AfroBooks"
+        aria-label="Install AfroNarra"
         aria-haspopup={isIOS ? 'dialog' : undefined}
         aria-controls={isIOS ? guideId : undefined}
-        title="Install AfroBooks"
+        title="Install AfroNarra"
         className="flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#342c20] bg-[#231e16] text-xs font-medium text-[#e9bd73] transition-opacity hover:opacity-80 focus-visible:outline-[#e9bd73] disabled:opacity-50 sm:w-auto sm:px-3"
       >
         <Download size={16} aria-hidden="true" />
@@ -97,7 +97,7 @@ export default function InstallPWA() {
           }}
         >
           <div className="mb-4 flex items-start justify-between gap-3">
-            <h2 id={titleId} className="pt-2 text-lg font-semibold leading-snug">Add AfroBooks to your Home Screen</h2>
+            <h2 id={titleId} className="pt-2 text-lg font-semibold leading-snug">Add AfroNarra to your Home Screen</h2>
             <button type="button" onClick={() => guide.current?.close()} aria-label="Close installation instructions"
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#a8a49c] hover:bg-white/5 focus-visible:outline-[#e9bd73]">
               <X size={20} aria-hidden="true" />

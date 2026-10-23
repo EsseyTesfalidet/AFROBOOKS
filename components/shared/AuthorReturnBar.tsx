@@ -33,8 +33,8 @@ export default function AuthorReturnBar() {
   }
 
   if (!visible) return null;
-  return <aside ref={bar} className="author-return-bar" aria-label="Return to AfroBooks app">
-    <span>AfroBooks website</span>
+  return <aside ref={bar} className="author-return-bar" aria-label="Return to AfroNarra app">
+    <span>AfroNarra website</span>
     <a href={readerAppHref(android)} onClick={returnToReader}><ArrowLeft size={17} />Back to app</a>
   </aside>;
 }

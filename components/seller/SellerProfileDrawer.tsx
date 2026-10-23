@@ -97,7 +97,7 @@ export default function SellerProfileDrawer() {
           <SeparateAccountLink />
           {signOutError && <p role="alert" className="mb-2 text-[14px] text-red-300">{signOutError}</p>}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] tracking-wide text-[#8d897f]">AfroBooks · Author account</span>
+            <span className="text-[12px] tracking-wide text-[#8d897f]">AfroNarra · Author account</span>
             <button type="button" onClick={signOut} disabled={signingOut} className={`${buttonClass} text-[#a39f97] hover:bg-white/5`}><LogOut size={16} />{signingOut ? 'Signing out…' : 'Sign out'}</button>
           </div>
         </footer>

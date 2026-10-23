@@ -6,7 +6,7 @@ import { LEGAL_CONTACT } from '@/lib/legal';
 export const metadata: Metadata = {
   title: 'Privacy information',
   description:
-    'How AfroBooks handles account information, reading activity, payments and author payouts, and how to manage your data.',
+    'How AfroNarra handles account information, reading activity, payments and author payouts, and how to manage your data.',
   alternates: { canonical: 'https://afrobs.com/privacy' },
 };
 
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <LegalDocument
       kind="privacy"
       title="Your privacy, explained"
-      introduction="The information you share helps us deliver your books, remember your place and pay authors. Here is what AfroBooks handles, why we use it, and the choices available to you."
+      introduction="The information you share helps us deliver your books, remember your place and pay authors. Here is what AfroNarra handles, why we use it, and the choices available to you."
       highlights={[
         {
           title: 'A private reading space',
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         },
         {
           title: 'Payment details go to Stripe',
-          text: 'Stripe collects payment, identity and bank details. AfroBooks keeps the references and status needed to operate payments.',
+          text: 'Stripe collects payment, identity and bank details. AfroNarra keeps the references and status needed to operate payments.',
         },
         {
           title: 'Clear ways to take control',
@@ -37,10 +37,10 @@ export default function PrivacyPage() {
           content: (
             <>
               <p>
-                This privacy information describes AfroBooks at afrobs.com, including browsing,
+                This privacy information describes AfroNarra at afrobs.com, including browsing,
                 reading, publishing, purchases and book promotions. It applies to visitors, readers
-                and authors. Contact AfroBooks at{' '}
-                <a href={`mailto:${LEGAL_CONTACT}?subject=Privacy%20request`}>{LEGAL_CONTACT}</a>{' '}
+                and authors. Contact{' '}
+                <a href={`mailto:${LEGAL_CONTACT}?subject=Privacy%20request`}>our support team</a>{' '}
                 for privacy questions or requests.
               </p>
               <p>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
                 <strong>Transactions:</strong> orders, subscriptions, discounts, amounts, currency,
                 payment references, refunds, disputes, royalty transfers and bank-payout status
                 received from Stripe. Full card numbers and bank account details are collected by
-                Stripe, not stored in the AfroBooks application database.
+                Stripe, not stored in the AfroNarra application database.
               </li>
               <li>
                 <strong>Support and technical records:</strong> messages or reports you send,
@@ -133,7 +133,7 @@ export default function PrivacyPage() {
           title: 'Services that help us operate',
           content: (
             <>
-              <p>Information is processed by services that provide specific parts of AfroBooks:</p>
+              <p>Information is processed by services that provide specific parts of AfroNarra:</p>
               <ul>
                 <li>
                   <strong>Google Firebase:</strong> authentication, application records and file
@@ -230,7 +230,7 @@ export default function PrivacyPage() {
                 to purchased books and cannot be undone.
               </p>
               <p>
-                Deleting AfroBooks does not automatically close your Stripe account or delete
+                Deleting AfroNarra does not automatically close your Stripe account or delete
                 information Stripe must retain. Clearing browser data is a separate step. Contact us
                 about access, correction or deletion, including information remaining after account
                 closure.
@@ -246,7 +246,7 @@ export default function PrivacyPage() {
               <p>
                 You can edit available profile fields, change reading appearance, manage your
                 subscription and request account deletion through settings. Contact{' '}
-                <a href={`mailto:${LEGAL_CONTACT}?subject=Privacy%20request`}>{LEGAL_CONTACT}</a> to
+                <a href={`mailto:${LEGAL_CONTACT}?subject=Privacy%20request`}>our support team</a> to
                 ask about the personal information we hold or request access, correction or
                 deletion.
               </p>
@@ -276,7 +276,7 @@ export default function PrivacyPage() {
                 suspected misuse promptly.
               </p>
               <p>
-                AfroBooks is not intended for children under 13 or a higher applicable minimum age.
+                AfroNarra is not intended for children under 13 or a higher applicable minimum age.
                 If you believe a child below that age has provided personal information, contact us
                 to investigate and address it. The service does not provide a dedicated children’s
                 account or parental-consent flow.

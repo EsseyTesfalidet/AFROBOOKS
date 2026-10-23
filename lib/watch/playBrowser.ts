@@ -41,5 +41,5 @@ export async function restorePlayVideos(service: DigitalGoods) {
     const page: { next: string | null } = await authenticatedPost('/api/watch/play', { action: 'reconcile', ...(cursor ? { cursor } : {}) });
     cursor = page.next || undefined;
   } while (cursor);
-  if (failures) throw new Error('Some purchases could not be restored. Use the same AfroBooks account as your original purchase and try again.');
+  if (failures) throw new Error('Some purchases could not be restored. Use the same AfroNarra account as your original purchase and try again.');
 }

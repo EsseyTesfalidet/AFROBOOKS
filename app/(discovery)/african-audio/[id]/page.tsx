@@ -21,5 +21,5 @@ export default async function PublicAudioPage({ params }: Props) {
   const item = await getPublicDiscoveryItem('audio', id);
   if (!item) notFound();
   const jsonLd = { '@context': 'https://schema.org', '@type': 'CreativeWork', name: item.title, description: item.description, creator: { '@type': 'Person', name: item.creator }, inLanguage: item.language, url: `https://afrobs.com${item.href}`, ...(item.image ? { image: item.image } : {}) };
-  return <><JsonLd data={jsonLd} /><PublicRelease item={item} action={{ href: `/listen?title=${encodeURIComponent(id)}`, label: 'Listen on AfroBooks' }} /></>;
+  return <><JsonLd data={jsonLd} /><PublicRelease item={item} action={{ href: `/listen?title=${encodeURIComponent(id)}`, label: 'Listen on AfroNarra' }} /></>;
 }

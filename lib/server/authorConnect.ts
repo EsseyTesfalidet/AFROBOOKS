@@ -30,7 +30,7 @@ export function authorAccountParameters(
     },
     defaults: {
       responsibilities: { fees_collector: 'application', losses_collector: 'application' },
-      profile: { product_description: 'Book author receiving royalties from AfroBooks' },
+      profile: { product_description: 'Book author receiving royalties from AfroNarra' },
     },
     metadata: { userId: uid, integration: 'afrobooks-author-v2' },
   };
@@ -84,7 +84,7 @@ export async function findOrCreateAuthorAccount(
     const account = await stripe.accounts.retrieve(seller.stripeAccountId);
     if (account.metadata?.userId !== user.uid)
       throw new AuthorConnectError(
-        'This Stripe account needs an ownership review. Contact AfroBooks support.',
+        'This Stripe account needs an ownership review. Contact AfroNarra support.',
         'account_review',
       );
     return {
@@ -96,7 +96,7 @@ export async function findOrCreateAuthorAccount(
   function match(id: string, version: 'v1' | 'v2') {
     if (recovered && recovered.id !== id)
       throw new AuthorConnectError(
-        'Multiple Stripe accounts need review. Contact AfroBooks support.',
+        'Multiple Stripe accounts need review. Contact AfroNarra support.',
         'account_review',
       );
     if (!recovered || version === 'v2') recovered = { id, version };
@@ -136,7 +136,7 @@ export async function findOrCreateAuthorAccount(
   const account = await stripe.accounts.retrieve(linked.id);
   if (account.metadata?.userId !== user.uid)
     throw new AuthorConnectError(
-      'This Stripe account needs an ownership review. Contact AfroBooks support.',
+      'This Stripe account needs an ownership review. Contact AfroNarra support.',
       'account_review',
     );
   await db.runTransaction(async (tx) => {
@@ -240,14 +240,14 @@ export function authorConnectFailure(error: unknown) {
       status: 503,
       code: 'platform_configuration',
       error:
-        'AfroBooks needs to finish its Stripe Connect setup before authors can join. Please contact support.',
+        'AfroNarra needs to finish its Stripe Connect setup before authors can join. Please contact support.',
     };
   if (/country|cross_border|capability_not_available/.test(code))
     return {
       status: 400,
       code: 'country_unavailable',
       error:
-        'Stripe cannot enable author payouts for this country with the current platform settings. Contact AfroBooks support.',
+        'Stripe cannot enable author payouts for this country with the current platform settings. Contact AfroNarra support.',
     };
   if (
     code === 'resource_missing' ||
@@ -258,7 +258,7 @@ export function authorConnectFailure(error: unknown) {
       status: 409,
       code: 'account_review',
       error:
-        'Your Stripe account needs review. Contact AfroBooks support; do not create another account.',
+        'Your Stripe account needs review. Contact AfroNarra support; do not create another account.',
     };
   if (/email/.test(code))
     return {
@@ -274,11 +274,11 @@ export function authorConnectFailure(error: unknown) {
     return {
       status: 503,
       code: 'platform_configuration',
-      error: 'AfroBooks cannot access Stripe Connect right now. Please contact support.',
+      error: 'AfroNarra cannot access Stripe Connect right now. Please contact support.',
     };
   return {
     status: 503,
     code: 'connect_unavailable',
-    error: 'Stripe payout setup could not finish. Please try again or contact AfroBooks support.',
+    error: 'Stripe payout setup could not finish. Please try again or contact AfroNarra support.',
   };
 }

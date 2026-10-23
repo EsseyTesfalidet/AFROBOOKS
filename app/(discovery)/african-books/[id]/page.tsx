@@ -21,5 +21,5 @@ export default async function PublicBookPage({ params }: Props) {
   const item = await getPublicDiscoveryItem('book', id);
   if (!item) notFound();
   const jsonLd = { '@context': 'https://schema.org', '@type': 'Book', name: item.title, description: item.description, author: { '@type': 'Person', name: item.creator }, inLanguage: item.language, url: `https://afrobs.com${item.href}`, ...(item.image ? { image: item.image } : {}) };
-  return <><JsonLd data={jsonLd} /><PublicRelease item={item} action={{ href: `/book/${encodeURIComponent(id)}`, label: 'Open this book on AfroBooks' }} /></>;
+  return <><JsonLd data={jsonLd} /><PublicRelease item={item} action={{ href: `/book/${encodeURIComponent(id)}`, label: 'Open this book on AfroNarra' }} /></>;
 }

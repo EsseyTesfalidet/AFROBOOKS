@@ -24,8 +24,8 @@ def twaManifest = [
     applicationId: 'com.afrobs.app',
     hostName: 'afrobs.com', // The domain being opened in the TWA.
     launchUrl: '/browse', // The start path for the TWA. Must be relative to the domain.
-    name: 'AfroBooks', // The application name.
-    launcherName: 'AfroBooks', // The name shown on the Android Launcher.
+    name: 'AfroNarra', // The application name.
+    launcherName: 'AfroNarra', // The name shown on the Android Launcher.
     themeColor: '#101110', // The color used for the status bar.
     themeColorDark: '#000000', // The color used for the dark status bar.
     navigationColor: '#101110', // The color used for the navigation bar.

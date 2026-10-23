@@ -93,7 +93,7 @@ export async function mutateCommunity(db: Firestore, uid: string, input: unknown
       if (previous.exists) return { id: ref.id };
       const spend = budget(tx, read(limitRef('posts')), now, person.role === 'admin' ? 30 : 5, 30000);
       tx.create(ref, { kind: action.kind, title: action.title, body: action.body, country: action.country,
-        language: action.language, authorId: uid, authorName: action.kind === 'weekly' ? 'AfroBooks' : publicName(person),
+        language: action.language, authorId: uid, authorName: action.kind === 'weekly' ? 'AfroNarra' : publicName(person),
         createdAt: now, updatedAt: now, status: 'active', replyCount: 0, acceptedReplyId: null });
       if (action.kind === 'weekly') tx.set(db.doc('communitySettings/weekly'), { postId: ref.id, updatedAt: now, updatedBy: uid });
       spend();

@@ -39,7 +39,7 @@ export default function AdminWorkspace({ children }: { children: React.ReactNode
       </a>
       <aside className="admin-sidebar">
         <Link href="/admin" className="admin-brand">
-          AfroBooks<span>Workspace</span>
+          AfroNarra<span>Workspace</span>
         </Link>
         <label className="admin-nav-search">
           <Search size={15} aria-hidden="true" />

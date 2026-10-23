@@ -3,7 +3,7 @@ import LoginForm from '@/components/auth/LoginForm';
 
 export const metadata: Metadata = {
   title: 'Sign In',
-  description: 'Sign in to your AfroBooks account to browse and read ebooks by African authors.',
+  description: 'Sign in to your AfroNarra account to read, watch and listen to African authors and creators.',
 };
 
 export default function LoginPage() {

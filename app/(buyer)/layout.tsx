@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import BuyerChrome from '@/components/buyer/BuyerChrome';
 
 export const metadata: Metadata = {
-  title: 'Browse African Ebooks',
-  description: 'Discover and buy ebooks by African authors. Thousands of titles across fiction, history, science, fantasy, romance, and more.',
+  title: 'African Books, Films, Music & Stories',
+  description: 'Read African books, watch films and documentaries, and listen to music, podcasts and audiobooks from independent creators.',
   openGraph: {
-    title: 'Browse African Ebooks — AfroBooks',
-    description: 'Discover and buy ebooks by African authors on AfroBooks.',
+    title: 'African Books, Films, Music & Stories — AfroNarra',
+    description: 'Read, watch and listen to African authors and creators on AfroNarra.',
   },
 };
 

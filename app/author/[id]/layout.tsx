@@ -13,19 +13,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const avatar = profile?.author.avatarUrl;
     const desc = bio
       ? (bio.length > 160 ? bio.slice(0, 157) + '…' : bio)
-      : `Discover books by ${name} on AfroBooks.`;
+      : `Discover books by ${name} on AfroNarra.`;
     return {
       title: name,
       description: desc,
       alternates: { canonical: `/author/${encodeURIComponent(id)}` },
       openGraph: {
-        title: `${name} — AfroBooks`,
+        title: `${name} — AfroNarra`,
         description: desc,
         ...(avatar ? { images: [{ url: avatar, alt: name }] } : {}),
       },
       twitter: {
         card: avatar ? 'summary_large_image' : 'summary',
-        title: `${name} — AfroBooks`,
+        title: `${name} — AfroNarra`,
         description: desc,
         ...(avatar ? { images: [avatar] } : {}),
       },

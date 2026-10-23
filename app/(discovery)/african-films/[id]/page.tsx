@@ -31,5 +31,5 @@ export default async function PublicVideoPage({ params }: Props) {
     publisher: { '@type': 'Organization', name: item.creator },
     mainEntityOfPage: `https://afrobs.com${item.href}`,
   } : undefined;
-  return <PublicRelease item={item} trailerUrl={embedUrl} jsonLd={jsonLd} action={{ href: `/watch/${encodeURIComponent(id)}`, label: 'Open AfroBooks Watch' }} />;
+  return <PublicRelease item={item} trailerUrl={embedUrl} jsonLd={jsonLd} action={{ href: `/watch/${encodeURIComponent(id)}`, label: 'Open AfroNarra Watch' }} />;
 }

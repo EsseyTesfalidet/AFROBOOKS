@@ -28,7 +28,7 @@ export default function MobileAccessGate({ children }: { children: ReactNode }) 
 
   if (blocked) return <main className="flex min-h-dvh items-center justify-center px-6 text-center">
     <div role="status" className="space-y-4 text-sm text-[#a8abb5]">
-      <p>{auth.loading ? 'Opening your account…' : 'Sign in to continue to AfroBooks.'}</p>
+      <p>{auth.loading ? 'Opening your account…' : 'Sign in to continue to AfroNarra.'}</p>
       {!auth.loading && <Link href={mobileLoginHref(path)} className="inline-flex min-h-11 items-center text-[#ffa18b] underline">Sign in</Link>}
     </div>
   </main>;

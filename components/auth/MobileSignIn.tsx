@@ -209,9 +209,9 @@ export default function MobileSignIn() {
   }
 
   return <main className="mobile-signin" data-success={success || undefined}>
-    <section className="signin-hero" aria-label="AfroBooks">
+    <section className="signin-hero" aria-label="AfroNarra">
       <div className="signin-brand"><Logo size="lg" href="/login" /></div>
-      <p className="signin-tagline">A home for your stories.</p>
+      <p className="signin-tagline">Read. Watch. Listen.</p>
     </section>
     <section className="signin-panel" aria-label="Sign in">
       <div className="signin-panel-inner">
@@ -219,7 +219,7 @@ export default function MobileSignIn() {
           <span><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m13 24 7 7 15-15"/></svg></span>
           <h1>You’re in.</h1><p>Your next chapter awaits.</p>
         </div> : <>
-          <header className="signin-intro signin-enter"><h1>{recoveryAccount ? 'Account recovered' : recoverySentTo ? 'Verify your number' : recoveryOpen ? 'Recover your account' : 'Welcome back'}</h1><p>{recoveryAccount ? 'Your phone helped locate the existing AfroBooks account.' : recoverySentTo ? <>Enter the code sent to {recoverySentTo}</> : recoveryOpen ? 'Use the recovery number already linked to your account.' : 'Your stories are waiting for you.'}</p></header>
+          <header className="signin-intro signin-enter"><h1>{recoveryAccount ? 'Account recovered' : recoverySentTo ? 'Verify your number' : recoveryOpen ? 'Recover your account' : 'Welcome back'}</h1><p>{recoveryAccount ? 'Your phone helped locate the existing AfroNarra account.' : recoverySentTo ? <>Enter the code sent to {recoverySentTo}</> : recoveryOpen ? 'Use the recovery number already linked to your account.' : 'Your stories are waiting for you.'}</p></header>
           {recoveryAccount ? <div className="signin-recovery-result signin-enter">
             <span className="signin-recovery-label">Email on your account</span><strong>{recoveryAccount.email}</strong>
             {recoveryAccount.providers.includes('password') ? resetSent
@@ -251,7 +251,7 @@ export default function MobileSignIn() {
             <div className="signin-divider signin-enter"><span/>or continue with<span/></div>
             <div className="signin-social signin-enter">{(['google', 'apple'] as const).map(provider => <button key={provider} type="button" disabled={!!busy} aria-label={`Continue with ${provider === 'google' ? 'Google' : 'Apple'}`} aria-disabled={provider === 'apple' && !mobileProviders.apple || undefined}
               onClick={() => { if (provider === 'apple' && !mobileProviders.apple) { feedback(signInError(new Error('provider-disabled'))); return; } void authenticate(provider, () => mobileSocialSignIn(provider)); }}><span><SocialIcon provider={provider}/></span>{provider === 'google' ? 'Google' : 'Apple'}</button>)}</div>
-            <p className="signin-signup signin-enter"><span>New to AfroBooks? </span><Link href={signupHref}>Sign up</Link></p></>}
+            <p className="signin-signup signin-enter"><span>New to AfroNarra? </span><Link href={signupHref}>Sign up</Link></p></>}
           {recoveryOpen && <div className="signin-recovery-back signin-enter"><button type="button" disabled={!!busy} onClick={backToSignIn}><ArrowLeft size={14}/>Back to sign in</button>{!recoveryAccount && <p>Phone numbers only help recover an account that already has this number linked.</p>}</div>}
           <p className="signin-legal signin-enter"><Link href="/terms">Terms</Link><span aria-hidden="true">·</span><Link href="/privacy">Privacy</Link></p>
         </>}

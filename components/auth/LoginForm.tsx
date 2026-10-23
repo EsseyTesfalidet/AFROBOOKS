@@ -198,7 +198,7 @@ function WebsiteLoginForm() {
             <div className="app-login-brand"><Logo size="lg" href="/" /></div>
             <h1 className="mt-6 font-display text-[32px] leading-tight text-white sm:text-5xl">Welcome back</h1>
             <p className="app-login-description mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[#9a9aa3]">
-              Get back to your library, purchases, and reading progress without missing a beat.
+              Get back to your books, films, music and podcasts, with your library waiting for you.
             </p>
           </div>
 

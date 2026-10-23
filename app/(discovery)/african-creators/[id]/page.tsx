@@ -21,5 +21,5 @@ export default async function PublicVideoCreatorPage({ params }: Props) {
   const creator = await getPublicVideoCreator(id);
   if (!creator) notFound();
   const videos = await getPublicDiscoveryItems('video', undefined, id);
-  return <><JsonLd data={{ '@context': 'https://schema.org', '@type': 'ProfilePage', name: creator.name, description: creator.description, url: `https://afrobs.com/african-creators/${encodeURIComponent(id)}`, mainEntity: { '@type': 'Person', name: creator.name } }} /><PublicDiscovery path={`/african-creators/${encodeURIComponent(id)}`} title={`${creator.name} on AfroBooks`} description={creator.description} sections={[{ title: 'Published films and video stories', items: videos, empty: 'This creator has no published videos yet.' }]} /></>;
+  return <><JsonLd data={{ '@context': 'https://schema.org', '@type': 'ProfilePage', name: creator.name, description: creator.description, url: `https://afrobs.com/african-creators/${encodeURIComponent(id)}`, mainEntity: { '@type': 'Person', name: creator.name } }} /><PublicDiscovery path={`/african-creators/${encodeURIComponent(id)}`} title={`${creator.name} on AfroNarra`} description={creator.description} sections={[{ title: 'Published films and video stories', items: videos, empty: 'This creator has no published videos yet.' }]} /></>;
 }

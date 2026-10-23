@@ -52,7 +52,7 @@ export default function AdminRevenuePage() {
   const order = orders.find((item) => item.id === selected);
   const reviews = orders.filter((item) => item.status === 'needs_review');
   function exportOrders() {
-    downloadCsv('afrobooks-orders-' + now.toISOString().slice(0, 10) + '.csv', [
+    downloadCsv('afronarra-orders-' + now.toISOString().slice(0, 10) + '.csv', [
       [
         'Order',
         'Book',

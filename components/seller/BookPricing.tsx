@@ -53,12 +53,12 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
     <section className="space-y-5" aria-labelledby={`${id}-title`}>
       <div>
         <h2 id={`${id}-title`} className="font-display text-display-sm text-white">{isStory ? 'Short story pricing' : publicationType === 'magazine' ? 'Issue pricing' : 'Book pricing'}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#aaa]">{isStory ? 'Set a price for one story. Readers can choose several stories and pay once. The example below shows how sharing payment costs affects earnings.' : 'Set a customer price, or enter your desired earnings and we’ll calculate a price that includes AfroBooks’ share and estimated processing.'}</p>
+        <p className="mt-2 text-sm leading-relaxed text-[#aaa]">{isStory ? 'Set a price for one story. Readers can choose several stories and pay once. The example below shows how sharing payment costs affects earnings.' : 'Set a customer price, or enter your desired earnings and we’ll calculate a price that includes AfroNarra’ share and estimated processing.'}</p>
       </div>
 
       <div className="rounded-2xl border border-[#54441e] bg-[#211c12] p-4 sm:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="font-medium text-[#f5b800]">AfroBooks pricing guide</h3>
+          <h3 className="font-medium text-[#f5b800]">AfroNarra pricing guide</h3>
           <span className="text-sm text-white">{money(guidance.low)}–{money(guidance.high)}</span>
         </div>
         <p className="mt-2 text-sm leading-relaxed text-[#ccc]">{guidance.basis}</p>
@@ -109,7 +109,7 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
         <dl className="space-y-3 text-sm" aria-live="polite">
           {[
             { label: isStory ? 'Authors’ estimated earnings (total)' : 'Your estimated earnings', value: fees.sellerEarnings, color: 'text-[#4ade80]' },
-            { label: `AfroBooks’ share (${directSaleFee}%)`, value: fees.platformFee, color: 'text-[#eee]' },
+            { label: `AfroNarra’ share (${directSaleFee}%)`, value: fees.platformFee, color: 'text-[#eee]' },
             { label: 'Estimated payment processing', value: fees.stripeFee, color: 'text-[#eee]' },
           ].map(({ label, value, color }) => (
             <div key={label} className="flex justify-between gap-4">
@@ -122,7 +122,7 @@ export default function BookPricing({ price, directSaleFee, wordCount = 0, genre
         </dl>
       </div>
       <p id={`${id}-note`} className="text-xs leading-relaxed text-[#aaa]">
-        Estimates use Stripe’s standard US card rate of 2.9% + $0.30. AfroBooks’ {directSaleFee}% share is calculated after processing. Actual fees may vary. Bundle discounts reduce earnings, and books in one payment share the processing cost.
+        Estimates use Stripe’s standard US card rate of 2.9% + $0.30. AfroNarra’ {directSaleFee}% share is calculated after processing. Actual fees may vary. Bundle discounts reduce earnings, and books in one payment share the processing cost.
       </p>
     </section>
   );

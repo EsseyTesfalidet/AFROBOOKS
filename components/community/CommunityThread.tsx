@@ -126,7 +126,7 @@ export default function CommunityThread({ postId, admin = false, focusReply }: {
         {thread.focusedReply && <section className="community-stack"><h2>Reported reply</h2>{replyCard(thread.focusedReply)}</section>}
         {report && <form ref={reportForm} className="community-card community-stack" onSubmit={async event => {
           event.preventDefault();
-          if (await act({ action: 'report', postId, replyId: report.replyId, reason }, 'Report received. The AfroBooks team will review it.')) setReport(null);
+          if (await act({ action: 'report', postId, replyId: report.replyId, reason }, 'Report received. The AfroNarra team will review it.')) setReport(null);
         }}>
           <h2>{report.replyId ? 'Report this reply' : 'Report this conversation'}</h2>
           <label>What should we review?<textarea required minLength={5} maxLength={500} rows={3} value={reason} onChange={e => setReason(e.target.value)} /></label>

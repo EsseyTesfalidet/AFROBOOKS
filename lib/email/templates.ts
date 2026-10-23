@@ -4,15 +4,15 @@ function escapeHtml(value: string): string {
 
 export function welcomeEmail(firstName: string): { subject: string; html: string } {
   return {
-    subject: 'Welcome to AfroBooks',
+    subject: 'Welcome to AfroNarra',
     html: `
       <div style="font-family:'DM Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0e0e0e;color:#f5f2eb;padding:40px 32px;border-radius:16px;">
-        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroBooks</h1>
-        <p style="color:#555;font-size:13px;margin:0 0 32px;">The African Ebook Marketplace</p>
+        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroNarra</h1>
+        <p style="color:#aaa;font-size:13px;margin:0 0 32px;">Read. Watch. Listen.</p>
         <h2 style="font-size:20px;color:#f5f2eb;margin:0 0 12px;">Welcome, ${escapeHtml(firstName)}!</h2>
-        <p style="color:#aaa;line-height:1.7;">You're now part of AfroBooks — the marketplace celebrating African authors and stories. Discover thousands of ebooks across every genre.</p>
+        <p style="color:#aaa;line-height:1.7;">You're now part of AfroNarra — a home for African creativity. Discover books, films, documentaries, music, podcasts and audiobooks from independent African authors and creators.</p>
         <a href="${process.env.NEXT_PUBLIC_BASE_URL}/browse" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">Browse Books</a>
-        <p style="margin-top:32px;color:#444;font-size:12px;">AfroBooks · US-registered marketplace for African authors</p>
+        <p style="margin-top:32px;color:#444;font-size:12px;">AfroNarra · African stories in books, film and sound</p>
       </div>
     `,
   };
@@ -41,11 +41,11 @@ export function purchaseReceiptEmail(params: {
   `).join('');
 
   return {
-    subject: `Your AfroBooks receipt — Order #${params.orderId.slice(-6).toUpperCase()}`,
+    subject: `Your AfroNarra receipt — Order #${params.orderId.slice(-6).toUpperCase()}`,
     text: `Thanks, ${params.buyerName}!\n\nPayment received (USD).\nReference: ${params.orderId}\n\n${params.items.map(i => `${i.title} — ${i.authorName}: ${formatCents(i.priceCents)}`).join('\n')}\n\nTotal: ${formatCents(params.totalCents)} USD\n\n${params.isGift ? 'View your gifts' : 'Read in your library'}: ${libraryUrl}`,
     html: `
       <div style="font-family:'DM Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0e0e0e;color:#f5f2eb;padding:40px 32px;border-radius:16px;">
-        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroBooks</h1>
+        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroNarra</h1>
         <p style="color:#555;font-size:13px;margin:0 0 32px;">Order Confirmation</p>
         <h2 style="font-size:18px;color:#f5f2eb;margin:0 0 4px;">Thanks, ${escapeHtml(params.buyerName)}!</h2>
         <p style="color:#aaa;font-size:13px;">Order #${escapeHtml(params.orderId.slice(-6).toUpperCase())}</p>
@@ -67,7 +67,7 @@ export function purchaseReceiptEmail(params: {
         </table>
         <p style="color:#aaa;font-size:12px;">Paid in USD · Payment reference: ${escapeHtml(params.orderId)}</p>
         <a href="${escapeHtml(libraryUrl)}" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">${params.isGift ? 'View My Gifts' : 'Read in Library'}</a>
-        <p style="margin-top:32px;color:#444;font-size:12px;">AfroBooks · This is an automated receipt.</p>
+        <p style="margin-top:32px;color:#444;font-size:12px;">AfroNarra · This is an automated receipt.</p>
       </div>
     `,
   };
@@ -80,10 +80,10 @@ export function payoutEmail(params: {
 }): { subject: string; html: string } {
   const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
   return {
-    subject: `AfroBooks Payout — ${formatCents(params.amountCents)} sent`,
+    subject: `AfroNarra Payout — ${formatCents(params.amountCents)} sent`,
     html: `
       <div style="font-family:'DM Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0e0e0e;color:#f5f2eb;padding:40px 32px;border-radius:16px;">
-        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroBooks</h1>
+        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroNarra</h1>
         <p style="color:#555;font-size:13px;margin:0 0 32px;">Author Payout</p>
         <h2 style="font-size:18px;color:#f5f2eb;margin:0 0 12px;">Your payout is on its way, ${escapeHtml(params.sellerName)}!</h2>
         <div style="background:#111;border:1px solid #1a1a1a;border-radius:12px;padding:20px 24px;margin-top:16px;">
@@ -93,7 +93,7 @@ export function payoutEmail(params: {
         </div>
         <p style="color:#aaa;font-size:13px;margin-top:20px;line-height:1.7;">Funds will arrive in your connected Stripe account within 2-5 business days.</p>
         <a href="${process.env.NEXT_PUBLIC_BASE_URL}/seller/earnings" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">View Earnings</a>
-        <p style="margin-top:32px;color:#444;font-size:12px;">AfroBooks · This is an automated message.</p>
+        <p style="margin-top:32px;color:#444;font-size:12px;">AfroNarra · This is an automated message.</p>
       </div>
     `,
   };
@@ -107,10 +107,10 @@ export function subscriptionConfirmationEmail(params: {
   const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
   const planLabel = params.plan.charAt(0).toUpperCase() + params.plan.slice(1);
   return {
-    subject: `AfroBooks ${planLabel} subscription confirmed`,
+    subject: `AfroNarra ${planLabel} subscription confirmed`,
     html: `
       <div style="font-family:'DM Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#0e0e0e;color:#f5f2eb;padding:40px 32px;border-radius:16px;">
-        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroBooks</h1>
+        <h1 style="font-size:28px;font-weight:700;color:#e8442a;margin:0 0 8px;">AfroNarra</h1>
         <p style="color:#555;font-size:13px;margin:0 0 32px;">Subscription Confirmation</p>
         <h2 style="font-size:18px;color:#f5f2eb;margin:0 0 12px;">You're subscribed, ${escapeHtml(params.userName)}!</h2>
         <div style="background:#111;border:1px solid #1a1a1a;border-radius:12px;padding:20px 24px;margin-top:16px;">
@@ -118,9 +118,9 @@ export function subscriptionConfirmationEmail(params: {
           <p style="font-size:24px;font-weight:700;color:#f5b800;margin:0;">${planLabel}</p>
           <p style="color:#555;font-size:12px;margin:8px 0 0;">${formatCents(params.amountCents)}/month · Auto-renews monthly</p>
         </div>
-        <p style="color:#aaa;font-size:13px;margin-top:20px;line-height:1.7;">You now have full access to the AfroBooks subscription library. Dive in and start reading.</p>
+        <p style="color:#aaa;font-size:13px;margin-top:20px;line-height:1.7;">You now have full access to the AfroNarra subscription library. Dive in and start reading.</p>
         <a href="${process.env.NEXT_PUBLIC_BASE_URL}/browse?tab=subscription" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#e8442a;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:14px;">Browse Subscription Books</a>
-        <p style="margin-top:32px;color:#444;font-size:12px;">AfroBooks · Manage your subscription at any time from your account settings.</p>
+        <p style="margin-top:32px;color:#444;font-size:12px;">AfroNarra · Manage your subscription at any time from your account settings.</p>
       </div>
     `,
   };

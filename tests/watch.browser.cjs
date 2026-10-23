@@ -71,7 +71,7 @@ async function main() {
       });
       await page.goto(base + '/watch');
       if (!installed) {
-        await page.getByRole('heading', { name: 'AfroBooks Watch is in the app' }).waitFor();
+        await page.getByRole('heading', { name: 'AfroNarra Watch is in the app' }).waitFor();
         assert.equal(calls.length, 0); assert.equal(await page.getByRole('link', { name: 'Watch', exact: true }).count(), 0);
         console.log('PASS mobile website keeps existing navigation and does not fetch the video catalog'); await context.close(); continue;
       }
@@ -296,7 +296,7 @@ async function main() {
     await studioPage.getByText(/Application awaiting review/).waitFor();
     assert.equal(await studioPage.getByRole('button', { name: 'New video', exact: true }).count(), 0);
     await studioPage.evaluate(() => { window.setRole('admin'); window.navigate('/admin/videos'); });
-    await studioPage.getByRole('heading', { name: 'AfroBooks Screen', exact: true }).waitFor();
+    await studioPage.getByRole('heading', { name: 'AfroNarra Watch', exact: true }).waitFor();
     await studioPage.locator('select[name="status"]').selectOption('approved');
     await studioPage.getByLabel('Total upload allowance (minutes)').fill('120');
     await studioPage.getByRole('button', { name: 'Save creator settings' }).click();

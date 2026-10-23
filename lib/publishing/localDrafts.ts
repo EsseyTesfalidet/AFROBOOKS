@@ -41,7 +41,7 @@ function open() {
       resolve(db);
     };
     request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('Draft storage is busy. Close other AfroBooks tabs and retry.'));
+    request.onblocked = () => reject(new Error('Draft storage is busy. Close other AfroNarra tabs and retry.'));
   }).catch(error => { database = undefined; throw error; });
   return database;
 }
@@ -81,7 +81,7 @@ export async function readPublicationDraft(key: string): Promise<PublicationDraf
     return restored;
   }
   if (!saved) return null;
-  if (saved.version !== 1) throw new Error('This saved draft needs a newer version of AfroBooks.');
+  if (saved.version !== 1) throw new Error('This saved draft needs a newer version of AfroNarra.');
   return publicationDraftSchema.parse(saved.value);
 }
 export async function writePublicationDraft(key: string, value: PublicationDraft) {
